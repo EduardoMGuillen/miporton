@@ -4,6 +4,8 @@ import { dashboardPathByRole } from "@/lib/authorization";
 import { defaultSuperAdminCredentials, ensureSuperAdminExists } from "@/lib/bootstrap";
 import { LoginForm } from "@/app/login/login-form";
 
+export const dynamic = "force-dynamic";
+
 export default async function LoginPage() {
   await ensureSuperAdminExists();
 

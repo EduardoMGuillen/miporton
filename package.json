@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "prisma:generate": "prisma generate",
+    "prisma:push": "prisma db push",
+    "build:vercel": "prisma generate && prisma db push && next build"
   },
   "dependencies": {
     "@prisma/client": "^6.19.2",
