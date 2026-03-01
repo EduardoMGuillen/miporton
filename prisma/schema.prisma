@@ -1,0 +1,86 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  RESIDENTIAL_ADMIN
+  RESIDENT
+  GUARD
+}
+
+enum QrValidity {
+  SINGLE_USE
+  ONE_DAY
+  THREE_DAYS
+}
+
+model Residential {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  users     User[]
+  qrCodes   QrCode[]
+}
+
+model User {
+  id            String       @id @default(cuid())
+  fullName      String
+  email         String       @unique
+  passwordHash  String
+  role          Role
+  createdAt     DateTime     @default(now())
+  residentialId String?
+  residential   Residential? @relation(fields: [residentialId], references: [id], onDelete: Cascade)
+  createdCodes  QrCode[]     @relation("CreatedByResident")
+  scannedCodes  QrScan[]
+  subscriptions PushSubscription[]
+}
+
+model QrCode {
+  id            String      @id @default(cuid())
+  code          String      @unique
+  visitorName   String
+  validityType  QrValidity
+  validFrom     DateTime
+  validUntil    DateTime
+  maxUses       Int
+  usedCount     Int         @default(0)
+  isRevoked     Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  residentialId String
+  residentId    String
+  residential   Residential @relation(fields: [residentialId], references: [id], onDelete: Cascade)
+  resident      User        @relation("CreatedByResident", fields: [residentId], references: [id], onDelete: Cascade)
+  scans         QrScan[]
+}
+
+model QrScan {
+  id         String   @id @default(cuid())
+  scannedAt  DateTime @default(now())
+  isValid    Boolean
+  reason     String
+  codeId     String
+  scannerId  String
+  code       QrCode   @relation(fields: [codeId], references: [id], onDelete: Cascade)
+  scanner    User     @relation(fields: [scannerId], references: [id], onDelete: Cascade)
+}
+
+model PushSubscription {
+  id         String   @id @default(cuid())
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  userId     String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
