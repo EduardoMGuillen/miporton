@@ -5,6 +5,7 @@ import { Card, DashboardShell } from "@/app/components/shell";
 import { CreateQrForm } from "@/app/resident/create-qr-form";
 import { PushSubscriptionCard } from "@/app/resident/push-subscription";
 import { deleteInviteQrAction } from "@/app/resident/actions";
+import { QrShareActions } from "@/app/resident/qr-share-actions";
 
 type InviteWithImage = {
   id: string;
@@ -23,14 +24,14 @@ function validityLabel(validityType: InviteWithImage["validityType"]) {
   return "Valido por 3 dias";
 }
 
-function whatsappShareText(visitorName: string, code: string) {
-  return encodeURIComponent(
-    `Hola, este es tu QR de acceso para MiPorton.\nVisita: ${visitorName}\nCodigo: MP:${code}\nPresentalo al guardia al llegar.`,
-  );
-}
-
 export default async function ResidentPage() {
   const session = await requireRole(["RESIDENT"]);
+  const residential = session.residentialId
+    ? await prisma.residential.findUnique({
+        where: { id: session.residentialId },
+        select: { name: true },
+      })
+    : null;
 
   const invites = await prisma.qrCode.findMany({
     where: { residentId: session.userId },
@@ -86,23 +87,15 @@ export default async function ResidentPage() {
               <p className="mt-2 break-all rounded-md bg-white px-2 py-1 text-[10px] text-slate-500">
                 MP:{invite.code}
               </p>
-              <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                <a
-                  href={`https://wa.me/?text=${whatsappShareText(invite.visitorName, invite.code)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-center text-xs font-medium text-emerald-700 transition hover:bg-emerald-100"
-                >
-                  Compartir por WhatsApp
-                </a>
-                <a
-                  href={invite.image}
-                  download={`miporton-qr-${invite.visitorName.replaceAll(" ", "-").toLowerCase()}.png`}
-                  className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-center text-xs font-medium text-blue-700 transition hover:bg-blue-100"
-                >
-                  Descargar imagen
-                </a>
-              </div>
+              <QrShareActions
+                qrDataUrl={invite.image}
+                visitorName={invite.visitorName}
+                code={invite.code}
+                validityLabel={validityLabel(invite.validityType)}
+                validUntilLabel={new Date(invite.validUntil).toLocaleString("es-DO")}
+                residentialName={residential?.name ?? "Residencial"}
+                residentName={session.fullName}
+              />
               <form action={deleteInviteQrAction} className="mt-2">
                 <input type="hidden" name="qrId" value={invite.id} />
                 <button className="w-full rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 transition hover:bg-red-100">

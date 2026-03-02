@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -14,16 +14,32 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "MiPorton",
+  applicationName: "MiPorton",
   description: "Webapp de control de visitas con QR para residenciales.",
   manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "MiPorton",
+    statusBarStyle: "default",
+  },
+  formatDetection: {
+    telephone: false,
+  },
   icons: {
     icon: [
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
-    apple: [{ url: "/logo.png", sizes: "500x500", type: "image/png" }],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
     shortcut: ["/logo.png"],
   },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#1d4ed8",
 };
 
 export default function RootLayout({
