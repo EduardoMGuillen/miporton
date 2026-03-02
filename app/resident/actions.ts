@@ -42,3 +42,18 @@ export async function createInviteQrAction(_prevState: string | null, formData: 
   revalidatePath("/resident");
   return "QR generado correctamente.";
 }
+
+export async function deleteInviteQrAction(formData: FormData) {
+  const session = await requireRole(["RESIDENT"]);
+  const qrId = String(formData.get("qrId") ?? "");
+  if (!qrId) return;
+
+  await prisma.qrCode.deleteMany({
+    where: {
+      id: qrId,
+      residentId: session.userId,
+    },
+  });
+
+  revalidatePath("/resident");
+}

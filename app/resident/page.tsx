@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { Card, DashboardShell } from "@/app/components/shell";
 import { CreateQrForm } from "@/app/resident/create-qr-form";
 import { PushSubscriptionCard } from "@/app/resident/push-subscription";
+import { deleteInviteQrAction } from "@/app/resident/actions";
 
 type InviteWithImage = {
   id: string;
@@ -20,6 +21,12 @@ function validityLabel(validityType: InviteWithImage["validityType"]) {
   if (validityType === "SINGLE_USE") return "1 solo uso";
   if (validityType === "ONE_DAY") return "Valido por 1 dia";
   return "Valido por 3 dias";
+}
+
+function whatsappShareText(visitorName: string, code: string) {
+  return encodeURIComponent(
+    `Hola, este es tu QR de acceso para MiPorton.\nVisita: ${visitorName}\nCodigo: MP:${code}\nPresentalo al guardia al llegar.`,
+  );
 }
 
 export default async function ResidentPage() {
@@ -79,6 +86,29 @@ export default async function ResidentPage() {
               <p className="mt-2 break-all rounded-md bg-white px-2 py-1 text-[10px] text-slate-500">
                 MP:{invite.code}
               </p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <a
+                  href={`https://wa.me/?text=${whatsappShareText(invite.visitorName, invite.code)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-center text-xs font-medium text-emerald-700 transition hover:bg-emerald-100"
+                >
+                  Compartir por WhatsApp
+                </a>
+                <a
+                  href={invite.image}
+                  download={`miporton-qr-${invite.visitorName.replaceAll(" ", "-").toLowerCase()}.png`}
+                  className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-center text-xs font-medium text-blue-700 transition hover:bg-blue-100"
+                >
+                  Descargar imagen
+                </a>
+              </div>
+              <form action={deleteInviteQrAction} className="mt-2">
+                <input type="hidden" name="qrId" value={invite.id} />
+                <button className="w-full rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 transition hover:bg-red-100">
+                  Eliminar QR
+                </button>
+              </form>
             </article>
           ))}
           {invitesWithImage.length === 0 ? (

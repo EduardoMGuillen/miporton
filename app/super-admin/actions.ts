@@ -13,6 +13,13 @@ const createResidentialSchema = z.object({
   adminPassword: z.string().min(6, "El password debe tener minimo 6 caracteres."),
 });
 
+const updateResidentialAdminSchema = z.object({
+  userId: z.string().min(1),
+  fullName: z.string().min(3, "Nombre invalido."),
+  email: z.string().email("Correo invalido."),
+  password: z.string().optional(),
+});
+
 export async function createResidentialWithAdminAction(
   _prevState: string | null,
   formData: FormData,
@@ -54,4 +61,61 @@ export async function createResidentialWithAdminAction(
 
   revalidatePath("/super-admin");
   return "Residencial y admin creados correctamente.";
+}
+
+export async function updateResidentialAdminAction(formData: FormData) {
+  await requireRole(["SUPER_ADMIN"]);
+
+  const parsed = updateResidentialAdminSchema.safeParse({
+    userId: formData.get("userId"),
+    fullName: formData.get("fullName"),
+    email: formData.get("email"),
+    password: formData.get("password") || undefined,
+  });
+  if (!parsed.success) return;
+
+  const target = await prisma.user.findFirst({
+    where: { id: parsed.data.userId, role: "RESIDENTIAL_ADMIN" },
+    select: { id: true },
+  });
+  if (!target) return;
+
+  const email = parsed.data.email.toLowerCase();
+  const existing = await prisma.user.findFirst({
+    where: { email, NOT: { id: parsed.data.userId } },
+    select: { id: true },
+  });
+  if (existing) return;
+
+  const updateData: {
+    fullName: string;
+    email: string;
+    passwordHash?: string;
+  } = {
+    fullName: parsed.data.fullName.trim(),
+    email,
+  };
+
+  if (parsed.data.password && parsed.data.password.trim().length >= 6) {
+    updateData.passwordHash = await bcrypt.hash(parsed.data.password.trim(), 10);
+  }
+
+  await prisma.user.update({
+    where: { id: parsed.data.userId },
+    data: updateData,
+  });
+
+  revalidatePath("/super-admin");
+}
+
+export async function deleteResidentialAdminAction(formData: FormData) {
+  await requireRole(["SUPER_ADMIN"]);
+  const userId = String(formData.get("userId") ?? "");
+  if (!userId) return;
+
+  await prisma.user.deleteMany({
+    where: { id: userId, role: "RESIDENTIAL_ADMIN" },
+  });
+
+  revalidatePath("/super-admin");
 }

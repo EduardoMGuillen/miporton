@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { dashboardPathByRole } from "@/lib/authorization";
-import { defaultSuperAdminCredentials, ensureSuperAdminExists } from "@/lib/bootstrap";
+import { ensureSuperAdminExists } from "@/lib/bootstrap";
 import { LoginForm } from "@/app/login/login-form";
 
 export const dynamic = "force-dynamic";
@@ -52,11 +52,6 @@ export default async function LoginPage() {
             </div>
           ) : null}
           <LoginForm />
-          <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
-            <p className="font-semibold">Credenciales iniciales (solo primera vez):</p>
-            <p>Correo: {defaultSuperAdminCredentials.email}</p>
-            <p>Password: {defaultSuperAdminCredentials.password}</p>
-          </div>
         </article>
       </section>
     </main>

@@ -15,6 +15,15 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "MiPorton",
   description: "Webapp de control de visitas con QR para residenciales.",
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/logo.png", sizes: "500x500", type: "image/png" }],
+    shortcut: ["/logo.png"],
+  },
 };
 
 export default function RootLayout({

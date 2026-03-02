@@ -2,6 +2,10 @@ import { requireRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
 import { Card, DashboardShell } from "@/app/components/shell";
 import { CreateResidentialUserForm } from "@/app/residential-admin/create-user-form";
+import {
+  deleteResidentialUserAction,
+  updateResidentialUserAction,
+} from "@/app/residential-admin/actions";
 
 export default async function ResidentialAdminPage() {
   const session = await requireRole(["RESIDENTIAL_ADMIN"]);
@@ -43,6 +47,39 @@ export default async function ResidentialAdminPage() {
               <p className="text-sm text-slate-600">
                 {user.email} - {user.role === "RESIDENT" ? "Residente" : "Guardia"}
               </p>
+              <div className="mt-3 grid gap-2">
+                <form action={updateResidentialUserAction} className="grid gap-2">
+                  <input type="hidden" name="userId" value={user.id} />
+                  <input
+                    name="fullName"
+                    defaultValue={user.fullName}
+                    className="field-base"
+                    placeholder="Nombre"
+                    required
+                  />
+                  <input
+                    name="email"
+                    type="email"
+                    defaultValue={user.email}
+                    className="field-base"
+                    placeholder="Correo"
+                    required
+                  />
+                  <input
+                    name="password"
+                    type="password"
+                    className="field-base"
+                    placeholder="Nueva password (opcional)"
+                  />
+                  <button className="btn-primary w-full">Guardar cambios</button>
+                </form>
+                <form action={deleteResidentialUserAction}>
+                  <input type="hidden" name="userId" value={user.id} />
+                  <button className="w-full rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100">
+                    Eliminar usuario
+                  </button>
+                </form>
+              </div>
             </div>
           ))}
           {users.length === 0 ? (
