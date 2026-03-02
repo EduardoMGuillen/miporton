@@ -8,6 +8,11 @@ export const dynamic = "force-dynamic";
 
 export default async function LoginPage() {
   await ensureSuperAdminExists();
+  const dbConfigured =
+    Boolean(process.env.DATABASE_URL) ||
+    Boolean(process.env.POSTGRES_PRISMA_URL) ||
+    Boolean(process.env.POSTGRES_URL) ||
+    Boolean(process.env.POSTGRES_URL_NON_POOLING);
 
   const session = await getSession();
   if (session) redirect(dashboardPathByRole(session.role));
@@ -41,6 +46,11 @@ export default async function LoginPage() {
             <h1 className="text-3xl font-bold text-slate-900">Iniciar sesion</h1>
             <p className="mt-1 text-sm text-slate-600">Accede a tu panel de MiPorton.</p>
           </div>
+          {!dbConfigured ? (
+            <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+              Falta configurar la conexion a base de datos en variables de entorno.
+            </div>
+          ) : null}
           <LoginForm />
           <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
             <p className="font-semibold">Credenciales iniciales (solo primera vez):</p>
