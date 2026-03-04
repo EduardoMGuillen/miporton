@@ -54,7 +54,17 @@ export function GuardQrScanner() {
     const Html5Qrcode = html5QrCodeModule.Html5Qrcode;
     const scanner = new Html5Qrcode(scannerId);
     scannerRef.current = scanner;
-    await startCamera();
+    let lastError: unknown = null;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        await startCamera();
+        return;
+      } catch (error) {
+        lastError = error;
+        await new Promise((resolve) => setTimeout(resolve, 350));
+      }
+    }
+    throw lastError;
   }, [scannerId, startCamera]);
 
   async function validateCode(code: string) {
@@ -80,7 +90,7 @@ export function GuardQrScanner() {
   useEffect(() => {
     mountedRef.current = true;
     recreateAndStartCamera().catch(() => {
-      setError("No se pudo iniciar la camara. Usa validacion manual.");
+      setError("No se pudo iniciar la camara. Cierra y abre la app o usa 'Reactivar camara'.");
     });
 
     return () => {
