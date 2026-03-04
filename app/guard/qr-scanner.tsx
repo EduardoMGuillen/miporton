@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type ScanResult = {
   valid: boolean;
@@ -10,62 +10,27 @@ type ScanResult = {
   residentialName?: string | null;
 };
 
+type ScannerInstance = {
+  start: (
+    cameraIdOrConfig: any,
+    configuration: any,
+    qrCodeSuccessCallback: (decodedText: string) => void | Promise<void>,
+    qrCodeErrorCallback?: (errorMessage: string) => void,
+  ) => Promise<unknown>;
+  stop: () => Promise<void>;
+  clear: () => void | Promise<void>;
+  isScanning: boolean;
+};
+
 export function GuardQrScanner() {
   const [manualCode, setManualCode] = useState("");
   const [result, setResult] = useState<ScanResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
   const scannerId = useMemo(() => `qr-reader-${Math.random().toString(36).slice(2)}`, []);
-  const scannerRef = useRef<{
-    start: (...args: any[]) => Promise<any>;
-    stop: () => Promise<void>;
-    clear: () => void | Promise<void>;
-    isScanning: boolean;
-  } | null>(null);
+  const scannerRef = useRef<ScannerInstance | null>(null);
   const mountedRef = useRef(true);
-
-  const startCamera = useCallback(async () => {
-    const scanner = scannerRef.current;
-    if (!scanner || scanner.isScanning) return;
-
-    await scanner.start(
-      { facingMode: "environment" },
-      { fps: 6, qrbox: { width: 240, height: 240 } },
-      async (decodedText: string) => {
-        if (isProcessing) return;
-        setIsProcessing(true);
-        await scanner.stop();
-        await validateCode(decodedText);
-      },
-      () => {},
-    );
-  }, [isProcessing]);
-
-  const recreateAndStartCamera = useCallback(async () => {
-    const existing = scannerRef.current;
-    if (existing) {
-      if (existing.isScanning) {
-        await existing.stop().catch(() => {});
-      }
-      await Promise.resolve(existing.clear()).catch(() => {});
-    }
-
-    const html5QrCodeModule = await import("html5-qrcode");
-    const Html5Qrcode = html5QrCodeModule.Html5Qrcode;
-    const scanner = new Html5Qrcode(scannerId);
-    scannerRef.current = scanner;
-    let lastError: unknown = null;
-    for (let attempt = 0; attempt < 2; attempt += 1) {
-      try {
-        await startCamera();
-        return;
-      } catch (error) {
-        lastError = error;
-        await new Promise((resolve) => setTimeout(resolve, 350));
-      }
-    }
-    throw lastError;
-  }, [scannerId, startCamera]);
 
   async function validateCode(code: string) {
     setError(null);
@@ -87,22 +52,89 @@ export function GuardQrScanner() {
     setIsProcessing(false);
   }
 
+  async function stopAndClearScanner() {
+    const scanner = scannerRef.current;
+    if (!scanner) return;
+
+    if (scanner.isScanning) {
+      await scanner.stop().catch(() => {});
+    }
+    await Promise.resolve(scanner.clear()).catch(() => {});
+  }
+
+  async function ensureScanner() {
+    if (scannerRef.current) return scannerRef.current;
+    const html5QrCodeModule = await import("html5-qrcode");
+    const Html5Qrcode = html5QrCodeModule.Html5Qrcode;
+    const scanner = new Html5Qrcode(scannerId) as ScannerInstance;
+    scannerRef.current = scanner;
+    return scanner;
+  }
+
+  async function startCamera() {
+    if (isStarting) return;
+    setIsStarting(true);
+    setError(null);
+
+    try {
+      const scanner = await ensureScanner();
+      if (scanner.isScanning) return;
+
+      const onSuccess = async (decodedText: string) => {
+        if (isProcessing) return;
+        setIsProcessing(true);
+        await scanner.stop().catch(() => {});
+        await validateCode(decodedText);
+      };
+
+      try {
+        await scanner.start(
+          { facingMode: "environment" },
+          { fps: 6, qrbox: { width: 240, height: 240 } },
+          onSuccess,
+          () => {},
+        );
+      } catch {
+        const html5QrCodeModule = await import("html5-qrcode");
+        const cameras = await html5QrCodeModule.Html5Qrcode.getCameras();
+        const backCamera =
+          cameras.find((camera) => /back|rear|environment|trasera/i.test(camera.label)) ??
+          cameras[0];
+        if (!backCamera) {
+          throw new Error("No camera found");
+        }
+        await scanner.start(backCamera.id, { fps: 6, qrbox: { width: 240, height: 240 } }, onSuccess, () => {});
+      }
+    } catch {
+      setError("No se pudo iniciar la camara. Usa 'Iniciar/Reactivar camara'.");
+    } finally {
+      setIsStarting(false);
+    }
+  }
+
   useEffect(() => {
     mountedRef.current = true;
-    recreateAndStartCamera().catch(() => {
-      setError("No se pudo iniciar la camara. Cierra y abre la app o usa 'Reactivar camara'.");
-    });
+    startCamera();
 
     return () => {
       mountedRef.current = false;
-      const scanner = scannerRef.current;
-      if (!scanner) return;
-      if (scanner.isScanning) {
-        scanner.stop().catch(() => {});
-      }
-      Promise.resolve(scanner.clear()).catch(() => {});
+      stopAndClearScanner();
     };
-  }, [recreateAndStartCamera]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scannerId]);
+
+  useEffect(() => {
+    async function onVisible() {
+      if (document.visibilityState === "visible" && !result) {
+        await startCamera();
+      }
+    }
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result]);
 
   const resultTone =
     result && !result.valid && result.reason.toLowerCase().includes("utilizado")
@@ -119,10 +151,7 @@ export function GuardQrScanner() {
         onSubmit={async (event) => {
           event.preventDefault();
           if (!manualCode.trim()) return;
-          const scanner = scannerRef.current;
-          if (scanner?.isScanning) {
-            await scanner.stop().catch(() => {});
-          }
+          await stopAndClearScanner();
           await validateCode(manualCode);
         }}
         className="flex flex-wrap gap-2"
@@ -139,13 +168,11 @@ export function GuardQrScanner() {
         <button
           type="button"
           onClick={() => {
-            recreateAndStartCamera().catch(() => {
-              setError("No se pudo reiniciar la camara.");
-            });
+            startCamera();
           }}
           className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
         >
-          Reactivar camara
+          {isStarting ? "Iniciando..." : "Iniciar/Reactivar camara"}
         </button>
       </form>
 
@@ -180,9 +207,7 @@ export function GuardQrScanner() {
                 setManualCode("");
                 setError(null);
                 if (!mountedRef.current) return;
-                await recreateAndStartCamera().catch(() => {
-                  setError("No se pudo reiniciar la camara.");
-                });
+                await startCamera();
               }}
               className="mt-5 w-full rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
             >
