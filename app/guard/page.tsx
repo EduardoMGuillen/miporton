@@ -2,7 +2,6 @@ import { requireRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
 import { Card, DashboardShell } from "@/app/components/shell";
 import { GuardQrScanner } from "@/app/guard/qr-scanner";
-import { GuardMobileRecovery } from "@/app/guard/mobile-recovery";
 import { acceptAnnouncedVisitAction } from "@/app/guard/actions";
 import { GuardPushSubscriptionCard } from "@/app/guard/push-subscription";
 
@@ -37,7 +36,6 @@ export default async function GuardPage() {
       subtitle="Escanea y valida QRs de las visitas."
       user={session.fullName}
     >
-      <GuardMobileRecovery />
       <Card>
         <h2 className="mb-4 text-lg font-semibold text-slate-900">Escanear QR</h2>
         <GuardQrScanner />
