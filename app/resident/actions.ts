@@ -6,6 +6,7 @@ import { z } from "zod";
 import { requireRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
 import { calculateValidityWindow } from "@/lib/qr";
+import { notifyGuardsInResidential } from "@/lib/push";
 
 const createInviteSchema = z.object({
   visitorName: z.string().min(2, "Nombre de visita invalido."),
@@ -37,6 +38,12 @@ export async function createInviteQrAction(_prevState: string | null, formData: 
       residentId: session.userId,
       residentialId: session.residentialId,
     },
+  });
+
+  await notifyGuardsInResidential(session.residentialId, {
+    title: "Nueva visita anunciada",
+    body: `${parsed.data.visitorName.trim()} fue anunciado por ${session.fullName}.`,
+    url: "/guard",
   });
 
   revalidatePath("/resident");

@@ -44,3 +44,18 @@ export async function notifyUser(userId: string, payload: PushPayload) {
     }),
   );
 }
+
+export async function notifyGuardsInResidential(
+  residentialId: string,
+  payload: PushPayload,
+) {
+  const guards = await prisma.user.findMany({
+    where: {
+      residentialId,
+      role: "GUARD",
+    },
+    select: { id: true },
+  });
+
+  await Promise.all(guards.map((guard) => notifyUser(guard.id, payload)));
+}

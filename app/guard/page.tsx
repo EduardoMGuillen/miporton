@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { Card, DashboardShell } from "@/app/components/shell";
 import { GuardQrScanner } from "@/app/guard/qr-scanner";
 import { GuardMobileRecovery } from "@/app/guard/mobile-recovery";
+import { acceptAnnouncedVisitAction } from "@/app/guard/actions";
+import { GuardPushSubscriptionCard } from "@/app/guard/push-subscription";
 
 export default async function GuardPage() {
   const session = await requireRole(["GUARD"]);
@@ -16,7 +18,15 @@ export default async function GuardPage() {
       isRevoked: false,
       validUntil: { gte: new Date() },
     },
-    include: { resident: { select: { fullName: true } } },
+    include: {
+      resident: { select: { fullName: true } },
+      scans: {
+        where: { isValid: true },
+        orderBy: { scannedAt: "desc" },
+        take: 1,
+        select: { scannedAt: true, reason: true },
+      },
+    },
     orderBy: { createdAt: "desc" },
     take: 20,
   });
@@ -35,6 +45,7 @@ export default async function GuardPage() {
 
       <Card>
         <h2 className="mb-4 text-lg font-semibold text-slate-900">Anuncios recientes</h2>
+        <GuardPushSubscriptionCard />
         <div className="grid gap-3 md:grid-cols-2">
           {activeInvites.map((invite) => (
             <div key={invite.id} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
@@ -43,6 +54,18 @@ export default async function GuardPage() {
               <p className="text-xs text-slate-500">
                 Expira: {new Date(invite.validUntil).toLocaleString("es-DO")}
               </p>
+              {invite.scans[0] ? (
+                <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 p-2 text-xs text-emerald-900">
+                  Aceptado: {new Date(invite.scans[0].scannedAt).toLocaleString("es-DO")}
+                </div>
+              ) : (
+                <form action={acceptAnnouncedVisitAction} className="mt-2">
+                  <input type="hidden" name="qrId" value={invite.id} />
+                  <button className="w-full rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100">
+                    Aceptar llegada manualmente
+                  </button>
+                </form>
+              )}
             </div>
           ))}
           {activeInvites.length === 0 ? (
