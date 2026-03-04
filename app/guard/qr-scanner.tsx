@@ -47,7 +47,7 @@ export function GuardQrScanner() {
       if (existing.isScanning) {
         await existing.stop().catch(() => {});
       }
-      await existing.clear().catch(() => {});
+      await Promise.resolve(existing.clear()).catch(() => {});
     }
 
     const html5QrCodeModule = await import("html5-qrcode");
@@ -100,7 +100,7 @@ export function GuardQrScanner() {
       if (scanner.isScanning) {
         scanner.stop().catch(() => {});
       }
-      scanner.clear().catch(() => {});
+      Promise.resolve(scanner.clear()).catch(() => {});
     };
   }, [recreateAndStartCamera]);
 
