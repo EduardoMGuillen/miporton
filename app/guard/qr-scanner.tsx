@@ -16,6 +16,7 @@ export function GuardQrScanner() {
   const [error, setError] = useState<string | null>(null);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
+  const [preferredFacing, setPreferredFacing] = useState<"environment" | "user">("environment");
   const scannerId = useMemo(() => `qr-reader-${Math.random().toString(36).slice(2)}`, []);
   const scannerRef = useRef<any | null>(null);
   const isHandlingRef = useRef(false);
@@ -71,19 +72,26 @@ export function GuardQrScanner() {
 
       try {
         await scanner.start(
-          { facingMode: "environment" },
+          { facingMode: preferredFacing },
           { fps: 6, qrbox: { width: 240, height: 240 } },
           onSuccess,
           () => {},
         );
       } catch {
         const cameras = await html5QrCodeModule.Html5Qrcode.getCameras();
-        const backCamera =
-          cameras.find((camera) => /back|rear|environment|trasera/i.test(camera.label)) ??
+        const preferredCamera =
+          preferredFacing === "environment"
+            ? cameras.find((camera) => /back|rear|environment|trasera/i.test(camera.label))
+            : cameras.find((camera) => /front|user|frontal|selfie/i.test(camera.label));
+        const cameraToUse =
+          preferredCamera ??
+          (preferredFacing === "environment"
+            ? cameras.find((camera) => /front|user|frontal|selfie/i.test(camera.label))
+            : cameras.find((camera) => /back|rear|environment|trasera/i.test(camera.label))) ??
           cameras[0];
-        if (!backCamera) throw new Error("No camera found");
+        if (!cameraToUse) throw new Error("No camera found");
         await scanner.start(
-          backCamera.id,
+          cameraToUse.id,
           { fps: 6, qrbox: { width: 240, height: 240 } },
           onSuccess,
           () => {},
@@ -145,12 +153,26 @@ export function GuardQrScanner() {
           <div className="w-full max-w-md rounded-2xl bg-white p-4 shadow-2xl">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-base font-semibold text-slate-900">Escaneo de acceso</h3>
-              <button
-                onClick={() => setIsScannerOpen(false)}
-                className="rounded-lg border border-slate-300 px-3 py-1 text-sm text-slate-700"
-              >
-                Cerrar
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    const nextFacing = preferredFacing === "environment" ? "user" : "environment";
+                    setPreferredFacing(nextFacing);
+                    setTimeout(() => {
+                      startCamera().catch(() => {});
+                    }, 50);
+                  }}
+                  className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-700 transition hover:bg-slate-100"
+                >
+                  Cambiar camara
+                </button>
+                <button
+                  onClick={() => setIsScannerOpen(false)}
+                  className="rounded-lg border border-slate-300 px-3 py-1 text-sm text-slate-700"
+                >
+                  Cerrar
+                </button>
+              </div>
             </div>
             <div id={scannerId} className="overflow-hidden rounded-xl border border-slate-300 bg-slate-50" />
             <button
