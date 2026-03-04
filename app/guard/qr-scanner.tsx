@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 type ScanResult = {
   valid: boolean;
@@ -18,6 +19,7 @@ export function GuardQrScanner() {
   const scannerId = useMemo(() => `qr-reader-${Math.random().toString(36).slice(2)}`, []);
   const scannerRef = useRef<any | null>(null);
   const isHandlingRef = useRef(false);
+  const [isClient, setIsClient] = useState(false);
 
   async function validateCode(code: string) {
     setError(null);
@@ -95,6 +97,10 @@ export function GuardQrScanner() {
   }
 
   useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
     if (isScannerOpen) {
       const timer = setTimeout(() => {
         startCamera().catch(() => {});
@@ -133,7 +139,8 @@ export function GuardQrScanner() {
         Si la camara falla, puedes aceptar llegadas manualmente en el listado de abajo.
       </p>
 
-      {isScannerOpen ? (
+      {isClient && isScannerOpen
+        ? createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-4 shadow-2xl">
             <div className="mb-3 flex items-center justify-between">
@@ -153,12 +160,15 @@ export function GuardQrScanner() {
               {isStarting ? "Iniciando camara..." : "Reintentar camara"}
             </button>
           </div>
-        </div>
-      ) : null}
+        </div>,
+          document.body,
+        )
+        : null}
 
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
-      {result ? (
+      {isClient && result
+        ? createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-4">
           <div
             className={`w-full max-w-md rounded-2xl border p-6 text-center shadow-2xl ${
@@ -201,8 +211,10 @@ export function GuardQrScanner() {
               Escanear otro QR
             </button>
           </div>
-        </div>
-      ) : null}
+        </div>,
+          document.body,
+        )
+        : null}
     </div>
   );
 }
