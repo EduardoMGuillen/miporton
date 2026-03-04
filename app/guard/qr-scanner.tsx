@@ -17,7 +17,7 @@ export function GuardQrScanner() {
   const [isProcessing, setIsProcessing] = useState(false);
   const scannerId = useMemo(() => `qr-reader-${Math.random().toString(36).slice(2)}`, []);
   const scannerRef = useRef<{
-    start: (...args: unknown[]) => Promise<unknown>;
+    start: (...args: any[]) => Promise<any>;
     stop: () => Promise<void>;
     clear: () => Promise<void>;
     isScanning: boolean;
