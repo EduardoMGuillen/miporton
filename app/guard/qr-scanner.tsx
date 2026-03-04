@@ -19,7 +19,7 @@ export function GuardQrScanner() {
   const scannerRef = useRef<{
     start: (...args: any[]) => Promise<any>;
     stop: () => Promise<void>;
-    clear: () => Promise<void>;
+    clear: () => void | Promise<void>;
     isScanning: boolean;
   } | null>(null);
   const mountedRef = useRef(true);
