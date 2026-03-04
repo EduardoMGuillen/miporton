@@ -41,6 +41,7 @@ export async function validateAndConsumeQr({
       reason: "Este QR no pertenece a la residencial del guardia.",
       visitorName: qr.visitorName,
       residentialName: qr.residential.name,
+      residentName: qr.resident.fullName,
     };
   }
 
@@ -51,6 +52,7 @@ export async function validateAndConsumeQr({
       reason: "Este QR fue revocado.",
       visitorName: qr.visitorName,
       residentialName: qr.residential.name,
+      residentName: qr.resident.fullName,
     };
   }
 
@@ -60,15 +62,17 @@ export async function validateAndConsumeQr({
       reason: "QR vencido o fuera de su ventana de validez.",
       visitorName: qr.visitorName,
       residentialName: qr.residential.name,
+      residentName: qr.resident.fullName,
     };
   }
 
   if (qr.usedCount >= qr.maxUses) {
     return {
       valid: false,
-      reason: "Este QR ya agotó sus usos permitidos.",
+      reason: qr.maxUses === 1 ? "Este QR ya fue utilizado." : "Este QR ya agotó sus usos permitidos.",
       visitorName: qr.visitorName,
       residentialName: qr.residential.name,
+      residentName: qr.resident.fullName,
     };
   }
 

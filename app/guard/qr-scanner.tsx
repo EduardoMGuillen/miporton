@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type ScanResult = {
   valid: boolean;
@@ -14,7 +14,48 @@ export function GuardQrScanner() {
   const [manualCode, setManualCode] = useState("");
   const [result, setResult] = useState<ScanResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
   const scannerId = useMemo(() => `qr-reader-${Math.random().toString(36).slice(2)}`, []);
+  const scannerRef = useRef<{
+    start: (...args: unknown[]) => Promise<unknown>;
+    stop: () => Promise<void>;
+    clear: () => Promise<void>;
+    isScanning: boolean;
+  } | null>(null);
+  const mountedRef = useRef(true);
+
+  const startCamera = useCallback(async () => {
+    const scanner = scannerRef.current;
+    if (!scanner || scanner.isScanning) return;
+
+    await scanner.start(
+      { facingMode: "environment" },
+      { fps: 6, qrbox: { width: 240, height: 240 } },
+      async (decodedText: string) => {
+        if (isProcessing) return;
+        setIsProcessing(true);
+        await scanner.stop();
+        await validateCode(decodedText);
+      },
+      () => {},
+    );
+  }, [isProcessing]);
+
+  const recreateAndStartCamera = useCallback(async () => {
+    const existing = scannerRef.current;
+    if (existing) {
+      if (existing.isScanning) {
+        await existing.stop().catch(() => {});
+      }
+      await existing.clear().catch(() => {});
+    }
+
+    const html5QrCodeModule = await import("html5-qrcode");
+    const Html5Qrcode = html5QrCodeModule.Html5Qrcode;
+    const scanner = new Html5Qrcode(scannerId);
+    scannerRef.current = scanner;
+    await startCamera();
+  }, [scannerId, startCamera]);
 
   async function validateCode(code: string) {
     setError(null);
@@ -27,49 +68,38 @@ export function GuardQrScanner() {
     if (!response.ok) {
       const payload = (await response.json().catch(() => null)) as { error?: string } | null;
       setError(payload?.error ?? "No se pudo validar el QR.");
+      setIsProcessing(false);
       return;
     }
 
     const payload = (await response.json()) as ScanResult;
     setResult(payload);
+    setIsProcessing(false);
   }
 
   useEffect(() => {
-    let cleanup: (() => Promise<void>) | undefined;
-
-    async function mountScanner() {
-      const html5QrCodeModule = await import("html5-qrcode");
-      const Html5Qrcode = html5QrCodeModule.Html5Qrcode;
-      const scanner = new Html5Qrcode(scannerId);
-
-      await scanner.start(
-        { facingMode: "environment" },
-        { fps: 5, qrbox: { width: 220, height: 220 } },
-        async (decodedText) => {
-          await scanner.stop();
-          await validateCode(decodedText);
-        },
-        () => {},
-      );
-
-      cleanup = async () => {
-        if (scanner.isScanning) {
-          await scanner.stop();
-        }
-        await scanner.clear();
-      };
-    }
-
-    mountScanner().catch(() => {
+    mountedRef.current = true;
+    recreateAndStartCamera().catch(() => {
       setError("No se pudo iniciar la camara. Usa validacion manual.");
     });
 
     return () => {
-      if (cleanup) {
-        cleanup().catch(() => {});
+      mountedRef.current = false;
+      const scanner = scannerRef.current;
+      if (!scanner) return;
+      if (scanner.isScanning) {
+        scanner.stop().catch(() => {});
       }
+      scanner.clear().catch(() => {});
     };
-  }, [scannerId]);
+  }, [recreateAndStartCamera]);
+
+  const resultTone =
+    result && !result.valid && result.reason.toLowerCase().includes("utilizado")
+      ? "used"
+      : result?.valid
+        ? "valid"
+        : "invalid";
 
   return (
     <div className="space-y-4">
@@ -78,6 +108,11 @@ export function GuardQrScanner() {
       <form
         onSubmit={async (event) => {
           event.preventDefault();
+          if (!manualCode.trim()) return;
+          const scanner = scannerRef.current;
+          if (scanner?.isScanning) {
+            await scanner.stop().catch(() => {});
+          }
           await validateCode(manualCode);
         }}
         className="flex flex-wrap gap-2"
@@ -88,26 +123,62 @@ export function GuardQrScanner() {
           placeholder="MP:codigo o codigo"
           className="field-base min-w-64 flex-1"
         />
-        <button className="btn-primary">
-          Validar manual
+        <button className="btn-primary" disabled={isProcessing}>
+          {isProcessing ? "Validando..." : "Validar manual"}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            recreateAndStartCamera().catch(() => {
+              setError("No se pudo reiniciar la camara.");
+            });
+          }}
+          className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+        >
+          Reactivar camara
         </button>
       </form>
 
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
       {result ? (
-        <div
-          className={`rounded-xl border p-4 text-sm ${
-            result.valid
-              ? "border-emerald-300 bg-emerald-50 text-emerald-900"
-              : "border-red-300 bg-red-50 text-red-900"
-          }`}
-        >
-          <p className="font-semibold">{result.valid ? "QR VALIDO" : "QR INVALIDO"}</p>
-          <p>{result.reason}</p>
-          {result.visitorName ? <p>Visita: {result.visitorName}</p> : null}
-          {result.residentName ? <p>Anunciado por: {result.residentName}</p> : null}
-          {result.residentialName ? <p>Residencial: {result.residentialName}</p> : null}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-4">
+          <div
+            className={`w-full max-w-md rounded-2xl border p-6 text-center shadow-2xl ${
+              resultTone === "valid"
+                ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                : resultTone === "used"
+                  ? "border-amber-300 bg-amber-50 text-amber-900"
+                  : "border-red-300 bg-red-50 text-red-900"
+            }`}
+          >
+            <p className="text-2xl font-bold">
+              {resultTone === "valid"
+                ? "QR VALIDO"
+                : resultTone === "used"
+                  ? "QR YA UTILIZADO"
+                  : "QR INVALIDO"}
+            </p>
+            <p className="mt-2 text-sm">{result.reason}</p>
+            {result.visitorName ? <p className="mt-3 text-sm">Visita: {result.visitorName}</p> : null}
+            {result.residentName ? <p className="text-sm">Anunciado por: {result.residentName}</p> : null}
+            {result.residentialName ? <p className="text-sm">Residencial: {result.residentialName}</p> : null}
+
+            <button
+              onClick={async () => {
+                setResult(null);
+                setManualCode("");
+                setError(null);
+                if (!mountedRef.current) return;
+                await recreateAndStartCamera().catch(() => {
+                  setError("No se pudo reiniciar la camara.");
+                });
+              }}
+              className="mt-5 w-full rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
+            >
+              Escanear otro QR
+            </button>
+          </div>
         </div>
       ) : null}
     </div>
