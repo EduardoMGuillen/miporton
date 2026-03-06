@@ -23,7 +23,10 @@ function loadImageFromObjectUrl(objectUrl: string) {
   });
 }
 
-async function imagePathToDataUrl(path: string, options?: { maxWidth?: number; maxHeight?: number }) {
+async function optimizeImageToJpegDataUrl(
+  path: string,
+  options?: { maxWidth?: number; maxHeight?: number; quality?: number },
+) {
   const response = await fetch(path);
   if (!response.ok) {
     throw new Error(`No se pudo cargar ${path}`);
@@ -32,6 +35,7 @@ async function imagePathToDataUrl(path: string, options?: { maxWidth?: number; m
 
   const maxWidth = options?.maxWidth ?? 320;
   const maxHeight = options?.maxHeight ?? 320;
+  const quality = options?.quality ?? 0.68;
   const sourceUrl = URL.createObjectURL(blob);
 
   try {
@@ -53,7 +57,7 @@ async function imagePathToDataUrl(path: string, options?: { maxWidth?: number; m
 
     context.drawImage(image, 0, 0, targetWidth, targetHeight);
     // Convert to JPEG with compression to keep quotation PDF light.
-    return canvas.toDataURL("image/jpeg", 0.68);
+    return canvas.toDataURL("image/jpeg", quality);
   } finally {
     URL.revokeObjectURL(sourceUrl);
   }
@@ -88,8 +92,12 @@ export function QuotationGenerator() {
     setIsGenerating(true);
     try {
       const [nexusLogo, miVisitaLogo] = await Promise.all([
-        imagePathToDataUrl("/nexustexto.png", { maxWidth: 540, maxHeight: 160 }).catch(() => null),
-        imagePathToDataUrl("/logomivisita.png", { maxWidth: 240, maxHeight: 240 }).catch(() => null),
+        toDataUrl(await (await fetch("/nexustexto.png")).blob()).catch(() => null),
+        optimizeImageToJpegDataUrl("/logomivisita.png", {
+          maxWidth: 240,
+          maxHeight: 240,
+          quality: 0.68,
+        }).catch(() => null),
       ]);
 
       const doc = new jsPDF({ unit: "pt", format: "a4" });
@@ -97,7 +105,7 @@ export function QuotationGenerator() {
       const createdAtLabel = new Date().toLocaleString("es-DO");
 
       if (nexusLogo) {
-        doc.addImage(nexusLogo, "JPEG", 40, 30, 210, 60);
+        doc.addImage(nexusLogo, "PNG", 40, 30, 210, 60);
       }
       if (miVisitaLogo) {
         doc.addImage(miVisitaLogo, "JPEG", 500, 25, 60, 60);
