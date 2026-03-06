@@ -2,6 +2,7 @@ import { requireRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
 import { Card, DashboardShell } from "@/app/components/shell";
 import { CreateResidentialForm } from "@/app/super-admin/create-residential-form";
+import { QuotationGenerator } from "@/app/super-admin/quotation-generator";
 import {
   deleteResidentialAdminAction,
   updateResidentialAdminAction,
@@ -27,6 +28,28 @@ export default async function SuperAdminPage() {
     include: { residential: { select: { name: true } } },
     orderBy: { createdAt: "desc" },
   });
+  const idEvidenceScans = await prisma.qrScan.findMany({
+    where: {
+      isValid: true,
+      idPhotoData: { not: null },
+    },
+    orderBy: { scannedAt: "desc" },
+    take: 80,
+    select: {
+      id: true,
+      scannedAt: true,
+      reason: true,
+      idPhotoSize: true,
+      scanner: { select: { fullName: true } },
+      code: {
+        select: {
+          visitorName: true,
+          resident: { select: { fullName: true } },
+          residential: { select: { name: true } },
+        },
+      },
+    },
+  });
 
   return (
     <DashboardShell
@@ -37,6 +60,15 @@ export default async function SuperAdminPage() {
       <Card>
         <h2 className="mb-4 text-lg font-semibold text-slate-900">Nueva residencial</h2>
         <CreateResidentialForm />
+      </Card>
+
+      <Card>
+        <h2 className="mb-2 text-lg font-semibold text-slate-900">Crear cotizacion</h2>
+        <p className="mb-4 text-sm text-slate-600">
+          Genera una cotizacion PDF a nombre de Nexus Global para el servicio MiPorton - Seguridad
+          Residencial.
+        </p>
+        <QuotationGenerator />
       </Card>
 
       <Card>
@@ -110,6 +142,39 @@ export default async function SuperAdminPage() {
           ))}
           {residentialAdmins.length === 0 ? (
             <p className="text-sm text-slate-600">No hay admins residenciales registrados.</p>
+          ) : null}
+        </div>
+      </Card>
+
+      <Card>
+        <h2 className="mb-4 text-lg font-semibold text-slate-900">
+          Registro global de IDs (ultimos 30 dias)
+        </h2>
+        <div className="grid gap-3 md:grid-cols-2">
+          {idEvidenceScans.map((scan) => (
+            <article key={scan.id} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`/api/id-evidence/${scan.id}`}
+                alt={`ID de ${scan.code.visitorName}`}
+                className="h-44 w-full rounded-lg border border-slate-200 object-cover bg-white"
+                loading="lazy"
+              />
+              <p className="mt-3 text-sm font-semibold text-slate-900">Visita: {scan.code.visitorName}</p>
+              <p className="text-xs text-slate-600">Residente: {scan.code.resident.fullName}</p>
+              <p className="text-xs text-slate-600">Guardia: {scan.scanner.fullName}</p>
+              <p className="text-xs text-slate-600">
+                Residencial: {scan.code.residential.name}
+              </p>
+              <p className="text-xs text-slate-500">
+                Fecha: {new Date(scan.scannedAt).toLocaleString("es-DO")}
+              </p>
+              <p className="text-xs text-slate-500">Tamano: {scan.idPhotoSize ?? 0} bytes</p>
+              <p className="mt-2 text-xs text-slate-500">{scan.reason}</p>
+            </article>
+          ))}
+          {idEvidenceScans.length === 0 ? (
+            <p className="text-sm text-slate-600">No hay evidencias de IDs disponibles.</p>
           ) : null}
         </div>
       </Card>

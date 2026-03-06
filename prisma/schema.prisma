@@ -69,7 +69,7 @@ model QrScan {
   scannedAt       DateTime @default(now())
   isValid         Boolean
   reason          String
-  idPhotoUrl      String?
+  idPhotoData     Bytes?
   idPhotoMimeType String?
   idPhotoSize     Int?
   idCapturedAt    DateTime?

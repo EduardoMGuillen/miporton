@@ -13,7 +13,7 @@ export default async function ResidentialAdminPage() {
     return <p className="p-8 text-red-600">Sesion invalida: no hay residencial asociada.</p>;
   }
 
-  const [residential, users] = await Promise.all([
+  const [residential, users, idEvidenceScans] = await Promise.all([
     prisma.residential.findUnique({
       where: { id: session.residentialId },
       select: { name: true },
@@ -24,6 +24,28 @@ export default async function ResidentialAdminPage() {
         role: { in: ["RESIDENT", "GUARD"] },
       },
       orderBy: { createdAt: "desc" },
+    }),
+    prisma.qrScan.findMany({
+      where: {
+        isValid: true,
+        idPhotoData: { not: null },
+        code: { residentialId: session.residentialId },
+      },
+      orderBy: { scannedAt: "desc" },
+      take: 50,
+      select: {
+        id: true,
+        scannedAt: true,
+        reason: true,
+        idPhotoSize: true,
+        scanner: { select: { fullName: true } },
+        code: {
+          select: {
+            visitorName: true,
+            resident: { select: { fullName: true } },
+          },
+        },
+      },
     }),
   ]);
 
@@ -84,6 +106,34 @@ export default async function ResidentialAdminPage() {
           ))}
           {users.length === 0 ? (
             <p className="text-sm text-slate-600">No hay usuarios creados todavia.</p>
+          ) : null}
+        </div>
+      </Card>
+
+      <Card>
+        <h2 className="mb-4 text-lg font-semibold text-slate-900">Registro de IDs (ultimos 30 dias)</h2>
+        <div className="grid gap-3 md:grid-cols-2">
+          {idEvidenceScans.map((scan) => (
+            <article key={scan.id} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`/api/id-evidence/${scan.id}`}
+                alt={`ID de ${scan.code.visitorName}`}
+                className="h-44 w-full rounded-lg border border-slate-200 object-cover bg-white"
+                loading="lazy"
+              />
+              <p className="mt-3 text-sm font-semibold text-slate-900">Visita: {scan.code.visitorName}</p>
+              <p className="text-xs text-slate-600">Residente: {scan.code.resident.fullName}</p>
+              <p className="text-xs text-slate-600">Guardia: {scan.scanner.fullName}</p>
+              <p className="text-xs text-slate-500">
+                Fecha: {new Date(scan.scannedAt).toLocaleString("es-DO")}
+              </p>
+              <p className="text-xs text-slate-500">Tamano: {scan.idPhotoSize ?? 0} bytes</p>
+              <p className="mt-2 text-xs text-slate-500">{scan.reason}</p>
+            </article>
+          ))}
+          {idEvidenceScans.length === 0 ? (
+            <p className="text-sm text-slate-600">No hay evidencias de IDs disponibles.</p>
           ) : null}
         </div>
       </Card>

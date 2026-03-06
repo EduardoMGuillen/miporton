@@ -24,7 +24,7 @@ export async function validateAndConsumeQr({
   scannerResidentialId: string | null;
   consume?: boolean;
   scanEvidence?: {
-    idPhotoUrl: string;
+    idPhotoData: Uint8Array;
     idPhotoMimeType: string;
     idPhotoSize: number;
   };
@@ -96,7 +96,9 @@ export async function validateAndConsumeQr({
           scannerId,
           isValid: true,
           reason: "Ingreso autorizado.",
-          idPhotoUrl: scanEvidence?.idPhotoUrl,
+          idPhotoData: scanEvidence
+            ? (scanEvidence.idPhotoData as unknown as Uint8Array<ArrayBuffer>)
+            : null,
           idPhotoMimeType: scanEvidence?.idPhotoMimeType,
           idPhotoSize: scanEvidence?.idPhotoSize,
           idCapturedAt: scanEvidence ? new Date() : null,

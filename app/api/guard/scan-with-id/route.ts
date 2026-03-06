@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { validateAndConsumeQr } from "@/lib/qr";
 import { notifyUser } from "@/lib/push";
-import { uploadIdPhotoToCloudinary, validateIdPhotoFile } from "@/lib/id-photo-storage";
+import { idPhotoFileToBytes, validateIdPhotoFile } from "@/lib/id-photo-storage";
 
 export async function POST(request: Request) {
   const session = await getSession();
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
 
   try {
     validateIdPhotoFile(idPhoto);
-    const upload = await uploadIdPhotoToCloudinary(idPhoto);
+    const idPhotoData = await idPhotoFileToBytes(idPhoto);
 
     const result = await validateAndConsumeQr({
       scannedCode: code,
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
       scannerResidentialId: session.residentialId,
       consume: true,
       scanEvidence: {
-        idPhotoUrl: upload.url,
+        idPhotoData,
         idPhotoMimeType: idPhoto.type,
         idPhotoSize: idPhoto.size,
       },

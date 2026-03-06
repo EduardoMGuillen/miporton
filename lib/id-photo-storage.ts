@@ -13,31 +13,7 @@ export function validateIdPhotoFile(file: File) {
   }
 }
 
-export async function uploadIdPhotoToCloudinary(file: File) {
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-  const uploadPreset = process.env.CLOUDINARY_UPLOAD_PRESET;
-  if (!cloudName || !uploadPreset) {
-    throw new Error("Storage no configurado. Faltan CLOUDINARY_CLOUD_NAME/CLOUDINARY_UPLOAD_PRESET.");
-  }
-
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("upload_preset", uploadPreset);
-  formData.append("folder", "miporton/visitor-ids");
-
-  const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
-    method: "POST",
-    body: formData,
-  });
-
-  if (!response.ok) {
-    throw new Error("No se pudo guardar la foto del ID en el storage.");
-  }
-
-  const payload = (await response.json()) as { secure_url?: string };
-  if (!payload.secure_url) {
-    throw new Error("Storage respondio sin URL de imagen.");
-  }
-
-  return { url: payload.secure_url };
+export async function idPhotoFileToBytes(file: File) {
+  const arrayBuffer = await file.arrayBuffer();
+  return new Uint8Array(arrayBuffer);
 }
