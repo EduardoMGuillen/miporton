@@ -14,13 +14,49 @@ function toDataUrl(blob: Blob) {
   });
 }
 
-async function imagePathToDataUrl(path: string) {
+function loadImageFromObjectUrl(objectUrl: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("No se pudo cargar la imagen del logo."));
+    image.src = objectUrl;
+  });
+}
+
+async function imagePathToDataUrl(path: string, options?: { maxWidth?: number; maxHeight?: number }) {
   const response = await fetch(path);
   if (!response.ok) {
     throw new Error(`No se pudo cargar ${path}`);
   }
   const blob = await response.blob();
-  return toDataUrl(blob);
+
+  const maxWidth = options?.maxWidth ?? 320;
+  const maxHeight = options?.maxHeight ?? 320;
+  const sourceUrl = URL.createObjectURL(blob);
+
+  try {
+    const image = await loadImageFromObjectUrl(sourceUrl);
+    const widthRatio = maxWidth / image.width;
+    const heightRatio = maxHeight / image.height;
+    const ratio = Math.min(widthRatio, heightRatio, 1);
+
+    const targetWidth = Math.max(1, Math.round(image.width * ratio));
+    const targetHeight = Math.max(1, Math.round(image.height * ratio));
+    const canvas = document.createElement("canvas");
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+
+    const context = canvas.getContext("2d");
+    if (!context) {
+      return toDataUrl(blob);
+    }
+
+    context.drawImage(image, 0, 0, targetWidth, targetHeight);
+    // Convert to JPEG with compression to keep quotation PDF light.
+    return canvas.toDataURL("image/jpeg", 0.68);
+  } finally {
+    URL.revokeObjectURL(sourceUrl);
+  }
 }
 
 function money(amount: number) {
@@ -52,8 +88,8 @@ export function QuotationGenerator() {
     setIsGenerating(true);
     try {
       const [nexusLogo, miVisitaLogo] = await Promise.all([
-        imagePathToDataUrl("/nexustexto.png").catch(() => null),
-        imagePathToDataUrl("/logomivisita.png").catch(() => null),
+        imagePathToDataUrl("/nexustexto.png", { maxWidth: 540, maxHeight: 160 }).catch(() => null),
+        imagePathToDataUrl("/logomivisita.png", { maxWidth: 240, maxHeight: 240 }).catch(() => null),
       ]);
 
       const doc = new jsPDF({ unit: "pt", format: "a4" });
@@ -61,10 +97,10 @@ export function QuotationGenerator() {
       const createdAtLabel = new Date().toLocaleString("es-DO");
 
       if (nexusLogo) {
-        doc.addImage(nexusLogo, "PNG", 40, 30, 210, 60);
+        doc.addImage(nexusLogo, "JPEG", 40, 30, 210, 60);
       }
       if (miVisitaLogo) {
-        doc.addImage(miVisitaLogo, "PNG", 500, 25, 60, 60);
+        doc.addImage(miVisitaLogo, "JPEG", 500, 25, 60, 60);
       }
 
       doc.setFont("helvetica", "bold");
