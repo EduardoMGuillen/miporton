@@ -39,7 +39,7 @@ export async function POST(request: Request) {
 
     if (result.valid && result.residentId && result.visitorName) {
       await notifyUser(result.residentId, {
-        title: "MiPorton",
+        title: "MiVisita",
         body: `Tu visita (${result.visitorName}) ha llegado!`,
         url: "/resident",
       });

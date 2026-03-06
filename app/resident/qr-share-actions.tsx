@@ -37,7 +37,7 @@ async function buildQrPdfBlob({
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(22);
-  doc.text("MiPorton - Pase de Visita", 40, 56);
+  doc.text("MiVisita - Pase de Visita", 40, 56);
 
   doc.setTextColor(15, 23, 42);
   doc.setFont("helvetica", "normal");
@@ -65,7 +65,7 @@ async function buildQrPdfBlob({
 }
 
 export function QrShareActions(props: Props) {
-  const fileBaseName = `miporton-pase-${safeFilePart(props.visitorName || "visita")}`;
+  const fileBaseName = `mivisita-pase-${safeFilePart(props.visitorName || "visita")}`;
 
   async function downloadPdf() {
     const blob = await buildQrPdfBlob(props);
@@ -83,10 +83,10 @@ export function QrShareActions(props: Props) {
     const blob = await buildQrPdfBlob(props);
     const file = new File([blob], `${fileBaseName}.pdf`, { type: "application/pdf" });
 
-    const shareText = `Pase de visita MiPorton - ${props.visitorName}`;
+    const shareText = `Pase de visita MiVisita - ${props.visitorName}`;
     if (navigator.share && navigator.canShare?.({ files: [file] })) {
       await navigator.share({
-        title: "MiPorton - Pase de visita",
+        title: "MiVisita - Pase de visita",
         text: shareText,
         files: [file],
       });

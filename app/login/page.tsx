@@ -24,22 +24,22 @@ export default async function LoginPage() {
         <article className="surface-card hidden p-8 lg:block">
           <div className="mb-4 flex items-center gap-3">
             <Image
-              src="/logo.png"
-              alt="Logo MiPorton"
+              src="/logomivisita.png"
+              alt="Logo MiVisita"
               width={56}
               height={56}
               className="rounded-xl"
               priority
             />
             <div>
-              <p className="text-sm font-semibold text-slate-900">MiPorton</p>
+              <p className="text-sm font-semibold text-slate-900">MiVisita</p>
               <p className="text-xs text-slate-500">Acceso residencial inteligente</p>
             </div>
           </div>
           <p className="inline-flex rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700">
             Control de acceso residencial
           </p>
-          <h1 className="mt-4 text-4xl font-bold leading-tight text-slate-900">MiPorton</h1>
+          <h1 className="mt-4 text-4xl font-bold leading-tight text-slate-900">MiVisita</h1>
           <p className="mt-3 text-sm leading-6 text-slate-600">
             Gestiona visitas con QR, valida ingresos y mantente informado en tiempo real cuando tu
             visita llegue al porton.
@@ -60,20 +60,20 @@ export default async function LoginPage() {
           <div className="mb-5">
             <div className="mb-3 flex items-center gap-3">
               <Image
-                src="/logo.png"
-                alt="Logo MiPorton"
+                src="/logomivisita.png"
+                alt="Logo MiVisita"
                 width={44}
                 height={44}
                 className="rounded-lg"
                 priority
               />
               <div>
-                <p className="text-sm font-semibold text-slate-900">MiPorton</p>
+                <p className="text-sm font-semibold text-slate-900">MiVisita</p>
                 <p className="text-xs text-slate-500">Tu porton, digital y seguro</p>
               </div>
             </div>
             <h1 className="text-3xl font-bold text-slate-900">Iniciar sesion</h1>
-            <p className="mt-1 text-sm text-slate-600">Accede a tu panel de MiPorton.</p>
+            <p className="mt-1 text-sm text-slate-600">Accede a tu panel de MiVisita.</p>
           </div>
           {!dbConfigured ? (
             <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">

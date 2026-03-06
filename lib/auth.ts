@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 
-export const SESSION_COOKIE_NAME = "miporton_session";
+export const SESSION_COOKIE_NAME = "mivisita_session";
 
 export type SessionRole = "SUPER_ADMIN" | "RESIDENTIAL_ADMIN" | "RESIDENT" | "GUARD";
 
@@ -13,7 +13,7 @@ export type SessionData = {
 };
 
 const secret = new TextEncoder().encode(
-  process.env.AUTH_SECRET ?? "change-this-in-production-miporton-secret",
+  process.env.AUTH_SECRET ?? "change-this-in-production-mivisita-secret",
 );
 
 export async function createSessionToken(session: SessionData) {

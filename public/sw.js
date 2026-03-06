@@ -6,10 +6,10 @@ self.addEventListener("push", (event) => {
     Promise.all([
       clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
         for (const client of windowClients) {
-          client.postMessage({ type: "MI_PORTON_NEW_VISIT" });
+          client.postMessage({ type: "MI_VISITA_NEW_VISIT" });
         }
       }),
-      self.registration.showNotification(payload.title || "MiPorton", {
+      self.registration.showNotification(payload.title || "MiVisita", {
         body: payload.body || "Tienes una nueva notificacion.",
         icon: "/favicon.ico",
         data: { url: payload.url || "/resident" },

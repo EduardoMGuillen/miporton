@@ -65,7 +65,7 @@ export default async function SuperAdminPage() {
       <Card>
         <h2 className="mb-2 text-lg font-semibold text-slate-900">Crear cotizacion</h2>
         <p className="mb-4 text-sm text-slate-600">
-          Genera una cotizacion PDF a nombre de Nexus Global para el servicio MiPorton - Seguridad
+          Genera una cotizacion PDF a nombre de Nexus Global para el servicio MiVisita - Seguridad
           Residencial.
         </p>
         <QuotationGenerator />

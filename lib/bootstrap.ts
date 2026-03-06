@@ -2,8 +2,8 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 
 const DEFAULT_SUPER_ADMIN = {
-  fullName: "Super Admin MiPorton",
-  email: "admin@miporton.app",
+  fullName: "Super Admin MiVisita",
+  email: "admin@mivisita.app",
   password: "Admin123!",
 };
 

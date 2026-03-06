@@ -11,9 +11,16 @@ export default async function Home() {
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-8">
       <header className="surface-card flex items-center justify-between px-5 py-3">
         <div className="flex items-center gap-3">
-          <Image src="/logo.png" alt="Logo MiPorton" width={40} height={40} className="rounded-lg" priority />
+          <Image
+            src="/logomivisita.png"
+            alt="Logo MiVisita"
+            width={40}
+            height={40}
+            className="rounded-lg"
+            priority
+          />
           <div>
-            <p className="text-sm font-semibold text-slate-900">MiPorton</p>
+            <p className="text-sm font-semibold text-slate-900">MiVisita</p>
             <p className="text-xs text-slate-500">Acceso residencial inteligente</p>
           </div>
         </div>
@@ -59,7 +66,7 @@ export default async function Home() {
           <ol className="mt-4 space-y-3 text-sm text-slate-700">
             <li>1. El residente anuncia una visita y comparte su QR.</li>
             <li>2. El guardia escanea el QR y valida el ingreso.</li>
-            <li>3. MiPorton mantiene trazabilidad de accesos en tiempo real.</li>
+            <li>3. MiVisita mantiene trazabilidad de accesos en tiempo real.</li>
           </ol>
           <p className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
             El registro de usuarios lo gestiona el super admin, por lo que esta pagina ofrece acceso

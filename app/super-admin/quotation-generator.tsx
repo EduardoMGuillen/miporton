@@ -51,9 +51,9 @@ export function QuotationGenerator() {
 
     setIsGenerating(true);
     try {
-      const [nexusLogo, miPortonLogo] = await Promise.all([
+      const [nexusLogo, miVisitaLogo] = await Promise.all([
         imagePathToDataUrl("/nexustexto.png").catch(() => null),
-        imagePathToDataUrl("/logo.png").catch(() => null),
+        imagePathToDataUrl("/logomivisita.png").catch(() => null),
       ]);
 
       const doc = new jsPDF({ unit: "pt", format: "a4" });
@@ -63,8 +63,8 @@ export function QuotationGenerator() {
       if (nexusLogo) {
         doc.addImage(nexusLogo, "PNG", 40, 30, 210, 60);
       }
-      if (miPortonLogo) {
-        doc.addImage(miPortonLogo, "PNG", 500, 25, 60, 60);
+      if (miVisitaLogo) {
+        doc.addImage(miVisitaLogo, "PNG", 500, 25, 60, 60);
       }
 
       doc.setFont("helvetica", "bold");
@@ -74,7 +74,7 @@ export function QuotationGenerator() {
       doc.setFont("helvetica", "normal");
       doc.setFontSize(11);
       doc.text("Empresa emisora: Nexus Global", 40, 142);
-      doc.text("Servicio: MiPorton - Seguridad Residencial", 40, 160);
+      doc.text("Servicio: MiVisita - Seguridad Residencial", 40, 160);
       doc.text(`No. de cotizacion: ${quoteNumber}`, 40, 178);
       doc.text(`Fecha: ${createdAtLabel}`, 40, 196);
 
@@ -108,7 +108,7 @@ export function QuotationGenerator() {
       doc.line(40, 495, 560, 495);
       doc.setFontSize(10);
       doc.text(
-        "Esta cotizacion fue generada por MiPorton para fines comerciales de Nexus Global.",
+        "Esta cotizacion fue generada por MiVisita para fines comerciales de Nexus Global.",
         40,
         515,
       );

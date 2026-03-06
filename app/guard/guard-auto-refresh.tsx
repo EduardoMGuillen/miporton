@@ -19,7 +19,7 @@ export function GuardAutoRefresh() {
     };
 
     const onMessage = (event: MessageEvent) => {
-      if (event.data?.type === "MI_PORTON_NEW_VISIT") {
+      if (event.data?.type === "MI_VISITA_NEW_VISIT") {
         refreshIfNeeded();
       }
     };
