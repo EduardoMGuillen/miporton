@@ -3,11 +3,18 @@ self.addEventListener("push", (event) => {
 
   const payload = event.data.json();
   event.waitUntil(
-    self.registration.showNotification(payload.title || "MiPorton", {
-      body: payload.body || "Tienes una nueva notificacion.",
-      icon: "/favicon.ico",
-      data: { url: payload.url || "/resident" },
-    }),
+    Promise.all([
+      clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
+        for (const client of windowClients) {
+          client.postMessage({ type: "MI_PORTON_NEW_VISIT" });
+        }
+      }),
+      self.registration.showNotification(payload.title || "MiPorton", {
+        body: payload.body || "Tienes una nueva notificacion.",
+        icon: "/favicon.ico",
+        data: { url: payload.url || "/resident" },
+      }),
+    ]),
   );
 });
 

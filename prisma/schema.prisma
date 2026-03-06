@@ -65,14 +65,18 @@ model QrCode {
 }
 
 model QrScan {
-  id         String   @id @default(cuid())
-  scannedAt  DateTime @default(now())
-  isValid    Boolean
-  reason     String
-  codeId     String
-  scannerId  String
-  code       QrCode   @relation(fields: [codeId], references: [id], onDelete: Cascade)
-  scanner    User     @relation(fields: [scannerId], references: [id], onDelete: Cascade)
+  id              String   @id @default(cuid())
+  scannedAt       DateTime @default(now())
+  isValid         Boolean
+  reason          String
+  idPhotoUrl      String?
+  idPhotoMimeType String?
+  idPhotoSize     Int?
+  idCapturedAt    DateTime?
+  codeId          String
+  scannerId       String
+  code            QrCode   @relation(fields: [codeId], references: [id], onDelete: Cascade)
+  scanner         User     @relation(fields: [scannerId], references: [id], onDelete: Cascade)
 }
 
 model PushSubscription {

@@ -4,6 +4,7 @@ import { Card, DashboardShell } from "@/app/components/shell";
 import { GuardQrScanner } from "@/app/guard/qr-scanner";
 import { acceptAnnouncedVisitAction } from "@/app/guard/actions";
 import { GuardPushSubscriptionCard } from "@/app/guard/push-subscription";
+import { GuardAutoRefresh } from "@/app/guard/guard-auto-refresh";
 
 export default async function GuardPage() {
   const session = await requireRole(["GUARD"]);
@@ -36,6 +37,7 @@ export default async function GuardPage() {
       subtitle="Escanea y valida QRs de las visitas."
       user={session.fullName}
     >
+      <GuardAutoRefresh />
       <Card>
         <h2 className="mb-4 text-lg font-semibold text-slate-900">Escanear QR</h2>
         <GuardQrScanner />

@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "MiPorton",
     short_name: "MiPorton",
     description: "Control de visitas y accesos residenciales con QR.",
-    start_url: "/login",
+    start_url: "/",
     display: "standalone",
     background_color: "#f4f7fb",
     theme_color: "#1d4ed8",

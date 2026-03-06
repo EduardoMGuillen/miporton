@@ -16,10 +16,18 @@ export async function validateAndConsumeQr({
   scannedCode,
   scannerId,
   scannerResidentialId,
+  consume = true,
+  scanEvidence,
 }: {
   scannedCode: string;
   scannerId: string;
   scannerResidentialId: string | null;
+  consume?: boolean;
+  scanEvidence?: {
+    idPhotoUrl: string;
+    idPhotoMimeType: string;
+    idPhotoSize: number;
+  };
 }) {
   const code = scannedCode.startsWith("MP:") ? scannedCode.slice(3) : scannedCode;
 
@@ -76,24 +84,30 @@ export async function validateAndConsumeQr({
     };
   }
 
-  await prisma.$transaction([
-    prisma.qrCode.update({
-      where: { id: qr.id },
-      data: { usedCount: { increment: 1 } },
-    }),
-    prisma.qrScan.create({
-      data: {
-        codeId: qr.id,
-        scannerId,
-        isValid: true,
-        reason: "Ingreso autorizado.",
-      },
-    }),
-  ]);
+  if (consume) {
+    await prisma.$transaction([
+      prisma.qrCode.update({
+        where: { id: qr.id },
+        data: { usedCount: { increment: 1 } },
+      }),
+      prisma.qrScan.create({
+        data: {
+          codeId: qr.id,
+          scannerId,
+          isValid: true,
+          reason: "Ingreso autorizado.",
+          idPhotoUrl: scanEvidence?.idPhotoUrl,
+          idPhotoMimeType: scanEvidence?.idPhotoMimeType,
+          idPhotoSize: scanEvidence?.idPhotoSize,
+          idCapturedAt: scanEvidence ? new Date() : null,
+        },
+      }),
+    ]);
+  }
 
   return {
     valid: true,
-    reason: "Ingreso autorizado.",
+    reason: consume ? "Ingreso autorizado." : "QR valido. Falta capturar foto del ID.",
     visitorName: qr.visitorName,
     residentialName: qr.residential.name,
     residentName: qr.resident.fullName,

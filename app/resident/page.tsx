@@ -119,36 +119,43 @@ export default async function ResidentPage() {
       </Card>
 
       <Card>
-        <h2 className="mb-4 text-lg font-semibold text-slate-900">QRs expirados</h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {expiredInvites.map((invite) => (
-            <article key={invite.id} className="rounded-xl border border-slate-200 bg-slate-100/80 p-4 opacity-90">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={invite.image}
-                alt={`QR de ${invite.visitorName}`}
-                className="mx-auto h-40 w-40 rounded-lg bg-white p-2 shadow-sm grayscale"
-              />
-              <p className="mt-3 text-sm font-semibold text-slate-900">{invite.visitorName}</p>
-              <p className="text-xs text-slate-600">{validityLabel(invite.validityType)}</p>
-              <p className="text-xs text-slate-500">
-                Expira: {new Date(invite.validUntil).toLocaleString("es-DO")}
-              </p>
-              <p className="text-xs text-slate-500">
-                Usos: {invite.usedCount}/{invite.maxUses === 9999 ? "Ilimitado" : invite.maxUses}
-              </p>
-              <p className="mt-2 break-all rounded-md bg-white px-2 py-1 text-[10px] text-slate-500">
-                MP:{invite.code}
-              </p>
-            </article>
-          ))}
-          {expiredInvites.length === 0 ? (
-            <p className="text-sm text-slate-600">Aun no tienes QRs expirados.</p>
-          ) : null}
-          {invitesWithImage.length === 0 ? (
-            <p className="text-sm text-slate-600">Aun no has generado QRs.</p>
-          ) : null}
-        </div>
+        <details>
+          <summary className="cursor-pointer list-none text-lg font-semibold text-slate-900">
+            <span className="inline-flex items-center gap-2">QRs expirados ({expiredInvites.length})</span>
+          </summary>
+          <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {expiredInvites.map((invite) => (
+              <article
+                key={invite.id}
+                className="rounded-xl border border-slate-200 bg-slate-100/80 p-4 opacity-90"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={invite.image}
+                  alt={`QR de ${invite.visitorName}`}
+                  className="mx-auto h-40 w-40 rounded-lg bg-white p-2 shadow-sm grayscale"
+                />
+                <p className="mt-3 text-sm font-semibold text-slate-900">{invite.visitorName}</p>
+                <p className="text-xs text-slate-600">{validityLabel(invite.validityType)}</p>
+                <p className="text-xs text-slate-500">
+                  Expira: {new Date(invite.validUntil).toLocaleString("es-DO")}
+                </p>
+                <p className="text-xs text-slate-500">
+                  Usos: {invite.usedCount}/{invite.maxUses === 9999 ? "Ilimitado" : invite.maxUses}
+                </p>
+                <p className="mt-2 break-all rounded-md bg-white px-2 py-1 text-[10px] text-slate-500">
+                  MP:{invite.code}
+                </p>
+              </article>
+            ))}
+            {expiredInvites.length === 0 ? (
+              <p className="text-sm text-slate-600">Aun no tienes QRs expirados.</p>
+            ) : null}
+            {invitesWithImage.length === 0 ? (
+              <p className="text-sm text-slate-600">Aun no has generado QRs.</p>
+            ) : null}
+          </div>
+        </details>
       </Card>
     </DashboardShell>
   );

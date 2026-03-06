@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { validateAndConsumeQr } from "@/lib/qr";
-import { notifyUser } from "@/lib/push";
 
 export async function POST(request: Request) {
   const session = await getSession();
@@ -19,15 +18,8 @@ export async function POST(request: Request) {
     scannedCode: code,
     scannerId: session.userId,
     scannerResidentialId: session.residentialId,
+    consume: false,
   });
-
-  if (result.valid && result.residentId && result.visitorName) {
-    await notifyUser(result.residentId, {
-      title: "MiPorton",
-      body: `Tu visita (${result.visitorName}) ha llegado!`,
-      url: "/resident",
-    });
-  }
 
   return NextResponse.json(result);
 }
