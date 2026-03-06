@@ -24,7 +24,7 @@ async function imagePathToDataUrl(path: string) {
 }
 
 function money(amount: number) {
-  return amount.toLocaleString("es-DO", { style: "currency", currency: "DOP" });
+  return amount.toLocaleString("es-HN", { style: "currency", currency: "HNL" });
 }
 
 export function QuotationGenerator() {
