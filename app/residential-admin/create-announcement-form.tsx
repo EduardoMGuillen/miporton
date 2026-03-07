@@ -10,7 +10,9 @@ export function CreateAnnouncementForm({
 }: {
   residents: Array<{ id: string; fullName: string }>;
 }) {
-  const [targetMode, setTargetMode] = useState<"ALL_RESIDENTS" | "SELECTED_RESIDENTS">("ALL_RESIDENTS");
+  const [targetMode, setTargetMode] = useState<"ALL_RESIDENTS" | "SELECTED_RESIDENTS" | "OWNERS_ONLY">(
+    "ALL_RESIDENTS",
+  );
   const [message, formAction, isPending] = useActionState(sendResidentialAnnouncementAction, initialState);
 
   return (
@@ -27,10 +29,13 @@ export function CreateAnnouncementForm({
       <select
         name="targetMode"
         value={targetMode}
-        onChange={(event) => setTargetMode(event.target.value as "ALL_RESIDENTS" | "SELECTED_RESIDENTS")}
+        onChange={(event) =>
+          setTargetMode(event.target.value as "ALL_RESIDENTS" | "SELECTED_RESIDENTS" | "OWNERS_ONLY")
+        }
         className="field-base md:col-span-2"
       >
         <option value="ALL_RESIDENTS">Enviar a todos los residentes</option>
+        <option value="OWNERS_ONLY">Enviar solo a duenos</option>
         <option value="SELECTED_RESIDENTS">Enviar a residentes seleccionados</option>
       </select>
 

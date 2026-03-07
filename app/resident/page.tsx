@@ -44,7 +44,7 @@ export default async function ResidentPage() {
     orderBy: [{ validUntil: "asc" }, { createdAt: "desc" }],
     take: 40,
   });
-  const [zones, reservations, zoneReservations, zoneBlocks] = await Promise.all([
+  const [zones, reservations, zoneReservations, zoneBlocks, latestAnnouncementRecipient] = await Promise.all([
     prisma.zone.findMany({
       where: { residentialId: session.residentialId ?? "", isActive: true },
       orderBy: { name: "asc" },
@@ -84,7 +84,21 @@ export default async function ResidentPage() {
       orderBy: { startsAt: "asc" },
       take: 800,
     }),
+    prisma.adminAnnouncementRecipient.findFirst({
+      where: { userId: session.userId },
+      include: {
+        announcement: {
+          select: {
+            title: true,
+            message: true,
+            createdAt: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
   ]);
+  const latestAnnouncement = latestAnnouncementRecipient?.announcement ?? null;
 
   const invitesWithImage: InviteWithImage[] = await Promise.all(
     invites.map(async (invite) => ({
@@ -285,6 +299,20 @@ export default async function ResidentPage() {
             Tu residencial aun no configura un numero de soporte.
           </p>
         )}
+        <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Ultimo comunicado</p>
+          {latestAnnouncement ? (
+            <>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{latestAnnouncement.title}</p>
+              <p className="text-xs text-slate-600">
+                {formatDateTimeTegucigalpa(latestAnnouncement.createdAt)}
+              </p>
+              <p className="mt-1 text-sm text-slate-700">{latestAnnouncement.message}</p>
+            </>
+          ) : (
+            <p className="mt-1 text-sm text-slate-600">Aun no tienes comunicados.</p>
+          )}
+        </div>
       </Card>
 
       <Card>

@@ -9,6 +9,7 @@ const initialState: string | null = null;
 export function CreateResidentialUserForm() {
   const [message, formAction, isPending] = useActionState(createResidentialUserAction, initialState);
   const [role, setRole] = useState<"RESIDENT" | "GUARD">("RESIDENT");
+  const [residentCategory, setResidentCategory] = useState<"OWNER" | "TENANT">("OWNER");
 
   return (
     <form action={formAction} className="grid gap-3 md:grid-cols-2">
@@ -42,11 +43,22 @@ export function CreateResidentialUserForm() {
         <option value="GUARD">Guardia</option>
       </select>
       {role === "RESIDENT" ? (
-        <input
-          name="houseNumber"
-          placeholder="Numero de vivienda (opcional)"
-          className="field-base"
-        />
+        <>
+          <select
+            name="residentCategory"
+            value={residentCategory}
+            onChange={(event) => setResidentCategory(event.target.value as "OWNER" | "TENANT")}
+            className="field-base"
+          >
+            <option value="OWNER">Dueno</option>
+            <option value="TENANT">Inquilino</option>
+          </select>
+          <input
+            name="houseNumber"
+            placeholder="Numero de vivienda (opcional)"
+            className="field-base"
+          />
+        </>
       ) : null}
       <button
         type="submit"

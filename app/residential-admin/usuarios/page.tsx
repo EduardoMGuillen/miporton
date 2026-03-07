@@ -20,6 +20,7 @@ export default async function ResidentialAdminUsersPage() {
     },
     orderBy: { createdAt: "desc" },
   });
+  const residentCategoryLabel = (value: "OWNER" | "TENANT") => (value === "OWNER" ? "Dueno" : "Inquilino");
 
   return (
     <>
@@ -39,6 +40,11 @@ export default async function ResidentialAdminUsersPage() {
                   <p className="text-sm text-slate-600">
                     {user.email} - {user.role === "RESIDENT" ? "Residente" : "Guardia"}
                   </p>
+                  {user.role === "RESIDENT" ? (
+                    <p className="text-xs text-slate-500">
+                      Categoria: {residentCategoryLabel(user.residentCategory)}
+                    </p>
+                  ) : null}
                   <p className="text-xs text-slate-500">Vivienda: {user.houseNumber || "Sin definir"}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -70,12 +76,22 @@ export default async function ResidentialAdminUsersPage() {
                         placeholder="Nueva password (opcional)"
                       />
                       {user.role === "RESIDENT" ? (
-                        <input
-                          name="houseNumber"
-                          defaultValue={user.houseNumber ?? ""}
-                          className="field-base"
-                          placeholder="Numero de vivienda"
-                        />
+                        <>
+                          <select
+                            name="residentCategory"
+                            defaultValue={user.residentCategory}
+                            className="field-base"
+                          >
+                            <option value="OWNER">Dueno</option>
+                            <option value="TENANT">Inquilino</option>
+                          </select>
+                          <input
+                            name="houseNumber"
+                            defaultValue={user.houseNumber ?? ""}
+                            className="field-base"
+                            placeholder="Numero de vivienda"
+                          />
+                        </>
                       ) : null}
                       <button className="btn-primary w-full">Guardar cambios</button>
                     </form>

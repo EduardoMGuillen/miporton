@@ -140,13 +140,17 @@ export function CreateZoneReservationForm({
       />
       <select
         name="startHour"
-        value={effectiveStartHour}
+        value={availableStartHours.length === 0 ? "" : effectiveStartHour}
         onChange={(event) => setStartHour(event.target.value)}
         className="field-base min-w-0"
         required
+        disabled={availableStartHours.length === 0}
       >
-        {HOURS.map((hour) => (
-          <option key={hour} value={pad2(hour)} disabled={occupiedHours.has(hour)}>
+        {availableStartHours.length === 0 ? (
+          <option value="">No hay horas disponibles</option>
+        ) : null}
+        {availableStartHours.map((hour) => (
+          <option key={hour} value={pad2(hour)}>
             {formatHourLabel(hour)}
           </option>
         ))}

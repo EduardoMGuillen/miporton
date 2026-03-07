@@ -14,6 +14,7 @@ const createUserSchema = z.object({
   email: z.string().email("Correo invalido."),
   password: z.string().min(6, "El password debe tener minimo 6 caracteres."),
   role: z.enum(["RESIDENT", "GUARD"]),
+  residentCategory: z.enum(["OWNER", "TENANT"]).optional(),
   houseNumber: z.string().max(30, "Numero de vivienda demasiado largo.").optional(),
 });
 
@@ -22,6 +23,7 @@ const updateUserSchema = z.object({
   fullName: z.string().min(3, "Nombre invalido."),
   email: z.string().email("Correo invalido."),
   password: z.string().optional(),
+  residentCategory: z.enum(["OWNER", "TENANT"]).optional(),
   houseNumber: z.string().max(30, "Numero de vivienda demasiado largo.").optional(),
 });
 
@@ -43,7 +45,7 @@ const blockZoneSchema = z.object({
 const createAnnouncementSchema = z.object({
   title: z.string().min(3, "Titulo invalido."),
   message: z.string().min(5, "Mensaje invalido.").max(500, "Mensaje demasiado largo."),
-  targetMode: z.enum(["ALL_RESIDENTS", "SELECTED_RESIDENTS"]),
+  targetMode: z.enum(["ALL_RESIDENTS", "SELECTED_RESIDENTS", "OWNERS_ONLY"]),
 });
 
 const createAdminQrSchema = z.object({
@@ -104,6 +106,7 @@ export async function createResidentialUserAction(_prevState: string | null, for
     email: formData.get("email"),
     password: formData.get("password"),
     role: formData.get("role"),
+    residentCategory: formData.get("residentCategory") || undefined,
     houseNumber: formData.get("houseNumber") || undefined,
   });
 
@@ -122,6 +125,7 @@ export async function createResidentialUserAction(_prevState: string | null, for
       email,
       passwordHash,
       role: parsed.data.role,
+      residentCategory: parsed.data.role === "RESIDENT" ? (parsed.data.residentCategory ?? "OWNER") : "OWNER",
       houseNumber: parsed.data.houseNumber?.trim() || null,
       residentialId: session.residentialId,
     },
@@ -140,6 +144,7 @@ export async function updateResidentialUserAction(formData: FormData) {
     fullName: formData.get("fullName"),
     email: formData.get("email"),
     password: formData.get("password") || undefined,
+    residentCategory: formData.get("residentCategory") || undefined,
     houseNumber: formData.get("houseNumber") || undefined,
   });
   if (!parsed.success) return;
@@ -168,12 +173,16 @@ export async function updateResidentialUserAction(formData: FormData) {
     fullName: string;
     email: string;
     houseNumber: string | null;
+    residentCategory?: "OWNER" | "TENANT";
     passwordHash?: string;
   } = {
     fullName: parsed.data.fullName.trim(),
     email,
     houseNumber: parsed.data.houseNumber?.trim() || null,
   };
+  if (parsed.data.residentCategory) {
+    updateData.residentCategory = parsed.data.residentCategory;
+  }
 
   if (parsed.data.password && parsed.data.password.trim().length >= 6) {
     updateData.passwordHash = await bcrypt.hash(parsed.data.password.trim(), 10);
@@ -396,6 +405,17 @@ export async function sendResidentialAnnouncementAction(_prevState: string | nul
       .filter(Boolean);
     if (selectedResidentIds.length === 0) return "Debes seleccionar al menos un residente.";
     targetResidents = targetResidents.filter((resident) => selectedResidentIds.includes(resident.id));
+  }
+
+  if (parsed.data.targetMode === "OWNERS_ONLY") {
+    targetResidents = await prisma.user.findMany({
+      where: {
+        residentialId: session.residentialId,
+        role: "RESIDENT",
+        residentCategory: "OWNER",
+      },
+      select: { id: true, fullName: true },
+    });
   }
 
   if (targetResidents.length === 0) return "No hay residentes para notificar.";

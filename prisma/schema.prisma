@@ -28,6 +28,12 @@ enum QrValidity {
 enum AnnouncementTargetMode {
   ALL_RESIDENTS
   SELECTED_RESIDENTS
+  OWNERS_ONLY
+}
+
+enum ResidentCategory {
+  OWNER
+  TENANT
 }
 
 enum ZoneReservationStatus {
@@ -59,6 +65,7 @@ model User {
   email                   String                      @unique
   passwordHash            String
   role                    Role
+  residentCategory        ResidentCategory        @default(OWNER)
   houseNumber             String?
   createdAt               DateTime                    @default(now())
   residentialId           String?
