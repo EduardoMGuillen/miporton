@@ -53,6 +53,14 @@ const createAdminQrSchema = z.object({
   residentId: z.string().optional(),
 });
 
+const updateResidentialSettingsSchema = z.object({
+  supportPhone: z
+    .string()
+    .trim()
+    .min(8, "Ingresa un numero de contacto valido.")
+    .max(30, "Numero de contacto demasiado largo."),
+});
+
 function overlapRange(startsAt: Date, endsAt: Date, otherStart: Date, otherEnd: Date) {
   return startsAt < otherEnd && endsAt > otherStart;
 }
@@ -408,4 +416,25 @@ export async function createAdminQrAction(_prevState: string | null, formData: F
   revalidatePath("/residential-admin");
   revalidatePath("/guard");
   return "QR generado correctamente por administracion.";
+}
+
+export async function updateResidentialSettingsAction(_prevState: string | null, formData: FormData) {
+  const session = await requireRole(["RESIDENTIAL_ADMIN"]);
+  if (!session.residentialId) return "Sesion invalida sin residencial asociada.";
+
+  const parsed = updateResidentialSettingsSchema.safeParse({
+    supportPhone: formData.get("supportPhone"),
+  });
+  if (!parsed.success) return parsed.error.issues[0]?.message ?? "Datos invalidos.";
+
+  await prisma.residential.update({
+    where: { id: session.residentialId },
+    data: {
+      supportPhone: parsed.data.supportPhone,
+    },
+  });
+
+  revalidatePath("/residential-admin");
+  revalidatePath("/resident");
+  return "Configuracion guardada correctamente.";
 }

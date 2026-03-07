@@ -7,9 +7,9 @@ const NAV_ITEMS = [
   { href: "/residential-admin/usuarios", label: "Usuarios" },
   { href: "/residential-admin/zonas-reservas", label: "Zonas y reservas" },
   { href: "/residential-admin/comunicados", label: "Comunicados" },
-  { href: "/residential-admin/notificaciones", label: "Notificaciones" },
   { href: "/residential-admin/qr-admin", label: "QR administracion" },
   { href: "/residential-admin/registros", label: "Registro y reportes" },
+  { href: "/residential-admin/configuracion", label: "Configuracion" },
 ];
 
 export function ResidentialAdminNav() {

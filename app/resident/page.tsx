@@ -34,7 +34,7 @@ export default async function ResidentPage() {
   const residential = session.residentialId
     ? await prisma.residential.findUnique({
         where: { id: session.residentialId },
-        select: { name: true },
+        select: { name: true, supportPhone: true },
       })
     : null;
 
@@ -82,6 +82,8 @@ export default async function ResidentPage() {
   const expiredInvites = invitesWithImage.filter(
     (invite) => invite.validUntil < now || invite.usedCount >= invite.maxUses,
   );
+  const supportPhoneDigits = (residential?.supportPhone ?? "").replaceAll(/\D+/g, "");
+  const supportWhatsappUrl = supportPhoneDigits ? `https://wa.me/${supportPhoneDigits}` : null;
 
   return (
     <DashboardShell
@@ -223,6 +225,24 @@ export default async function ResidentPage() {
             ) : null}
           </div>
         </details>
+      </Card>
+
+      <Card>
+        <h2 className="mb-3 text-lg font-semibold text-slate-900">Soporte</h2>
+        {supportWhatsappUrl ? (
+          <a
+            href={supportWhatsappUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100"
+          >
+            Contactar soporte por WhatsApp
+          </a>
+        ) : (
+          <p className="text-sm text-slate-600">
+            Tu residencial aun no configura un numero de soporte.
+          </p>
+        )}
       </Card>
     </DashboardShell>
   );

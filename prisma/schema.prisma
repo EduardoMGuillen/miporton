@@ -38,6 +38,7 @@ enum ZoneReservationStatus {
 model Residential {
   id            String               @id @default(cuid())
   name          String
+  supportPhone  String?
   createdAt     DateTime             @default(now())
   users         User[]
   qrCodes       QrCode[]
