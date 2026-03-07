@@ -3,8 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { Card, DashboardShell } from "@/app/components/shell";
 import { EntryRecordExportButton } from "@/app/components/entry-record-export-button";
 import { EntryEvidencePreview } from "@/app/components/entry-evidence-preview";
+import { MonthlyAccessReportButton } from "@/app/components/monthly-access-report-button";
 import { CreateResidentialForm } from "@/app/super-admin/create-residential-form";
 import { QuotationGenerator } from "@/app/super-admin/quotation-generator";
+import { ServiceContractForm } from "@/app/super-admin/service-contract-form";
 import { formatDateTimeTegucigalpa } from "@/lib/datetime";
 import {
   deleteResidentialAdminAction,
@@ -120,6 +122,7 @@ export default async function SuperAdminPage({
           scannedAt: true,
           reason: true,
           idPhotoSize: true,
+          platePhotoSize: true,
           scanner: { select: { fullName: true } },
           code: {
             select: {
@@ -131,6 +134,31 @@ export default async function SuperAdminPage({
         },
       })
     : [];
+  const deliveryEntries = selectedResidentialId
+    ? await prisma.deliveryAnnouncement.findMany({
+        where: {
+          residentialId: selectedResidentialId,
+          createdAt: { gte: monthStart, lt: monthEnd },
+          ...(residentFilter ? { residentId: residentFilter } : {}),
+          ...(guardFilter ? { guardId: guardFilter } : {}),
+          ...(visitorFilter ? { note: { contains: visitorFilter, mode: "insensitive" } } : {}),
+        },
+        orderBy: { createdAt: sortFilter === "oldest" ? "asc" : "desc" },
+        select: {
+          id: true,
+          note: true,
+          createdAt: true,
+          resident: { select: { fullName: true } },
+          guard: { select: { fullName: true } },
+          residential: { select: { name: true } },
+        },
+        take: 80,
+      })
+    : [];
+  const recentContracts = await prisma.serviceContract.findMany({
+    orderBy: { createdAt: "desc" },
+    take: 20,
+  });
 
   return (
     <DashboardShell
@@ -150,6 +178,28 @@ export default async function SuperAdminPage({
           Residencial.
         </p>
         <QuotationGenerator />
+      </Card>
+
+      <Card>
+        <h2 className="mb-2 text-lg font-semibold text-slate-900">Contrato de servicio (super admin)</h2>
+        <p className="mb-4 text-sm text-slate-600">
+          Crea contrato para conjunto residencial y genera su PDF.
+        </p>
+        <ServiceContractForm residentials={residentials.map((item) => ({ id: item.id, name: item.name }))} />
+        <div className="mt-4 grid gap-2">
+          {recentContracts.map((contract) => (
+            <div key={contract.id} className="rounded-lg border border-slate-200 bg-slate-50/70 p-3">
+              <p className="text-sm font-semibold text-slate-900">{contract.residentialName}</p>
+              <p className="text-xs text-slate-600">
+                Representante: {contract.legalRepresentative} | Plan: {contract.servicePlan}
+              </p>
+              <p className="text-xs text-slate-500">
+                Inicio: {formatDateTimeTegucigalpa(contract.startsOn)} | Monto mensual: HNL{" "}
+                {contract.monthlyAmount.toLocaleString("es-HN", { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+          ))}
+        </div>
       </Card>
 
       <Card>
@@ -272,6 +322,7 @@ export default async function SuperAdminPage({
               <option value="">Metodo: todos</option>
               <option value="qr">QR escaneado</option>
               <option value="manual">Registro manual</option>
+              <option value="delivery">Delivery</option>
             </select>
             <select name="logEvidence" defaultValue={evidenceFilter} className="field-base">
               <option value="">Evidencia: todas</option>
@@ -285,6 +336,28 @@ export default async function SuperAdminPage({
             <div className="md:col-span-2" />
             <button className="btn-primary w-full">Aplicar filtros</button>
           </form>
+          {selectedResidentialId ? (
+            <div className="mt-3">
+              <MonthlyAccessReportButton
+                reportTitle="Reporte global mensual de accesos"
+                monthLabel={selectedMonth}
+                entries={idEvidenceScans.map((scan) => ({
+                  dateLabel: formatDateTimeTegucigalpa(scan.scannedAt),
+                  visitorName: scan.code.visitorName,
+                  residentName: scan.code.resident.fullName,
+                  guardName: scan.scanner.fullName,
+                  method: scan.reason.toLowerCase().includes("manual") ? "Manual" : "QR",
+                  reason: scan.reason,
+                }))}
+                deliveries={deliveryEntries.map((delivery) => ({
+                  dateLabel: formatDateTimeTegucigalpa(delivery.createdAt),
+                  residentName: delivery.resident.fullName,
+                  guardName: delivery.guard.fullName,
+                  note: delivery.note,
+                }))}
+              />
+            </div>
+          ) : null}
 
           {!selectedResidentialId ? (
             <p className="mt-4 text-sm text-slate-600">
@@ -292,7 +365,7 @@ export default async function SuperAdminPage({
             </p>
           ) : (
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {idEvidenceScans.map((scan) => (
+              {(methodFilter === "delivery" ? [] : idEvidenceScans).map((scan) => (
                 <article key={scan.id} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
                   {scan.idPhotoSize ? (
                     <EntryEvidencePreview
@@ -317,6 +390,18 @@ export default async function SuperAdminPage({
                   <p className="text-xs text-slate-500">
                     Evidencia: {scan.idPhotoSize ? "Si" : "No"} {scan.idPhotoSize ? `(${scan.idPhotoSize} bytes)` : ""}
                   </p>
+                  <p className="text-xs text-slate-500">
+                    Placa: {scan.platePhotoSize ? "Si" : "No"}{" "}
+                    {scan.platePhotoSize ? `(${scan.platePhotoSize} bytes)` : ""}
+                  </p>
+                  {scan.platePhotoSize ? (
+                    <div className="mt-2">
+                      <EntryEvidencePreview
+                        imageUrl={`/api/plate-evidence/${scan.id}`}
+                        alt={`Placa de ${scan.code.visitorName}`}
+                      />
+                    </div>
+                  ) : null}
                   <p className="mt-2 text-xs text-slate-500">{scan.reason}</p>
                   <EntryRecordExportButton
                     recordId={scan.id}
@@ -326,13 +411,27 @@ export default async function SuperAdminPage({
                     residentialName={scan.code.residential.name}
                     scannedAtLabel={formatDateTimeTegucigalpa(scan.scannedAt)}
                     methodLabel={scan.reason.toLowerCase().includes("manual") ? "Manual" : "QR"}
-                    evidenceLabel={scan.idPhotoSize ? "Con evidencia" : "Sin evidencia"}
+                    evidenceLabel={scan.idPhotoSize || scan.platePhotoSize ? "Con evidencia" : "Sin evidencia"}
                     reason={scan.reason}
                     evidenceImageUrl={scan.idPhotoSize ? `/api/id-evidence/${scan.id}` : undefined}
+                    plateImageUrl={scan.platePhotoSize ? `/api/plate-evidence/${scan.id}` : undefined}
                   />
                 </article>
               ))}
-              {idEvidenceScans.length === 0 ? (
+              {(methodFilter === "delivery" ? deliveryEntries : []).map((delivery) => (
+                <article key={delivery.id} className="rounded-xl border border-slate-200 bg-amber-50/70 p-4">
+                  <div className="h-44 w-full rounded-lg border border-dashed border-amber-300 bg-white/60 p-4 text-xs text-slate-500">
+                    Registro de delivery (sin imagen).
+                  </div>
+                  <p className="mt-3 text-sm font-semibold text-slate-900">Delivery anunciado</p>
+                  <p className="text-xs text-slate-600">Residente: {delivery.resident.fullName}</p>
+                  <p className="text-xs text-slate-600">Guardia: {delivery.guard.fullName}</p>
+                  <p className="text-xs text-slate-600">Residencial: {delivery.residential.name}</p>
+                  <p className="text-xs text-slate-500">Fecha: {formatDateTimeTegucigalpa(delivery.createdAt)}</p>
+                  <p className="mt-2 text-xs text-slate-500">{delivery.note}</p>
+                </article>
+              ))}
+              {idEvidenceScans.length === 0 && deliveryEntries.length === 0 ? (
                 <p className="text-sm text-slate-600">No hay entradas para los filtros seleccionados.</p>
               ) : null}
             </div>

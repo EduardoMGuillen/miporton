@@ -13,6 +13,7 @@ export async function POST(request: Request) {
   const formData = await request.formData();
   const code = String(formData.get("code") ?? "").trim();
   const idPhoto = formData.get("idPhoto");
+  const platePhoto = formData.get("platePhoto");
 
   if (!code) {
     return NextResponse.json({ error: "Debes enviar un codigo." }, { status: 400 });
@@ -24,6 +25,31 @@ export async function POST(request: Request) {
   try {
     validateIdPhotoFile(idPhoto);
     const idPhotoData = await idPhotoFileToBytes(idPhoto);
+    const preValidation = await validateAndConsumeQr({
+      scannedCode: code,
+      scannerId: session.userId,
+      scannerResidentialId: session.residentialId,
+      consume: false,
+    });
+    if (!preValidation.valid) {
+      return NextResponse.json(preValidation);
+    }
+
+    let platePhotoData: Uint8Array | undefined;
+    let platePhotoMimeType: string | undefined;
+    let platePhotoSize: number | undefined;
+    if (preValidation.hasVehicle) {
+      if (!(platePhoto instanceof File)) {
+        return NextResponse.json(
+          { error: "Este QR requiere foto de placa porque la visita viene en vehiculo." },
+          { status: 400 },
+        );
+      }
+      validateIdPhotoFile(platePhoto);
+      platePhotoData = await idPhotoFileToBytes(platePhoto);
+      platePhotoMimeType = platePhoto.type;
+      platePhotoSize = platePhoto.size;
+    }
 
     const result = await validateAndConsumeQr({
       scannedCode: code,
@@ -34,6 +60,9 @@ export async function POST(request: Request) {
         idPhotoData,
         idPhotoMimeType: idPhoto.type,
         idPhotoSize: idPhoto.size,
+        platePhotoData,
+        platePhotoMimeType,
+        platePhotoSize,
       },
     });
 

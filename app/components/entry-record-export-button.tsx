@@ -14,6 +14,7 @@ type EntryRecordExportButtonProps = {
   evidenceLabel: string;
   reason: string;
   evidenceImageUrl?: string;
+  plateImageUrl?: string;
 };
 
 async function imageUrlToDataUrl(url: string) {
@@ -40,6 +41,7 @@ export function EntryRecordExportButton({
   evidenceLabel,
   reason,
   evidenceImageUrl,
+  plateImageUrl,
 }: EntryRecordExportButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -48,6 +50,7 @@ export function EntryRecordExportButton({
     try {
       const doc = new jsPDF({ unit: "pt", format: "a4" });
       const evidenceImageData = evidenceImageUrl ? await imageUrlToDataUrl(evidenceImageUrl) : null;
+      const plateImageData = plateImageUrl ? await imageUrlToDataUrl(plateImageUrl) : null;
 
       doc.setFont("helvetica", "bold");
       doc.setFontSize(16);
@@ -75,9 +78,18 @@ export function EntryRecordExportButton({
         doc.setFont("helvetica", "bold");
         doc.text("Evidencia del ID", 40, imageStartY);
         doc.addImage(evidenceImageData, "JPEG", 40, imageStartY + 10, 260, 160);
+        if (plateImageData) {
+          doc.text("Evidencia de placa", 320, imageStartY);
+          doc.addImage(plateImageData, "JPEG", 320, imageStartY + 10, 240, 160);
+        }
       } else {
         doc.setFont("helvetica", "italic");
-        doc.text("Este registro no tiene imagen de evidencia.", 40, imageStartY);
+        doc.text("Este registro no tiene imagen de ID.", 40, imageStartY);
+        if (plateImageData) {
+          doc.setFont("helvetica", "bold");
+          doc.text("Evidencia de placa", 40, imageStartY + 24);
+          doc.addImage(plateImageData, "JPEG", 40, imageStartY + 34, 260, 160);
+        }
       }
 
       doc.save(`registro-entrada-${recordId}.pdf`);

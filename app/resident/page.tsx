@@ -3,8 +3,9 @@ import { requireRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
 import { Card, DashboardShell } from "@/app/components/shell";
 import { CreateQrForm } from "@/app/resident/create-qr-form";
+import { CreateZoneReservationForm } from "@/app/resident/create-zone-reservation-form";
 import { PushSubscriptionCard } from "@/app/resident/push-subscription";
-import { deleteInviteQrAction } from "@/app/resident/actions";
+import { deleteInviteQrAction, cancelZoneReservationAction } from "@/app/resident/actions";
 import { QrShareActions } from "@/app/resident/qr-share-actions";
 import { formatDateTimeTegucigalpa } from "@/lib/datetime";
 
@@ -12,7 +13,9 @@ type InviteWithImage = {
   id: string;
   code: string;
   visitorName: string;
-  validityType: "SINGLE_USE" | "ONE_DAY" | "THREE_DAYS";
+  validityType: "SINGLE_USE" | "ONE_DAY" | "THREE_DAYS" | "INFINITE";
+  description?: string | null;
+  hasVehicle: boolean;
   validUntil: Date;
   usedCount: number;
   maxUses: number;
@@ -22,6 +25,7 @@ type InviteWithImage = {
 function validityLabel(validityType: InviteWithImage["validityType"]) {
   if (validityType === "SINGLE_USE") return "1 solo uso";
   if (validityType === "ONE_DAY") return "Valido por 1 dia";
+  if (validityType === "INFINITE") return "Sin vencimiento";
   return "Valido por 3 dias";
 }
 
@@ -39,6 +43,22 @@ export default async function ResidentPage() {
     orderBy: [{ validUntil: "asc" }, { createdAt: "desc" }],
     take: 40,
   });
+  const [zones, reservations] = await Promise.all([
+    prisma.zone.findMany({
+      where: { residentialId: session.residentialId ?? "", isActive: true },
+      orderBy: { name: "asc" },
+      take: 50,
+    }),
+    prisma.zoneReservation.findMany({
+      where: {
+        residentId: session.userId,
+        status: "APPROVED",
+      },
+      include: { zone: { select: { name: true } } },
+      orderBy: { startsAt: "asc" },
+      take: 40,
+    }),
+  ]);
 
   const invitesWithImage: InviteWithImage[] = await Promise.all(
     invites.map(async (invite) => ({
@@ -46,6 +66,8 @@ export default async function ResidentPage() {
       code: invite.code,
       visitorName: invite.visitorName,
       validityType: invite.validityType,
+      description: invite.description,
+      hasVehicle: invite.hasVehicle,
       validUntil: invite.validUntil,
       usedCount: invite.usedCount,
       maxUses: invite.maxUses,
@@ -75,6 +97,38 @@ export default async function ResidentPage() {
       </Card>
 
       <Card>
+        <h2 className="mb-4 text-lg font-semibold text-slate-900">Reservar zona comun</h2>
+        <CreateZoneReservationForm
+          zones={zones.map((zone) => ({
+            id: zone.id,
+            name: zone.name,
+            maxHoursPerReservation: zone.maxHoursPerReservation,
+          }))}
+        />
+
+        <div className="mt-4 grid gap-2">
+          {reservations.map((reservation) => (
+            <div key={reservation.id} className="rounded-lg border border-slate-200 bg-slate-50/70 p-3">
+              <p className="text-sm font-semibold text-slate-900">{reservation.zone.name}</p>
+              <p className="text-xs text-slate-600">
+                {formatDateTimeTegucigalpa(reservation.startsAt)} - {formatDateTimeTegucigalpa(reservation.endsAt)}
+              </p>
+              {reservation.note ? <p className="text-xs text-slate-500">Nota: {reservation.note}</p> : null}
+              <form action={cancelZoneReservationAction} className="mt-2">
+                <input type="hidden" name="reservationId" value={reservation.id} />
+                <button className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-700">
+                  Cancelar reserva
+                </button>
+              </form>
+            </div>
+          ))}
+          {reservations.length === 0 ? (
+            <p className="text-sm text-slate-600">Aun no tienes reservas activas.</p>
+          ) : null}
+        </div>
+      </Card>
+
+      <Card>
         <h2 className="mb-4 text-lg font-semibold text-slate-900">QRs activos</h2>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {activeInvites.map((invite) => (
@@ -87,6 +141,12 @@ export default async function ResidentPage() {
               />
               <p className="mt-3 text-sm font-semibold text-slate-900">{invite.visitorName}</p>
               <p className="text-xs text-slate-600">{validityLabel(invite.validityType)}</p>
+              {invite.description ? (
+                <p className="text-xs text-slate-500">Descripcion: {invite.description}</p>
+              ) : null}
+              <p className="text-xs text-slate-500">
+                Vehiculo: {invite.hasVehicle ? "Si" : "No"}
+              </p>
               <p className="text-xs text-slate-500">
                 Expira: {formatDateTimeTegucigalpa(invite.validUntil)}
               </p>
@@ -138,6 +198,12 @@ export default async function ResidentPage() {
                 />
                 <p className="mt-3 text-sm font-semibold text-slate-900">{invite.visitorName}</p>
                 <p className="text-xs text-slate-600">{validityLabel(invite.validityType)}</p>
+                {invite.description ? (
+                  <p className="text-xs text-slate-500">Descripcion: {invite.description}</p>
+                ) : null}
+                <p className="text-xs text-slate-500">
+                  Vehiculo: {invite.hasVehicle ? "Si" : "No"}
+                </p>
                 <p className="text-xs text-slate-500">
                   Expira: {formatDateTimeTegucigalpa(invite.validUntil)}
                 </p>

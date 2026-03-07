@@ -94,6 +94,10 @@ export default async function GuardPage() {
             <div key={invite.id} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
               <p className="font-semibold text-slate-900">{invite.visitorName}</p>
               <p className="text-sm text-slate-600">Residente: {invite.resident.fullName}</p>
+              {invite.description ? (
+                <p className="text-xs text-slate-600">Descripcion: {invite.description}</p>
+              ) : null}
+              <p className="text-xs text-slate-500">Vehiculo: {invite.hasVehicle ? "Si" : "No"}</p>
               <p className="text-xs text-slate-500">
                 Expira: {formatDateTimeTegucigalpa(invite.validUntil)}
               </p>

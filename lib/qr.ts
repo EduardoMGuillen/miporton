@@ -1,8 +1,13 @@
 import { addDays } from "date-fns";
 import { prisma } from "@/lib/prisma";
 
-export function calculateValidityWindow(validityType: "SINGLE_USE" | "ONE_DAY" | "THREE_DAYS") {
+export function calculateValidityWindow(
+  validityType: "SINGLE_USE" | "ONE_DAY" | "THREE_DAYS" | "INFINITE",
+) {
   const validFrom = new Date();
+  if (validityType === "INFINITE") {
+    return { validFrom, validUntil: new Date("2100-01-01T00:00:00.000Z"), maxUses: 2147483647 };
+  }
   if (validityType === "SINGLE_USE") {
     return { validFrom, validUntil: addDays(validFrom, 3), maxUses: 1 };
   }
@@ -27,6 +32,9 @@ export async function validateAndConsumeQr({
     idPhotoData: Uint8Array;
     idPhotoMimeType: string;
     idPhotoSize: number;
+    platePhotoData?: Uint8Array;
+    platePhotoMimeType?: string;
+    platePhotoSize?: number;
   };
 }) {
   const code = scannedCode.startsWith("MP:") ? scannedCode.slice(3) : scannedCode;
@@ -102,6 +110,11 @@ export async function validateAndConsumeQr({
           idPhotoMimeType: scanEvidence?.idPhotoMimeType,
           idPhotoSize: scanEvidence?.idPhotoSize,
           idCapturedAt: scanEvidence ? new Date() : null,
+          platePhotoData: scanEvidence?.platePhotoData
+            ? (scanEvidence.platePhotoData as unknown as Uint8Array<ArrayBuffer>)
+            : null,
+          platePhotoMimeType: scanEvidence?.platePhotoMimeType,
+          platePhotoSize: scanEvidence?.platePhotoSize,
         },
       }),
     ]);
@@ -111,6 +124,8 @@ export async function validateAndConsumeQr({
     valid: true,
     reason: consume ? "Ingreso autorizado." : "QR valido. Falta capturar foto del ID.",
     visitorName: qr.visitorName,
+    visitorDescription: qr.description,
+    hasVehicle: qr.hasVehicle,
     residentialName: qr.residential.name,
     residentName: qr.resident.fullName,
     residentId: qr.residentId,

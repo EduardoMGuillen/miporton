@@ -24,6 +24,17 @@ export function CreateQrForm() {
         <option value="SINGLE_USE">1 solo uso</option>
         <option value="ONE_DAY">Valido por 1 dia</option>
         <option value="THREE_DAYS">Valido por maximo 3 dias</option>
+        <option value="INFINITE">Validez infinita (sin vencimiento)</option>
+      </select>
+      <input
+        name="description"
+        placeholder="Descripcion (opcional)"
+        className="field-base md:col-span-2"
+        maxLength={180}
+      />
+      <select name="hasVehicle" defaultValue="no" className="field-base">
+        <option value="no">Sin vehiculo</option>
+        <option value="yes">Viene en vehiculo</option>
       </select>
       <button
         type="submit"

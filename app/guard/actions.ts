@@ -85,11 +85,22 @@ export async function announceDeliveryAtGateAction(_prevState: string | null, fo
   if (!resident) return "No se encontro el residente seleccionado.";
 
   const trimmedNote = parsed.data.deliveryNote.trim();
+  await prisma.deliveryAnnouncement.create({
+    data: {
+      note: trimmedNote,
+      residentId: resident.id,
+      guardId: session.userId,
+      residentialId: session.residentialId,
+    },
+  });
+
   await notifyUser(resident.id, {
     title: "MiVisita",
     body: `Guardia: hay un delivery para ti. Detalle: ${trimmedNote}`,
     url: "/resident",
   });
 
+  revalidatePath("/residential-admin");
+  revalidatePath("/super-admin");
   return `Notificacion enviada a ${resident.fullName}.`;
 }

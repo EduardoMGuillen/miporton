@@ -30,6 +30,11 @@ export function CreateResidentialUserForm() {
         required
         className="field-base"
       />
+      <input
+        name="houseNumber"
+        placeholder="Numero de vivienda (opcional)"
+        className="field-base"
+      />
       <select
         name="role"
         defaultValue="RESIDENT"

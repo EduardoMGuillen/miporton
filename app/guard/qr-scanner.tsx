@@ -7,6 +7,8 @@ type ScanResult = {
   valid: boolean;
   reason: string;
   visitorName?: string | null;
+  visitorDescription?: string | null;
+  hasVehicle?: boolean;
   residentName?: string | null;
   residentialName?: string | null;
   residentId?: string | null;
@@ -29,6 +31,7 @@ export function GuardQrScanner() {
   const [pendingScannedCode, setPendingScannedCode] = useState<string | null>(null);
   const [pendingResult, setPendingResult] = useState<ScanResult | null>(null);
   const [idPhotoFile, setIdPhotoFile] = useState<File | null>(null);
+  const [platePhotoFile, setPlatePhotoFile] = useState<File | null>(null);
   const [preferredFacing, setPreferredFacing] = useState<"environment" | "user">("environment");
   const scannerId = useMemo(() => `qr-reader-${Math.random().toString(36).slice(2)}`, []);
   const scannerRef = useRef<ScannerInstance | null>(null);
@@ -69,6 +72,10 @@ export function GuardQrScanner() {
       setIdCaptureError("Debes tomar o seleccionar una foto del ID.");
       return;
     }
+    if (pendingResult?.hasVehicle && !platePhotoFile) {
+      setIdCaptureError("Debes tomar o seleccionar una foto de la placa.");
+      return;
+    }
 
     setIsSubmittingIdPhoto(true);
     setIdCaptureError(null);
@@ -78,6 +85,9 @@ export function GuardQrScanner() {
       const formData = new FormData();
       formData.append("code", pendingScannedCode);
       formData.append("idPhoto", idPhotoFile);
+      if (platePhotoFile) {
+        formData.append("platePhoto", platePhotoFile);
+      }
 
       const response = await fetch("/api/guard/scan-with-id", {
         method: "POST",
@@ -95,6 +105,7 @@ export function GuardQrScanner() {
 
       setIsIdCaptureOpen(false);
       setIdPhotoFile(null);
+      setPlatePhotoFile(null);
       setPendingScannedCode(null);
       setPendingResult(null);
       setResult(payload as ScanResult);
@@ -266,8 +277,16 @@ export function GuardQrScanner() {
             {pendingResult?.visitorName ? (
               <p className="mt-3 text-sm text-slate-700">Visita: {pendingResult.visitorName}</p>
             ) : null}
+            {pendingResult?.visitorDescription ? (
+              <p className="text-sm text-slate-700">Descripcion: {pendingResult.visitorDescription}</p>
+            ) : null}
             {pendingResult?.residentName ? (
               <p className="text-sm text-slate-700">Anunciado por: {pendingResult.residentName}</p>
+            ) : null}
+            {pendingResult?.hasVehicle ? (
+              <p className="text-sm font-semibold text-amber-700">
+                Esta visita indico que viene en vehiculo (foto de placa obligatoria).
+              </p>
             ) : null}
 
             <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-slate-600">
@@ -281,6 +300,21 @@ export function GuardQrScanner() {
               className="mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
             />
             <p className="mt-2 text-xs text-slate-500">Formatos: JPG, PNG o WEBP. Maximo 5MB.</p>
+
+            {pendingResult?.hasVehicle ? (
+              <>
+                <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-slate-600">
+                  Foto de placa
+                </label>
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  capture="environment"
+                  onChange={(event) => setPlatePhotoFile(event.target.files?.[0] ?? null)}
+                  className="mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
+                />
+              </>
+            ) : null}
             {idCaptureError ? <p className="mt-2 text-sm text-red-600">{idCaptureError}</p> : null}
 
             <div className="mt-4 flex gap-2">
@@ -288,6 +322,7 @@ export function GuardQrScanner() {
                 onClick={() => {
                   setIsIdCaptureOpen(false);
                   setIdPhotoFile(null);
+                  setPlatePhotoFile(null);
                   setPendingScannedCode(null);
                   setPendingResult(null);
                   setIdCaptureError(null);

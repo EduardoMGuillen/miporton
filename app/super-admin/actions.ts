@@ -20,6 +20,19 @@ const updateResidentialAdminSchema = z.object({
   password: z.string().optional(),
 });
 
+const createServiceContractSchema = z.object({
+  residentialId: z.string().optional(),
+  residentialName: z.string().min(3, "Nombre de residencial invalido."),
+  legalRepresentative: z.string().min(3, "Representante legal invalido."),
+  representativeEmail: z.string().email("Correo del representante invalido."),
+  representativePhone: z.string().min(6, "Telefono invalido."),
+  servicePlan: z.string().min(2, "Plan de servicio invalido."),
+  monthlyAmount: z.coerce.number().positive("El monto mensual debe ser mayor a 0."),
+  startsOn: z.string().min(1, "Debes indicar la fecha de inicio."),
+  endsOn: z.string().optional(),
+  terms: z.string().max(1500, "Terminos demasiado largos.").optional(),
+});
+
 export async function createResidentialWithAdminAction(
   _prevState: string | null,
   formData: FormData,
@@ -118,4 +131,47 @@ export async function deleteResidentialAdminAction(formData: FormData) {
   });
 
   revalidatePath("/super-admin");
+}
+
+export async function createServiceContractAction(_prevState: string | null, formData: FormData) {
+  const session = await requireRole(["SUPER_ADMIN"]);
+
+  const parsed = createServiceContractSchema.safeParse({
+    residentialId: formData.get("residentialId") || undefined,
+    residentialName: formData.get("residentialName"),
+    legalRepresentative: formData.get("legalRepresentative"),
+    representativeEmail: formData.get("representativeEmail"),
+    representativePhone: formData.get("representativePhone"),
+    servicePlan: formData.get("servicePlan"),
+    monthlyAmount: formData.get("monthlyAmount"),
+    startsOn: formData.get("startsOn"),
+    endsOn: formData.get("endsOn") || undefined,
+    terms: formData.get("terms") || undefined,
+  });
+  if (!parsed.success) return parsed.error.issues[0]?.message ?? "Datos invalidos.";
+
+  const startsOn = new Date(parsed.data.startsOn);
+  if (Number.isNaN(startsOn.getTime())) return "Fecha de inicio invalida.";
+  const endsOn = parsed.data.endsOn ? new Date(parsed.data.endsOn) : null;
+  if (endsOn && Number.isNaN(endsOn.getTime())) return "Fecha final invalida.";
+  if (endsOn && endsOn <= startsOn) return "La fecha final debe ser mayor que la inicial.";
+
+  await prisma.serviceContract.create({
+    data: {
+      residentialId: parsed.data.residentialId || null,
+      residentialName: parsed.data.residentialName.trim(),
+      legalRepresentative: parsed.data.legalRepresentative.trim(),
+      representativeEmail: parsed.data.representativeEmail.toLowerCase(),
+      representativePhone: parsed.data.representativePhone.trim(),
+      servicePlan: parsed.data.servicePlan.trim(),
+      monthlyAmount: parsed.data.monthlyAmount,
+      startsOn,
+      endsOn,
+      terms: parsed.data.terms?.trim() || null,
+      createdById: session.userId,
+    },
+  });
+
+  revalidatePath("/super-admin");
+  return "Contrato de servicio creado correctamente.";
 }

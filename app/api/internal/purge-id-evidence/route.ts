@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-const THIRTY_DAYS_IN_MS = 30 * 24 * 60 * 60 * 1000;
+const SIXTY_DAYS_IN_MS = 60 * 24 * 60 * 60 * 1000;
 
 export async function GET(request: Request) {
   const expectedSecret = process.env.CRON_SECRET;
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   }
 
-  const cutoff = new Date(Date.now() - THIRTY_DAYS_IN_MS);
+  const cutoff = new Date(Date.now() - SIXTY_DAYS_IN_MS);
   const purgeResult = await prisma.qrScan.updateMany({
     where: {
       idPhotoData: { not: null },
@@ -24,6 +24,9 @@ export async function GET(request: Request) {
       idPhotoData: null,
       idPhotoMimeType: null,
       idPhotoSize: null,
+      platePhotoData: null,
+      platePhotoMimeType: null,
+      platePhotoSize: null,
     },
   });
 
