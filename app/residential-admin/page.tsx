@@ -2,6 +2,8 @@ import { requireRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
 import { Card, DashboardShell } from "@/app/components/shell";
 import { CreateResidentialUserForm } from "@/app/residential-admin/create-user-form";
+import { EntryRecordExportButton } from "@/app/components/entry-record-export-button";
+import { EntryEvidencePreview } from "@/app/components/entry-evidence-preview";
 import {
   deleteResidentialUserAction,
   updateResidentialUserAction,
@@ -52,6 +54,7 @@ export default async function ResidentialAdminPage({
   const methodFilter = getSingleParam(params.logMethod).trim();
   const evidenceFilter = getSingleParam(params.logEvidence).trim();
   const sortFilter = getSingleParam(params.logSort).trim();
+  const hasLogQuery = Object.keys(params).some((key) => key.startsWith("log"));
   const { start: monthStart, end: monthEnd } = monthRange(selectedMonth);
 
   const [residential, users] = await Promise.all([
@@ -95,7 +98,7 @@ export default async function ResidentialAdminPage({
       },
     },
     orderBy: { scannedAt: sortFilter === "oldest" ? "asc" : "desc" },
-    take: 120,
+    take: 80,
     select: {
       id: true,
       scannedAt: true,
@@ -173,7 +176,7 @@ export default async function ResidentialAdminPage({
       </Card>
 
       <Card>
-        <details>
+        <details open={hasLogQuery}>
           <summary className="cursor-pointer list-none text-lg font-semibold text-slate-900">
             Registro de entradas (por mes)
           </summary>
@@ -227,15 +230,10 @@ export default async function ResidentialAdminPage({
             {idEvidenceScans.map((scan) => (
               <article key={scan.id} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
                 {scan.idPhotoSize ? (
-                  <>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={`/api/id-evidence/${scan.id}`}
-                      alt={`ID de ${scan.code.visitorName}`}
-                      className="h-44 w-full rounded-lg border border-slate-200 object-cover bg-white"
-                      loading="lazy"
-                    />
-                  </>
+                  <EntryEvidencePreview
+                    imageUrl={`/api/id-evidence/${scan.id}`}
+                    alt={`ID de ${scan.code.visitorName}`}
+                  />
                 ) : (
                   <div className="h-44 w-full rounded-lg border border-dashed border-slate-300 bg-white/60 p-4 text-xs text-slate-500">
                     Sin evidencia de ID en este registro.
@@ -254,6 +252,17 @@ export default async function ResidentialAdminPage({
                   Evidencia: {scan.idPhotoSize ? "Si" : "No"} {scan.idPhotoSize ? `(${scan.idPhotoSize} bytes)` : ""}
                 </p>
                 <p className="mt-2 text-xs text-slate-500">{scan.reason}</p>
+                <EntryRecordExportButton
+                  recordId={scan.id}
+                  visitorName={scan.code.visitorName}
+                  residentName={scan.code.resident.fullName}
+                  guardName={scan.scanner.fullName}
+                  scannedAtLabel={new Date(scan.scannedAt).toLocaleString("es-DO")}
+                  methodLabel={scan.reason.toLowerCase().includes("manual") ? "Manual" : "QR"}
+                  evidenceLabel={scan.idPhotoSize ? "Con evidencia" : "Sin evidencia"}
+                  reason={scan.reason}
+                  evidenceImageUrl={scan.idPhotoSize ? `/api/id-evidence/${scan.id}` : undefined}
+                />
               </article>
             ))}
             {idEvidenceScans.length === 0 ? (
