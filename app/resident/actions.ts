@@ -22,6 +22,14 @@ const createZoneReservationSchema = z.object({
   note: z.string().max(180, "Nota demasiado larga.").optional(),
 });
 
+const createSuggestionSchema = z.object({
+  message: z
+    .string()
+    .trim()
+    .min(6, "Escribe una sugerencia un poco mas detallada.")
+    .max(500, "La sugerencia es demasiado larga."),
+});
+
 function overlapRange(
   startsAt: Date,
   endsAt: Date,
@@ -191,4 +199,26 @@ export async function deleteInviteQrAction(formData: FormData) {
   });
 
   revalidatePath("/resident");
+}
+
+export async function createResidentSuggestionAction(_prevState: string | null, formData: FormData) {
+  const session = await requireRole(["RESIDENT"]);
+  if (!session.residentialId) return "Sesion invalida sin residencial asociada.";
+
+  const parsed = createSuggestionSchema.safeParse({
+    message: formData.get("message"),
+  });
+  if (!parsed.success) return parsed.error.issues[0]?.message ?? "Datos invalidos.";
+
+  await prisma.residentSuggestion.create({
+    data: {
+      message: parsed.data.message,
+      residentId: session.userId,
+      residentialId: session.residentialId,
+    },
+  });
+
+  revalidatePath("/resident");
+  revalidatePath("/residential-admin/sugerencias");
+  return "Sugerencia enviada correctamente.";
 }

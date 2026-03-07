@@ -48,6 +48,7 @@ model Residential {
   announcements AdminAnnouncement[]
   contracts     ServiceContract[]
   deliveries    DeliveryAnnouncement[]
+  suggestions   ResidentSuggestion[]
 }
 
 model User {
@@ -70,6 +71,7 @@ model User {
   createdAnnouncements    AdminAnnouncement[]         @relation("AdminAnnouncementCreatedBy")
   receivedAnnouncements   AdminAnnouncementRecipient[]
   createdServiceContracts ServiceContract[]           @relation("ServiceContractCreatedBy")
+  residentSuggestions     ResidentSuggestion[]
 }
 
 model QrCode {
@@ -233,4 +235,17 @@ model ServiceContract {
 
   @@index([createdAt])
   @@index([residentialId, createdAt])
+}
+
+model ResidentSuggestion {
+  id            String      @id @default(cuid())
+  message       String
+  createdAt     DateTime    @default(now())
+  residentialId String
+  residentId    String
+  residential   Residential @relation(fields: [residentialId], references: [id], onDelete: Cascade)
+  resident      User        @relation(fields: [residentId], references: [id], onDelete: Cascade)
+
+  @@index([residentialId, createdAt])
+  @@index([residentId, createdAt])
 }

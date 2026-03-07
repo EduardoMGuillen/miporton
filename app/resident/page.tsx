@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { Card, DashboardShell } from "@/app/components/shell";
 import { CreateQrForm } from "@/app/resident/create-qr-form";
 import { CreateZoneReservationForm } from "@/app/resident/create-zone-reservation-form";
+import { ResidentSuggestionForm } from "@/app/resident/suggestion-form";
 import { PushSubscriptionCard } from "@/app/resident/push-subscription";
 import { deleteInviteQrAction, cancelZoneReservationAction } from "@/app/resident/actions";
 import { QrShareActions } from "@/app/resident/qr-share-actions";
@@ -243,6 +244,11 @@ export default async function ResidentPage() {
             Tu residencial aun no configura un numero de soporte.
           </p>
         )}
+      </Card>
+
+      <Card>
+        <h2 className="mb-3 text-lg font-semibold text-slate-900">Sugerencias para la administracion</h2>
+        <ResidentSuggestionForm />
       </Card>
     </DashboardShell>
   );
