@@ -1,6 +1,7 @@
 import QRCode from "qrcode";
 import { Card } from "@/app/components/shell";
 import { CreateAdminQrForm } from "@/app/residential-admin/create-admin-qr-form";
+import { RevokeAdminQrButton } from "@/app/residential-admin/revoke-admin-qr-button";
 import { requireRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
 import { formatDateTimeTegucigalpa } from "@/lib/datetime";
@@ -94,6 +95,7 @@ export default async function ResidentialAdminQrPage() {
                 residentialName={residential?.name ?? "Residencial"}
                 residentName={session.fullName}
               />
+              <RevokeAdminQrButton qrId={qr.id} />
             </article>
           ))}
           {activeQrCodes.length === 0 ? (

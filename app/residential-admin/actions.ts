@@ -483,6 +483,32 @@ export async function createAdminQrAction(_prevState: string | null, formData: F
   return "QR generado correctamente por administracion.";
 }
 
+export async function revokeAdminQrAction(formData: FormData) {
+  const session = await requireRole(["RESIDENTIAL_ADMIN"]);
+  if (!session.residentialId) return;
+
+  const qrId = String(formData.get("qrId") ?? "");
+  if (!qrId) return;
+
+  await prisma.qrCode.updateMany({
+    where: {
+      id: qrId,
+      residentialId: session.residentialId,
+      residentId: session.userId,
+      isRevoked: false,
+    },
+    data: {
+      isRevoked: true,
+      validUntil: new Date(),
+    },
+  });
+
+  revalidatePath("/residential-admin");
+  revalidatePath("/residential-admin/qr-admin");
+  revalidatePath("/guard");
+  revalidatePath("/resident");
+}
+
 export async function updateResidentialSettingsAction(_prevState: string | null, formData: FormData) {
   const session = await requireRole(["RESIDENTIAL_ADMIN"]);
   if (!session.residentialId) return "Sesion invalida sin residencial asociada.";
