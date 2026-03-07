@@ -35,7 +35,7 @@ export function CreateAnnouncementForm({
         className="field-base md:col-span-2"
       >
         <option value="ALL_RESIDENTS">Enviar a todos los residentes</option>
-        <option value="OWNERS_ONLY">Enviar solo a duenos</option>
+        <option value="OWNERS_ONLY">Enviar solo a dueños</option>
         <option value="SELECTED_RESIDENTS">Enviar a residentes seleccionados</option>
       </select>
 

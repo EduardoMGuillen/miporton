@@ -20,7 +20,7 @@ export default async function ResidentialAdminUsersPage() {
     },
     orderBy: { createdAt: "desc" },
   });
-  const residentCategoryLabel = (value: "OWNER" | "TENANT") => (value === "OWNER" ? "Dueno" : "Inquilino");
+  const residentCategoryLabel = (value: "OWNER" | "TENANT") => (value === "OWNER" ? "Dueño" : "Inquilino");
 
   return (
     <>
@@ -82,7 +82,7 @@ export default async function ResidentialAdminUsersPage() {
                             defaultValue={user.residentCategory}
                             className="field-base"
                           >
-                            <option value="OWNER">Dueno</option>
+                            <option value="OWNER">Dueño</option>
                             <option value="TENANT">Inquilino</option>
                           </select>
                           <input

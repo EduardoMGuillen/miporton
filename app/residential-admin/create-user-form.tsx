@@ -50,7 +50,7 @@ export function CreateResidentialUserForm() {
             onChange={(event) => setResidentCategory(event.target.value as "OWNER" | "TENANT")}
             className="field-base"
           >
-            <option value="OWNER">Dueno</option>
+            <option value="OWNER">Dueño</option>
             <option value="TENANT">Inquilino</option>
           </select>
           <input
