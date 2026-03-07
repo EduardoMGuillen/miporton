@@ -9,6 +9,7 @@ import { QuotationGenerator } from "@/app/super-admin/quotation-generator";
 import { ServiceContractForm } from "@/app/super-admin/service-contract-form";
 import { ServiceContractPrintButton } from "@/app/super-admin/service-contract-print-button";
 import { ReportsBackupButton } from "@/app/super-admin/reports-backup-button";
+import { DatabaseBackupButton } from "@/app/super-admin/database-backup-button";
 import { ResidentialSuspensionToggle } from "@/app/super-admin/residential-suspension-toggle";
 import { formatDateTimeTegucigalpa } from "@/lib/datetime";
 import {
@@ -222,7 +223,10 @@ export default async function SuperAdminPage({
         <p className="mb-4 text-sm text-slate-600">
           Descarga un ZIP con un reporte PDF por cada residencial para archivo interno o envio manual.
         </p>
-        <ReportsBackupButton />
+        <div className="grid gap-3">
+          <ReportsBackupButton />
+          <DatabaseBackupButton />
+        </div>
       </Card>
 
       <Card>
