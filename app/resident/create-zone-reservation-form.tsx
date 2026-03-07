@@ -13,8 +13,8 @@ export function CreateZoneReservationForm({
   const [message, formAction, isPending] = useActionState(createZoneReservationAction, initialState);
 
   return (
-    <form action={formAction} className="grid gap-3 md:grid-cols-2">
-      <select name="zoneId" className="field-base" required>
+    <form action={formAction} className="grid min-w-0 gap-3 md:grid-cols-2">
+      <select name="zoneId" className="field-base min-w-0" required>
         <option value="">Selecciona una zona</option>
         {zones.map((zone) => (
           <option key={zone.id} value={zone.id}>
@@ -22,9 +22,14 @@ export function CreateZoneReservationForm({
           </option>
         ))}
       </select>
-      <input name="startsAt" type="datetime-local" className="field-base" required />
-      <input name="endsAt" type="datetime-local" className="field-base" required />
-      <input name="note" className="field-base" placeholder="Nota de reserva (opcional)" maxLength={180} />
+      <input name="startsAt" type="datetime-local" className="field-base min-w-0 max-w-full" required />
+      <input name="endsAt" type="datetime-local" className="field-base min-w-0 max-w-full" required />
+      <input
+        name="note"
+        className="field-base min-w-0"
+        placeholder="Nota de reserva (opcional)"
+        maxLength={180}
+      />
       <button disabled={isPending} className="btn-primary md:col-span-2 md:w-max disabled:opacity-60">
         {isPending ? "Reservando..." : "Reservar zona"}
       </button>
