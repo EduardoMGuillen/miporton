@@ -6,7 +6,7 @@ import { z } from "zod";
 import { requireRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
 import { calculateValidityWindow } from "@/lib/qr";
-import { notifyGuardsInResidential } from "@/lib/push";
+import { notifyGuardsInResidential, notifyResidentialAdminsInResidential } from "@/lib/push";
 
 const createInviteSchema = z.object({
   visitorName: z.string().min(2, "Nombre de visita invalido."),
@@ -96,7 +96,7 @@ export async function createZoneReservationAction(_prevState: string | null, for
       residentialId: session.residentialId,
       isActive: true,
     },
-    select: { id: true, maxHoursPerReservation: true },
+    select: { id: true, name: true, maxHoursPerReservation: true },
   });
   if (!zone) return "Zona no disponible.";
 
@@ -139,6 +139,15 @@ export async function createZoneReservationAction(_prevState: string | null, for
       note: parsed.data.note?.trim() || null,
       status: "APPROVED",
     },
+  });
+  await notifyResidentialAdminsInResidential(session.residentialId, {
+    title: "Nueva reserva de zona",
+    body: `${session.fullName} reservo ${zone.name} para ${startsAt.toLocaleTimeString("es-HN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    })}.`,
+    url: "/residential-admin",
   });
 
   revalidatePath("/resident");

@@ -3,6 +3,10 @@
     {
       "path": "/api/internal/purge-id-evidence",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/internal/zone-reservation-reminders",
+      "schedule": "*/10 * * * *"
     }
   ]
 }

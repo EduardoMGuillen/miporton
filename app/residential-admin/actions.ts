@@ -262,6 +262,41 @@ export async function createZoneBlockAction(_prevState: string | null, formData:
   return "Bloqueo creado correctamente.";
 }
 
+export async function cancelZoneReservationByAdminAction(formData: FormData) {
+  const session = await requireRole(["RESIDENTIAL_ADMIN"]);
+  if (!session.residentialId) return;
+
+  const reservationId = String(formData.get("reservationId") ?? "");
+  if (!reservationId) return;
+
+  const target = await prisma.zoneReservation.findFirst({
+    where: {
+      id: reservationId,
+      residentialId: session.residentialId,
+      status: "APPROVED",
+    },
+    include: {
+      zone: { select: { name: true } },
+      resident: { select: { id: true, fullName: true } },
+    },
+  });
+  if (!target) return;
+
+  await prisma.zoneReservation.update({
+    where: { id: target.id },
+    data: { status: "CANCELLED" },
+  });
+
+  await notifyUser(target.resident.id, {
+    title: "Reserva cancelada",
+    body: `Tu reserva de ${target.zone.name} fue cancelada por administracion.`,
+    url: "/resident",
+  });
+
+  revalidatePath("/residential-admin");
+  revalidatePath("/resident");
+}
+
 export async function sendResidentialAnnouncementAction(_prevState: string | null, formData: FormData) {
   const session = await requireRole(["RESIDENTIAL_ADMIN"]);
   if (!session.residentialId) return "Sesion invalida sin residencial asociada.";

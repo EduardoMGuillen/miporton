@@ -59,3 +59,18 @@ export async function notifyGuardsInResidential(
 
   await Promise.all(guards.map((guard) => notifyUser(guard.id, payload)));
 }
+
+export async function notifyResidentialAdminsInResidential(
+  residentialId: string,
+  payload: PushPayload,
+) {
+  const admins = await prisma.user.findMany({
+    where: {
+      residentialId,
+      role: "RESIDENTIAL_ADMIN",
+    },
+    select: { id: true },
+  });
+
+  await Promise.all(admins.map((admin) => notifyUser(admin.id, payload)));
+}

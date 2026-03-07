@@ -11,6 +11,7 @@ import { CreateAnnouncementForm } from "@/app/residential-admin/create-announcem
 import { CreateAdminQrForm } from "@/app/residential-admin/create-admin-qr-form";
 import { formatDateTimeTegucigalpa } from "@/lib/datetime";
 import {
+  cancelZoneReservationByAdminAction,
   deleteResidentialUserAction,
   updateResidentialUserAction,
 } from "@/app/residential-admin/actions";
@@ -448,6 +449,14 @@ export default async function ResidentialAdminPage({
                     Estado: {reservation.status === "APPROVED" ? "Activa" : "Cancelada"}
                   </p>
                   {reservation.note ? <p className="text-xs text-slate-500">{reservation.note}</p> : null}
+                  {reservation.status === "APPROVED" ? (
+                    <form action={cancelZoneReservationByAdminAction} className="mt-2">
+                      <input type="hidden" name="reservationId" value={reservation.id} />
+                      <button className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-700">
+                        Cancelar reserva (admin)
+                      </button>
+                    </form>
+                  ) : null}
                 </div>
               ))}
               {zoneReservations.length === 0 ? (
