@@ -140,7 +140,7 @@ export default async function Home() {
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
               <p className="font-semibold text-slate-900">Reservas de zonas comunes</p>
               <p className="mt-1 text-sm text-slate-600">
-                Calendario de reservas, bloqueos administrativos y recordatorios automáticos.
+                Calendario de reservas, bloqueos administrativos y control por horas maximas.
               </p>
             </div>
           </div>
@@ -226,6 +226,29 @@ export default async function Home() {
             <li>- Bloqueo de fechas/rangos de uso en calendario.</li>
             <li>- Notificacion inmediata al admin cuando hay nueva reserva.</li>
             <li>- Notificacion al residente por cancelaciones de reserva por admin.</li>
+          </ul>
+        </article>
+      </section>
+
+      <section className="mt-6 grid gap-6 md:grid-cols-2">
+        <article className="surface-card p-6">
+          <p className="text-sm font-semibold text-slate-900">Funciones para Super Admin</p>
+          <ul className="mt-3 space-y-2 text-sm text-slate-600">
+            <li>- Alta de residenciales y administradores.</li>
+            <li>- Cotizaciones y contratos con PDF profesional e impresion posterior.</li>
+            <li>- Suspension temporal de residencial con reactivacion por switch.</li>
+            <li>- Backup manual de reportes (PDF por residencial).</li>
+            <li>- Backup completo de base de datos en ZIP.</li>
+          </ul>
+        </article>
+        <article className="surface-card p-6">
+          <p className="text-sm font-semibold text-slate-900">Trazabilidad, soporte y seguridad</p>
+          <ul className="mt-3 space-y-2 text-sm text-slate-600">
+            <li>- Registro de entradas con filtros avanzados y exportes por registro.</li>
+            <li>- Evidencia de ID y placa integrada en reportes mensuales PDF.</li>
+            <li>- Configuracion de WhatsApp de soporte por residencial.</li>
+            <li>- Vista de sugerencias de residentes para administracion.</li>
+            <li>- Retencion de evidencia sensible por politica de 60 dias.</li>
           </ul>
         </article>
       </section>
