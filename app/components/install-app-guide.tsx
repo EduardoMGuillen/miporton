@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 
 type DeferredPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -21,6 +22,7 @@ function isInStandaloneMode() {
 }
 
 export function InstallAppGuide({ compact = false }: { compact?: boolean }) {
+  const [isClient, setIsClient] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<DeferredPromptEvent | null>(null);
   const [isInstalling, setIsInstalling] = useState(false);
@@ -46,6 +48,10 @@ export function InstallAppGuide({ compact = false }: { compact?: boolean }) {
       window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
       window.removeEventListener("appinstalled", onInstalled);
     };
+  }, []);
+
+  useEffect(() => {
+    setIsClient(true);
   }, []);
 
   const canAutoInstall = Boolean(installPrompt) && !isInstalled;
@@ -84,8 +90,9 @@ export function InstallAppGuide({ compact = false }: { compact?: boolean }) {
         Instalar app
       </button>
 
-      {isOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
+      {isClient && isOpen
+        ? createPortal(
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/50 p-4">
           <div className="w-full max-w-xl rounded-2xl bg-white p-5 shadow-2xl">
             <div className="mb-2 flex items-center justify-between gap-3">
               <h3 className="text-lg font-semibold text-slate-900">Agregar MiVisita a inicio</h3>
@@ -152,8 +159,10 @@ export function InstallAppGuide({ compact = false }: { compact?: boolean }) {
             ) : null}
             {feedback ? <p className="mt-3 text-xs text-slate-600">{feedback}</p> : null}
           </div>
-        </div>
-      ) : null}
+        </div>,
+          document.body,
+        )
+        : null}
     </div>
   );
 }
