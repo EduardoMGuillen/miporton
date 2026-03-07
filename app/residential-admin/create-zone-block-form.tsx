@@ -13,8 +13,8 @@ export function CreateZoneBlockForm({
   const [message, formAction, isPending] = useActionState(createZoneBlockAction, initialState);
 
   return (
-    <form action={formAction} className="grid gap-3 md:grid-cols-2">
-      <select name="zoneId" required className="field-base md:col-span-2">
+    <form action={formAction} className="grid min-w-0 gap-3 md:grid-cols-2">
+      <select name="zoneId" required className="field-base min-w-0 md:col-span-2">
         <option value="">Selecciona zona a bloquear</option>
         {zones.map((zone) => (
           <option key={zone.id} value={zone.id}>
@@ -22,12 +22,22 @@ export function CreateZoneBlockForm({
           </option>
         ))}
       </select>
-      <input name="startsAt" type="datetime-local" required className="field-base" />
-      <input name="endsAt" type="datetime-local" required className="field-base" />
+      <input
+        name="startsAt"
+        type="datetime-local"
+        required
+        className="field-base min-w-0 max-w-full"
+      />
+      <input
+        name="endsAt"
+        type="datetime-local"
+        required
+        className="field-base min-w-0 max-w-full"
+      />
       <input
         name="reason"
         maxLength={180}
-        className="field-base md:col-span-2"
+        className="field-base min-w-0 md:col-span-2"
         placeholder="Motivo de bloqueo (opcional)"
       />
       <button type="submit" disabled={isPending} className="btn-primary disabled:opacity-60 md:w-max">
