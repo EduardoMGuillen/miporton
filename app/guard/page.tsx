@@ -5,6 +5,7 @@ import { GuardQrScanner } from "@/app/guard/qr-scanner";
 import { acceptAnnouncedVisitAction } from "@/app/guard/actions";
 import { GuardPushSubscriptionCard } from "@/app/guard/push-subscription";
 import { GuardAutoRefresh } from "@/app/guard/guard-auto-refresh";
+import { GuardDeliveryAnnouncementForm } from "@/app/guard/delivery-announcement-form";
 
 export default async function GuardPage() {
   const session = await requireRole(["GUARD"]);
@@ -30,6 +31,15 @@ export default async function GuardPage() {
     orderBy: { createdAt: "desc" },
     take: 20,
   });
+  const residents = await prisma.user.findMany({
+    where: {
+      residentialId: session.residentialId,
+      role: "RESIDENT",
+    },
+    select: { id: true, fullName: true },
+    orderBy: { fullName: "asc" },
+    take: 100,
+  });
 
   return (
     <DashboardShell
@@ -41,6 +51,14 @@ export default async function GuardPage() {
       <Card>
         <h2 className="mb-4 text-lg font-semibold text-slate-900">Escanear QR</h2>
         <GuardQrScanner />
+      </Card>
+
+      <Card>
+        <h2 className="mb-2 text-lg font-semibold text-slate-900">Delivery en entrada</h2>
+        <p className="mb-4 text-sm text-slate-600">
+          Selecciona el residente y notifica que su delivery esta en la entrada.
+        </p>
+        <GuardDeliveryAnnouncementForm residents={residents} />
       </Card>
 
       <Card>
