@@ -13,7 +13,7 @@ export function CreateZoneBlockForm({
   const [message, formAction, isPending] = useActionState(createZoneBlockAction, initialState);
 
   return (
-    <form action={formAction} className="grid min-w-0 gap-3 md:grid-cols-2">
+    <form action={formAction} className="grid w-full min-w-0 gap-3 overflow-x-hidden md:grid-cols-2">
       <select name="zoneId" required className="field-base min-w-0 md:col-span-2">
         <option value="">Selecciona zona a bloquear</option>
         {zones.map((zone) => (
@@ -26,13 +26,13 @@ export function CreateZoneBlockForm({
         name="startsAt"
         type="datetime-local"
         required
-        className="field-base min-w-0 max-w-full"
+        className="field-base min-w-0 w-full max-w-full text-sm"
       />
       <input
         name="endsAt"
         type="datetime-local"
         required
-        className="field-base min-w-0 max-w-full"
+        className="field-base min-w-0 w-full max-w-full text-sm"
       />
       <input
         name="reason"

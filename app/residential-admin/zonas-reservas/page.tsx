@@ -105,14 +105,19 @@ export default async function ResidentialAdminZonesPage({
 
       <Card>
         <h2 className="mb-3 text-lg font-semibold text-slate-900">Calendario de reservas y bloqueos</h2>
-        <form className="grid gap-2 md:grid-cols-3">
-          <input type="month" name="month" defaultValue={selectedMonth} className="field-base" />
-          <select name="status" defaultValue={reservationStatusFilter} className="field-base">
+        <form className="grid w-full min-w-0 gap-2 overflow-x-hidden md:grid-cols-3">
+          <input
+            type="month"
+            name="month"
+            defaultValue={selectedMonth}
+            className="field-base min-w-0 w-full max-w-full text-sm"
+          />
+          <select name="status" defaultValue={reservationStatusFilter} className="field-base min-w-0">
             <option value="">Reservas: todas</option>
             <option value="APPROVED">Solo activas</option>
             <option value="CANCELLED">Solo canceladas</option>
           </select>
-          <button className="btn-primary w-full">Aplicar</button>
+          <button className="btn-primary w-full min-w-0">Aplicar</button>
         </form>
 
         <div className="mt-5">
