@@ -44,7 +44,7 @@ export default async function ResidentPage() {
     orderBy: [{ validUntil: "asc" }, { createdAt: "desc" }],
     take: 40,
   });
-  const [zones, reservations] = await Promise.all([
+  const [zones, reservations, zoneReservations, zoneBlocks] = await Promise.all([
     prisma.zone.findMany({
       where: { residentialId: session.residentialId ?? "", isActive: true },
       orderBy: { name: "asc" },
@@ -58,6 +58,31 @@ export default async function ResidentPage() {
       include: { zone: { select: { name: true } } },
       orderBy: { startsAt: "asc" },
       take: 40,
+    }),
+    prisma.zoneReservation.findMany({
+      where: {
+        residentialId: session.residentialId ?? "",
+        status: "APPROVED",
+      },
+      select: {
+        zoneId: true,
+        startsAt: true,
+        endsAt: true,
+      },
+      orderBy: { startsAt: "asc" },
+      take: 800,
+    }),
+    prisma.zoneBlock.findMany({
+      where: {
+        residentialId: session.residentialId ?? "",
+      },
+      select: {
+        zoneId: true,
+        startsAt: true,
+        endsAt: true,
+      },
+      orderBy: { startsAt: "asc" },
+      take: 800,
     }),
   ]);
 
@@ -107,6 +132,20 @@ export default async function ResidentPage() {
             name: zone.name,
             maxHoursPerReservation: zone.maxHoursPerReservation,
           }))}
+          occupiedSlots={[
+            ...zoneReservations.map((item) => ({
+              zoneId: item.zoneId,
+              startsAtIso: item.startsAt.toISOString(),
+              endsAtIso: item.endsAt.toISOString(),
+              source: "reservation" as const,
+            })),
+            ...zoneBlocks.map((item) => ({
+              zoneId: item.zoneId,
+              startsAtIso: item.startsAt.toISOString(),
+              endsAtIso: item.endsAt.toISOString(),
+              source: "block" as const,
+            })),
+          ]}
         />
 
         <div className="mt-4 grid gap-2">
