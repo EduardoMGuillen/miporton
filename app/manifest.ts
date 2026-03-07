@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "MiVisita",
     short_name: "MiVisita",
     description: "Control de visitas y accesos residenciales con QR.",
-    start_url: "/",
+    start_url: "/login",
     display: "standalone",
     background_color: "#f4f7fb",
     theme_color: "#1d4ed8",
