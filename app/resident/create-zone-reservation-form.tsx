@@ -28,15 +28,6 @@ function overlapRange(
   return startsAt < otherEnd && endsAt > otherStart;
 }
 
-function availableDurationFromStart(occupiedHours: Set<number>, startHour: number, maxHours: number) {
-  let available = 0;
-  for (let hour = startHour; hour < 24 && available < maxHours; hour += 1) {
-    if (occupiedHours.has(hour)) break;
-    available += 1;
-  }
-  return available;
-}
-
 export function CreateZoneReservationForm({
   zones,
   occupiedSlots,
@@ -96,14 +87,8 @@ export function CreateZoneReservationForm({
         ? selectedStartHourNumberRaw
         : availableStartHours[0];
   const effectiveStartHour = pad2(effectiveStartHourNumber);
-  const currentStartHourAvailable = availableStartHours.includes(effectiveStartHourNumber);
-  const maxSelectableDuration = useMemo(
-    () =>
-      currentStartHourAvailable
-        ? availableDurationFromStart(occupiedHours, effectiveStartHourNumber, maxHoursByZone)
-        : 0,
-    [currentStartHourAvailable, maxHoursByZone, occupiedHours, effectiveStartHourNumber],
-  );
+  const remainingHoursInDay = Math.max(1, 24 - effectiveStartHourNumber);
+  const maxSelectableDuration = Math.max(1, Math.min(maxHoursByZone, remainingHoursInDay));
   const durationOptions = Array.from({ length: Math.max(1, maxSelectableDuration) }, (_, index) => index + 1);
   const durationRaw = Number(durationHours || "1");
   const effectiveDurationHours = Math.min(Math.max(durationRaw, 1), Math.max(1, maxSelectableDuration));

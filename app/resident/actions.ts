@@ -39,6 +39,28 @@ function overlapRange(
   return startsAt < otherEnd && endsAt > otherStart;
 }
 
+function parseTegucigalpaDateTime(value: string) {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (!match) return null;
+  const [, yearRaw, monthRaw, dayRaw, hourRaw, minuteRaw] = match;
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  const day = Number(dayRaw);
+  const hour = Number(hourRaw);
+  const minute = Number(minuteRaw);
+  if (
+    Number.isNaN(year) ||
+    Number.isNaN(month) ||
+    Number.isNaN(day) ||
+    Number.isNaN(hour) ||
+    Number.isNaN(minute)
+  ) {
+    return null;
+  }
+  // America/Tegucigalpa is UTC-6 (no DST). Convert local wall time to UTC.
+  return new Date(Date.UTC(year, month - 1, day, hour + 6, minute, 0, 0));
+}
+
 export async function createInviteQrAction(_prevState: string | null, formData: FormData) {
   const session = await requireRole(["RESIDENT"]);
   if (!session.residentialId) return "Sesion invalida sin residencial asociada.";
@@ -92,9 +114,9 @@ export async function createZoneReservationAction(_prevState: string | null, for
   });
   if (!parsed.success) return parsed.error.issues[0]?.message ?? "Datos invalidos.";
 
-  const startsAt = new Date(parsed.data.startsAt);
-  const endsAt = new Date(parsed.data.endsAt);
-  if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
+  const startsAt = parseTegucigalpaDateTime(parsed.data.startsAt);
+  const endsAt = parseTegucigalpaDateTime(parsed.data.endsAt);
+  if (!startsAt || !endsAt || Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
     return "Fecha/hora invalida.";
   }
   if (startsAt >= endsAt) return "La hora final debe ser mayor que la hora inicial.";
@@ -156,6 +178,7 @@ export async function createZoneReservationAction(_prevState: string | null, for
       hour: "2-digit",
       minute: "2-digit",
       hour12: true,
+      timeZone: "America/Tegucigalpa",
     })}.`,
     url: "/residential-admin",
   });
