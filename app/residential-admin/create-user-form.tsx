@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useActionState } from "react";
 import { createResidentialUserAction } from "@/app/residential-admin/actions";
 
@@ -7,6 +8,7 @@ const initialState: string | null = null;
 
 export function CreateResidentialUserForm() {
   const [message, formAction, isPending] = useActionState(createResidentialUserAction, initialState);
+  const [role, setRole] = useState<"RESIDENT" | "GUARD">("RESIDENT");
 
   return (
     <form action={formAction} className="grid gap-3 md:grid-cols-2">
@@ -30,19 +32,22 @@ export function CreateResidentialUserForm() {
         required
         className="field-base"
       />
-      <input
-        name="houseNumber"
-        placeholder="Numero de vivienda (opcional)"
-        className="field-base"
-      />
       <select
         name="role"
-        defaultValue="RESIDENT"
+        value={role}
+        onChange={(event) => setRole(event.target.value as "RESIDENT" | "GUARD")}
         className="field-base"
       >
         <option value="RESIDENT">Residente</option>
         <option value="GUARD">Guardia</option>
       </select>
+      {role === "RESIDENT" ? (
+        <input
+          name="houseNumber"
+          placeholder="Numero de vivienda (opcional)"
+          className="field-base"
+        />
+      ) : null}
       <button
         type="submit"
         disabled={isPending}

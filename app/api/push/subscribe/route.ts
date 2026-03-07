@@ -12,7 +12,10 @@ type SubscriptionBody = {
 
 export async function POST(request: Request) {
   const session = await getSession();
-  if (!session || (session.role !== "RESIDENT" && session.role !== "GUARD")) {
+  if (
+    !session ||
+    (session.role !== "RESIDENT" && session.role !== "GUARD" && session.role !== "RESIDENTIAL_ADMIN")
+  ) {
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   }
 

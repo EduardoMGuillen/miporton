@@ -30,52 +30,63 @@ export default async function ResidentialAdminUsersPage() {
 
       <Card>
         <h2 className="mb-4 text-lg font-semibold text-slate-900">Usuarios de la residencial</h2>
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="space-y-3">
           {users.map((user) => (
             <div key={user.id} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
-              <p className="font-semibold text-slate-900">{user.fullName}</p>
-              <p className="text-sm text-slate-600">
-                {user.email} - {user.role === "RESIDENT" ? "Residente" : "Guardia"}
-              </p>
-              <p className="text-xs text-slate-500">Vivienda: {user.houseNumber || "Sin definir"}</p>
-              <div className="mt-3 grid gap-2">
-                <form action={updateResidentialUserAction} className="grid gap-2">
-                  <input type="hidden" name="userId" value={user.id} />
-                  <input
-                    name="fullName"
-                    defaultValue={user.fullName}
-                    className="field-base"
-                    placeholder="Nombre"
-                    required
-                  />
-                  <input
-                    name="email"
-                    type="email"
-                    defaultValue={user.email}
-                    className="field-base"
-                    placeholder="Correo"
-                    required
-                  />
-                  <input
-                    name="password"
-                    type="password"
-                    className="field-base"
-                    placeholder="Nueva password (opcional)"
-                  />
-                  <input
-                    name="houseNumber"
-                    defaultValue={user.houseNumber ?? ""}
-                    className="field-base"
-                    placeholder="Numero de vivienda"
-                  />
-                  <button className="btn-primary w-full">Guardar cambios</button>
-                </form>
-                <form action={deleteResidentialUserAction}>
-                  <input type="hidden" name="userId" value={user.id} />
-                  <button className="w-full rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100">
-                    Eliminar usuario
-                  </button>
-                </form>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="font-semibold text-slate-900">{user.fullName}</p>
+                  <p className="text-sm text-slate-600">
+                    {user.email} - {user.role === "RESIDENT" ? "Residente" : "Guardia"}
+                  </p>
+                  <p className="text-xs text-slate-500">Vivienda: {user.houseNumber || "Sin definir"}</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <details>
+                    <summary className="cursor-pointer rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 transition hover:bg-blue-100">
+                      Editar
+                    </summary>
+                    <form action={updateResidentialUserAction} className="mt-2 grid min-w-[260px] gap-2">
+                      <input type="hidden" name="userId" value={user.id} />
+                      <input
+                        name="fullName"
+                        defaultValue={user.fullName}
+                        className="field-base"
+                        placeholder="Nombre"
+                        required
+                      />
+                      <input
+                        name="email"
+                        type="email"
+                        defaultValue={user.email}
+                        className="field-base"
+                        placeholder="Correo"
+                        required
+                      />
+                      <input
+                        name="password"
+                        type="password"
+                        className="field-base"
+                        placeholder="Nueva password (opcional)"
+                      />
+                      {user.role === "RESIDENT" ? (
+                        <input
+                          name="houseNumber"
+                          defaultValue={user.houseNumber ?? ""}
+                          className="field-base"
+                          placeholder="Numero de vivienda"
+                        />
+                      ) : null}
+                      <button className="btn-primary w-full">Guardar cambios</button>
+                    </form>
+                  </details>
+                  <form action={deleteResidentialUserAction}>
+                    <input type="hidden" name="userId" value={user.id} />
+                    <button className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100">
+                      Eliminar
+                    </button>
+                  </form>
+                </div>
               </div>
             </div>
           ))}
