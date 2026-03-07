@@ -60,6 +60,13 @@ body {
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.14);
 }
 
+/* Prevent mobile overflow for native datetime controls inside cards/forms */
+input[type="datetime-local"].field-base {
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+}
+
 .btn-primary {
   border-radius: 0.75rem;
   background: linear-gradient(135deg, #2563eb, #1d4ed8);
