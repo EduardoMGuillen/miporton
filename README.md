@@ -1,36 +1,89 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MiVisita App
 
-## Getting Started
+Plataforma de control de acceso residencial con PWA, notificaciones push y paneles por rol:
 
-First, run the development server:
+- Super Admin
+- Admin Residencial
+- Residente
+- Guardia
+
+## Funcionalidades principales
+
+- Invitaciones de visita con QR (1 uso, 1 dia, 3 dias, infinita).
+- Escaneo de QR en porteria con evidencia de ID y foto de placa cuando aplica.
+- Notificaciones push en tiempo real (llegadas, deliveries, comunicados y reservas).
+- Registro de entradas con filtros, vista de evidencia y exportacion PDF por registro.
+- Reporte mensual PDF de entradas y delivery.
+- Zonas comunes con reservas por fecha/hora, bloqueos y limite de horas por reserva.
+- Cotizaciones y contratos de servicio en Super Admin con generacion PDF.
+- Retencion de evidencias sensible por politica (60 dias).
+
+## Stack tecnico
+
+- Next.js (App Router)
+- TypeScript
+- Prisma + PostgreSQL (Supabase)
+- Web Push (Service Worker + VAPID)
+- jsPDF para exportes
+
+## Requisitos
+
+- Node.js 20+
+- npm
+- Base de datos PostgreSQL (Supabase recomendado)
+
+## Variables de entorno
+
+Crea tu `.env` con al menos:
+
+```env
+DATABASE_URL=
+DIRECT_URL=
+AUTH_SECRET=
+NEXT_PUBLIC_APP_URL=
+
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=
+VAPID_PRIVATE_KEY=
+VAPID_CONTACT_EMAIL=
+
+CRON_SECRET=
+```
+
+## Migraciones SQL en Supabase
+
+Si aplicas migraciones manualmente en Supabase SQL Editor, ejecuta:
+
+1. `prisma/migrations/20260306113000_full_feature_foundation/migration.sql`
+2. `prisma/migrations/20260306142000_zone_reservation_notifications/migration.sql`
+
+Luego en local:
+
+```bash
+npm run prisma:generate
+```
+
+## Desarrollo local
+
+```bash
+npm install
+npm run prisma:generate
+npm run dev
+```
+
+Abrir `http://localhost:3000`.
+
+## Comandos utiles
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run lint
+npm run build
+npm run prisma:generate
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Cron jobs en Vercel
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Configurados en `vercel.json`:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `/api/internal/purge-id-evidence` (purga de evidencias antiguas)
+- `/api/internal/zone-reservation-reminders` (recordatorios de reservas cercanas)

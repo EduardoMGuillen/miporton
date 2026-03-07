@@ -8,7 +8,7 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://miporton.vercel.app"
 export const metadata: Metadata = {
   title: "MiVisita | Control de acceso residencial inteligente",
   description:
-    "MiVisita digitaliza el acceso residencial con invitaciones QR, validacion en porteria, notificaciones en tiempo real y trazabilidad de ingresos para residentes y administradores.",
+    "MiVisita digitaliza acceso residencial con QR, reservas de zonas, notificaciones push y reportes operativos para residentes, guardias y administradores.",
   keywords: [
     "control de acceso",
     "residencial",
@@ -17,6 +17,8 @@ export const metadata: Metadata = {
     "porteria",
     "seguridad residencial",
     "mi visita",
+    "reservas de zonas",
+    "reporte mensual",
   ],
   alternates: {
     canonical: "/",
@@ -26,7 +28,7 @@ export const metadata: Metadata = {
     url: APP_URL,
     title: "MiVisita | Seguridad y control de visitas",
     description:
-      "Gestiona visitas con QR, valida ingresos en porteria y mantente informado al instante.",
+      "Gestiona visitas con QR, reservas de zonas, valida ingresos en porteria y mantente informado al instante.",
     siteName: "MiVisita",
     images: [
       {
@@ -41,7 +43,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "MiVisita | Control de acceso residencial",
     description:
-      "Invitaciones QR, validacion en entrada y notificaciones en tiempo real para residenciales.",
+      "Invitaciones QR, reservas de zonas, validacion en entrada y notificaciones en tiempo real para residenciales.",
     images: ["/logomivisita.png"],
   },
   icons: {
@@ -64,7 +66,7 @@ export default async function Home() {
       priceCurrency: "HNL",
     },
     description:
-      "Plataforma de control de acceso residencial con codigos QR, notificaciones push y paneles para guardias, residentes y administradores.",
+      "Plataforma de control de acceso residencial con QR, reservas de zonas, notificaciones push y paneles para guardias, residentes y administradores.",
     url: APP_URL,
   };
 
@@ -136,9 +138,9 @@ export default async function Home() {
               </p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-              <p className="font-semibold text-slate-900">Multi residencial</p>
+              <p className="font-semibold text-slate-900">Reservas de zonas comunes</p>
               <p className="mt-1 text-sm text-slate-600">
-                Gestion unificada para varios proyectos y administradores.
+                Calendario de reservas, bloqueos administrativos y recordatorios automáticos.
               </p>
             </div>
           </div>
@@ -170,6 +172,10 @@ export default async function Home() {
               <p className="font-semibold text-slate-900">3) Sistema notifica y registra</p>
               <p>Se envian alertas al residente y queda historial auditable para admin.</p>
             </li>
+            <li>
+              <p className="font-semibold text-slate-900">4) Gestion de zonas y reportes</p>
+              <p>Los residentes reservan zonas y administracion controla bloqueos y reportes PDF.</p>
+            </li>
           </ol>
           <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -186,7 +192,7 @@ export default async function Home() {
         <article className="surface-card p-6">
           <p className="text-sm font-semibold text-slate-900">Modulo Residente</p>
           <p className="mt-2 text-sm text-slate-600">
-            Crea visitas, comparte QR y recibe avisos de llegada y entregas en entrada.
+            Crea visitas, reserva zonas comunes y recibe avisos de llegada, delivery y recordatorios.
           </p>
         </article>
         <article className="surface-card p-6">
@@ -198,8 +204,29 @@ export default async function Home() {
         <article className="surface-card p-6">
           <p className="text-sm font-semibold text-slate-900">Modulo Administracion</p>
           <p className="mt-2 text-sm text-slate-600">
-            Monitoreo de entradas, filtros por residencial/mes y exportes para auditoria.
+            Monitoreo de entradas, reservas y bloqueos, comunicados push y exportes para auditoria.
           </p>
+        </article>
+      </section>
+
+      <section className="mt-6 grid gap-6 md:grid-cols-2">
+        <article className="surface-card p-6">
+          <p className="text-sm font-semibold text-slate-900">Nuevas capacidades operativas</p>
+          <ul className="mt-3 space-y-2 text-sm text-slate-600">
+            <li>- QR con validez infinita y descripcion opcional.</li>
+            <li>- Evidencia de ID y placa para visitas en vehiculo.</li>
+            <li>- Reporte mensual PDF de entradas y delivery.</li>
+            <li>- Comunicados push por residencial (masivo o seleccionado).</li>
+          </ul>
+        </article>
+        <article className="surface-card p-6">
+          <p className="text-sm font-semibold text-slate-900">Para equipos administrativos</p>
+          <ul className="mt-3 space-y-2 text-sm text-slate-600">
+            <li>- Creacion de zonas y politicas por horas maximas.</li>
+            <li>- Bloqueo de fechas/rangos de uso en calendario.</li>
+            <li>- Notificacion inmediata al admin cuando hay nueva reserva.</li>
+            <li>- Notificacion al residente por cancelaciones y proximidad de reserva.</li>
+          </ul>
         </article>
       </section>
     </main>
