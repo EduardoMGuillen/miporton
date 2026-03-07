@@ -1,12 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
-import { getSession } from "@/lib/auth";
-import { dashboardPathByRole } from "@/lib/authorization";
 
 export default async function Home() {
-  const session = await getSession();
-  const dashboardPath = session ? dashboardPathByRole(session.role) : null;
-
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-8">
       <header className="surface-card flex items-center justify-between px-5 py-3">
@@ -31,14 +26,6 @@ export default async function Home() {
           >
             Instalar app
           </Link>
-          {dashboardPath ? (
-            <Link
-              href={dashboardPath}
-              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
-            >
-              Ir a mi panel
-            </Link>
-          ) : null}
           <Link href="/login" className="btn-primary text-sm">
             Iniciar sesion
           </Link>
