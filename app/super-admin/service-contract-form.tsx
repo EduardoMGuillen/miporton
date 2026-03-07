@@ -1,8 +1,8 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { jsPDF } from "jspdf";
 import { createServiceContractAction } from "@/app/super-admin/actions";
+import { generateServiceContractPdf } from "@/app/super-admin/service-contract-pdf";
 
 const initialState: string | null = null;
 
@@ -21,38 +21,27 @@ export function ServiceContractForm({
     monthlyAmount: "",
     startsOn: "",
     endsOn: "",
-    terms: "",
+    terms:
+      "El cliente acepta el uso de la plataforma para gestion de accesos y notificaciones. Cualquier solicitud de personalizacion adicional se cotizara por separado mediante anexo.",
   });
 
-  function generatePreviewPdf() {
-    const doc = new jsPDF({ unit: "pt", format: "a4" });
-    let y = 50;
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
-    doc.text("Contrato de Servicio - MiVisita", 40, y);
-    y += 24;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(11);
+  async function generatePreviewPdf() {
     const amount = Number(formValues.monthlyAmount || 0);
-    const lines = [
-      `Residencial/Cliente: ${formValues.residentialName || "-"}`,
-      `Representante legal: ${formValues.legalRepresentative || "-"}`,
-      `Email: ${formValues.representativeEmail || "-"}`,
-      `Telefono: ${formValues.representativePhone || "-"}`,
-      `Plan: ${formValues.servicePlan || "-"}`,
-      `Monto mensual: HNL ${amount.toLocaleString("es-HN", { minimumFractionDigits: 2 })}`,
-      `Inicio: ${formValues.startsOn || "-"}`,
-      `Fin: ${formValues.endsOn || "No definido"}`,
-      "",
-      "Terminos:",
-      formValues.terms || "Sin terminos adicionales.",
-    ];
-    lines.forEach((line) => {
-      const wrapped = doc.splitTextToSize(line, 520);
-      doc.text(wrapped, 40, y);
-      y += wrapped.length * 14;
+    if (!Number.isFinite(amount) || amount <= 0) return;
+    if (!formValues.startsOn) return;
+    const startsOn = new Date(formValues.startsOn);
+    const endsOn = formValues.endsOn ? new Date(formValues.endsOn) : null;
+    await generateServiceContractPdf({
+      residentialName: formValues.residentialName || "-",
+      legalRepresentative: formValues.legalRepresentative || "-",
+      representativeEmail: formValues.representativeEmail || "-",
+      representativePhone: formValues.representativePhone || "-",
+      servicePlan: formValues.servicePlan || "-",
+      monthlyAmount: amount,
+      startsOn,
+      endsOn,
+      terms: formValues.terms || null,
     });
-    doc.save(`contrato-servicio-${(formValues.residentialName || "cliente").replaceAll(" ", "-")}.pdf`);
   }
 
   return (
@@ -154,7 +143,9 @@ export function ServiceContractForm({
         </button>
         <button
           type="button"
-          onClick={generatePreviewPdf}
+          onClick={() => {
+            void generatePreviewPdf();
+          }}
           className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
         >
           Generar PDF del contrato

@@ -7,6 +7,7 @@ import { MonthlyAccessReportButton } from "@/app/components/monthly-access-repor
 import { CreateResidentialForm } from "@/app/super-admin/create-residential-form";
 import { QuotationGenerator } from "@/app/super-admin/quotation-generator";
 import { ServiceContractForm } from "@/app/super-admin/service-contract-form";
+import { ServiceContractPrintButton } from "@/app/super-admin/service-contract-print-button";
 import { ReportsBackupButton } from "@/app/super-admin/reports-backup-button";
 import { formatDateTimeTegucigalpa } from "@/lib/datetime";
 import {
@@ -198,6 +199,18 @@ export default async function SuperAdminPage({
                 Inicio: {formatDateTimeTegucigalpa(contract.startsOn)} | Monto mensual: HNL{" "}
                 {contract.monthlyAmount.toLocaleString("es-HN", { minimumFractionDigits: 2 })}
               </p>
+              <ServiceContractPrintButton
+                contractId={contract.id}
+                residentialName={contract.residentialName}
+                legalRepresentative={contract.legalRepresentative}
+                representativeEmail={contract.representativeEmail}
+                representativePhone={contract.representativePhone}
+                servicePlan={contract.servicePlan}
+                monthlyAmount={contract.monthlyAmount}
+                startsOn={contract.startsOn.toISOString()}
+                endsOn={contract.endsOn ? contract.endsOn.toISOString() : null}
+                terms={contract.terms}
+              />
             </div>
           ))}
         </div>
