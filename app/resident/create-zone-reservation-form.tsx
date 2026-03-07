@@ -28,6 +28,15 @@ function overlapRange(
   return startsAt < otherEnd && endsAt > otherStart;
 }
 
+function availableDurationFromStart(occupiedHours: Set<number>, startHour: number, maxHours: number) {
+  let available = 0;
+  for (let hour = startHour; hour < 24 && available < maxHours; hour += 1) {
+    if (occupiedHours.has(hour)) break;
+    available += 1;
+  }
+  return available;
+}
+
 export function CreateZoneReservationForm({
   zones,
   occupiedSlots,
@@ -47,10 +56,7 @@ export function CreateZoneReservationForm({
   const [durationHours, setDurationHours] = useState("1");
 
   const selectedZone = useMemo(() => zones.find((item) => item.id === zoneId) ?? null, [zones, zoneId]);
-  const durationOptions = Array.from(
-    { length: Math.max(1, selectedZone?.maxHoursPerReservation ?? 1) },
-    (_, index) => index + 1,
-  );
+  const maxHoursByZone = Math.max(1, selectedZone?.maxHoursPerReservation ?? 1);
 
   const slotRanges = useMemo(
     () =>
@@ -81,10 +87,32 @@ export function CreateZoneReservationForm({
     return set;
   }, [zoneId, reservationDate, slotRanges]);
 
-  const startsAt = `${reservationDate}T${startHour}:00`;
+  const availableStartHours = useMemo(() => HOURS.filter((hour) => !occupiedHours.has(hour)), [occupiedHours]);
+  const selectedStartHourNumberRaw = Number(startHour);
+  const effectiveStartHourNumber =
+    availableStartHours.length === 0
+      ? selectedStartHourNumberRaw
+      : availableStartHours.includes(selectedStartHourNumberRaw)
+        ? selectedStartHourNumberRaw
+        : availableStartHours[0];
+  const effectiveStartHour = pad2(effectiveStartHourNumber);
+  const currentStartHourAvailable = availableStartHours.includes(effectiveStartHourNumber);
+  const maxSelectableDuration = useMemo(
+    () =>
+      currentStartHourAvailable
+        ? availableDurationFromStart(occupiedHours, effectiveStartHourNumber, maxHoursByZone)
+        : 0,
+    [currentStartHourAvailable, maxHoursByZone, occupiedHours, effectiveStartHourNumber],
+  );
+  const durationOptions = Array.from({ length: Math.max(1, maxSelectableDuration) }, (_, index) => index + 1);
+  const durationRaw = Number(durationHours || "1");
+  const effectiveDurationHours = Math.min(Math.max(durationRaw, 1), Math.max(1, maxSelectableDuration));
+  const effectiveDurationText = String(effectiveDurationHours);
+
+  const startsAt = `${reservationDate}T${effectiveStartHour}:00`;
   const startDateObject = new Date(startsAt);
   const endsAtDate = new Date(startDateObject);
-  endsAtDate.setHours(endsAtDate.getHours() + Number(durationHours || "1"));
+  endsAtDate.setHours(endsAtDate.getHours() + effectiveDurationHours);
   const endsAt = `${dateOnly(endsAtDate)}T${pad2(endsAtDate.getHours())}:00`;
 
   return (
@@ -113,20 +141,20 @@ export function CreateZoneReservationForm({
       />
       <select
         name="startHour"
-        value={startHour}
+        value={effectiveStartHour}
         onChange={(event) => setStartHour(event.target.value)}
         className="field-base min-w-0"
         required
       >
         {HOURS.map((hour) => (
-          <option key={hour} value={pad2(hour)}>
+          <option key={hour} value={pad2(hour)} disabled={occupiedHours.has(hour)}>
             {formatHourLabel(hour)}
           </option>
         ))}
       </select>
       <select
         name="durationHours"
-        value={durationHours}
+        value={effectiveDurationText}
         onChange={(event) => setDurationHours(event.target.value)}
         className="field-base min-w-0"
         required
@@ -145,6 +173,11 @@ export function CreateZoneReservationForm({
         placeholder="Nota de reserva (opcional)"
         maxLength={180}
       />
+      {availableStartHours.length === 0 ? (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 md:col-span-2">
+          No hay horas disponibles para esta zona en la fecha seleccionada.
+        </p>
+      ) : null}
       <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 md:col-span-2">
         <p className="mb-2 font-semibold text-slate-800">Horas ocupadas del dia (tachadas)</p>
         <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8">
@@ -165,7 +198,10 @@ export function CreateZoneReservationForm({
           })}
         </div>
       </div>
-      <button disabled={isPending} className="btn-primary md:col-span-2 md:w-max disabled:opacity-60">
+      <button
+        disabled={isPending || availableStartHours.length === 0 || maxSelectableDuration <= 0}
+        className="btn-primary md:col-span-2 md:w-max disabled:opacity-60"
+      >
         {isPending ? "Reservando..." : "Reservar zona"}
       </button>
       {message ? <p className="text-sm text-slate-700 md:col-span-2">{message}</p> : null}
