@@ -47,7 +47,7 @@ export function CreateZoneReservationForm({
   }>;
 }) {
   const [message, formAction, isPending] = useActionState(createZoneReservationAction, initialState);
-  const [zoneId, setZoneId] = useState("");
+  const [zoneId, setZoneId] = useState(zones[0]?.id ?? "");
   const [reservationDate, setReservationDate] = useState(dateOnly(new Date()));
   const [startHour, setStartHour] = useState("08");
   const [durationHours, setDurationHours] = useState("1");
