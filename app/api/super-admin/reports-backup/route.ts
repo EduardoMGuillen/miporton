@@ -1,35 +1,208 @@
 import { NextResponse } from "next/server";
 import JSZip from "jszip";
+import { jsPDF } from "jspdf";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-type CsvValue = string | number | boolean | null | undefined;
+function formatDateTimeTegucigalpa(date: Date) {
+  return new Intl.DateTimeFormat("es-HN", {
+    timeZone: "America/Tegucigalpa",
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(date);
+}
 
-function csvEscape(value: CsvValue) {
-  if (value === null || value === undefined) return "";
-  const text = String(value);
-  if (text.includes('"') || text.includes(",") || text.includes("\n")) {
-    return `"${text.replaceAll('"', '""')}"`;
+function safeFileName(value: string) {
+  return value.trim().toLowerCase().replaceAll(/[^a-z0-9]+/g, "-").replaceAll(/^-+|-+$/g, "");
+}
+
+function ensurePage(doc: jsPDF, y: number, minSpace = 70) {
+  if (y + minSpace <= 790) return y;
+  doc.addPage();
+  return 42;
+}
+
+function imageDataUrl(data: Uint8Array, mimeType: string | null) {
+  const safeMime = mimeType || "image/jpeg";
+  const base64 = Buffer.from(data).toString("base64");
+  return `data:${safeMime};base64,${base64}`;
+}
+
+function imageFormat(mimeType: string | null) {
+  if (mimeType?.includes("png")) return "PNG";
+  return "JPEG";
+}
+
+type EntryRecord = {
+  id: string;
+  scannedAt: Date;
+  reason: string;
+  visitorName: string;
+  residentName: string;
+  guardName: string;
+  idPhotoData: Uint8Array | null;
+  idPhotoMimeType: string | null;
+  idPhotoSize: number | null;
+  platePhotoData: Uint8Array | null;
+  platePhotoMimeType: string | null;
+  platePhotoSize: number | null;
+};
+
+type DeliveryRecord = {
+  id: string;
+  createdAt: Date;
+  note: string;
+  residentName: string;
+  guardName: string;
+};
+
+function buildResidentialReportPdf({
+  residentialName,
+  generatedAt,
+  entries,
+  deliveries,
+}: {
+  residentialName: string;
+  generatedAt: Date;
+  entries: EntryRecord[];
+  deliveries: DeliveryRecord[];
+}) {
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const contentWidth = 515;
+  let y = 42;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.text(`Reporte de entradas - ${residentialName}`, 40, y);
+  y += 18;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.text(`Generado: ${formatDateTimeTegucigalpa(generatedAt)} (America/Tegucigalpa)`, 40, y);
+  y += 14;
+  doc.text(`Entradas: ${entries.length} | Delivery: ${deliveries.length}`, 40, y);
+  y += 18;
+  doc.setDrawColor(226, 232, 240);
+  doc.line(40, y, 555, y);
+  y += 16;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.text("Entradas registradas", 40, y);
+  y += 16;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  if (entries.length === 0) {
+    doc.text("Sin entradas registradas.", 40, y);
+    y += 12;
+  } else {
+    entries.forEach((entry, index) => {
+      y = ensurePage(doc, y, 130);
+      const methodLabel = entry.reason.toLowerCase().includes("manual") ? "Manual" : "QR";
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(10);
+      doc.text(`${index + 1}. ${entry.visitorName} (${methodLabel})`, 40, y);
+      y += 12;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      const metaLines = [
+        `Fecha: ${formatDateTimeTegucigalpa(entry.scannedAt)}`,
+        `Residente: ${entry.residentName}`,
+        `Guardia: ${entry.guardName}`,
+        `Registro: ${entry.id}`,
+      ];
+      metaLines.forEach((line) => {
+        doc.text(line, 40, y);
+        y += 11;
+      });
+      const reasonLines = doc.splitTextToSize(`Motivo: ${entry.reason}`, contentWidth);
+      doc.text(reasonLines, 40, y);
+      y += reasonLines.length * 10 + 4;
+
+      const hasIdImage = Boolean(entry.idPhotoData && entry.idPhotoData.length > 0);
+      const hasPlateImage = Boolean(entry.platePhotoData && entry.platePhotoData.length > 0);
+      if (hasIdImage || hasPlateImage) {
+        y = ensurePage(doc, y, 140);
+        let imageX = 40;
+        if (hasIdImage && entry.idPhotoData) {
+          try {
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(9);
+            doc.text("Evidencia ID", imageX, y);
+            doc.addImage(
+              imageDataUrl(entry.idPhotoData, entry.idPhotoMimeType),
+              imageFormat(entry.idPhotoMimeType),
+              imageX,
+              y + 6,
+              155,
+              100,
+            );
+            imageX += 170;
+          } catch {
+            doc.setFont("helvetica", "italic");
+            doc.text("No se pudo incrustar evidencia ID.", imageX, y + 14);
+            imageX += 170;
+          }
+        }
+        if (hasPlateImage && entry.platePhotoData) {
+          try {
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(9);
+            doc.text("Evidencia placa", imageX, y);
+            doc.addImage(
+              imageDataUrl(entry.platePhotoData, entry.platePhotoMimeType),
+              imageFormat(entry.platePhotoMimeType),
+              imageX,
+              y + 6,
+              155,
+              100,
+            );
+          } catch {
+            doc.setFont("helvetica", "italic");
+            doc.text("No se pudo incrustar evidencia placa.", imageX, y + 14);
+          }
+        }
+        y += 114;
+      } else {
+        doc.setFont("helvetica", "italic");
+        doc.text("Sin evidencia de imagen en este registro.", 40, y);
+        y += 12;
+      }
+      doc.setDrawColor(226, 232, 240);
+      doc.line(40, y, 555, y);
+      y += 10;
+    });
   }
-  return text;
-}
 
-function toCsv(headers: string[], rows: CsvValue[][]) {
-  const headerLine = headers.map((header) => csvEscape(header)).join(",");
-  const rowLines = rows.map((row) => row.map((value) => csvEscape(value)).join(","));
-  return [headerLine, ...rowLines].join("\n");
-}
+  y = ensurePage(doc, y, 80);
+  y += 4;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.text("Delivery registrados", 40, y);
+  y += 16;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  if (deliveries.length === 0) {
+    doc.text("Sin delivery registrados.", 40, y);
+    y += 12;
+  } else {
+    deliveries.forEach((delivery, index) => {
+      y = ensurePage(doc, y, 70);
+      doc.setFont("helvetica", "bold");
+      doc.text(`${index + 1}. ${delivery.residentName}`, 40, y);
+      y += 11;
+      doc.setFont("helvetica", "normal");
+      doc.text(`Fecha: ${formatDateTimeTegucigalpa(delivery.createdAt)} | Guardia: ${delivery.guardName}`, 40, y);
+      y += 11;
+      const detailLines = doc.splitTextToSize(`Detalle: ${delivery.note}`, contentWidth);
+      doc.text(detailLines, 40, y);
+      y += detailLines.length * 10 + 6;
+      doc.setDrawColor(226, 232, 240);
+      doc.line(40, y, 555, y);
+      y += 10;
+    });
+  }
 
-function mimeToExtension(mimeType: string | null) {
-  if (!mimeType) return "bin";
-  if (mimeType.includes("jpeg")) return "jpg";
-  if (mimeType.includes("png")) return "png";
-  if (mimeType.includes("webp")) return "webp";
-  return "bin";
-}
-
-function toIsoDate(value: Date) {
-  return value.toISOString();
+  return doc.output("arraybuffer");
 }
 
 export async function GET() {
@@ -38,9 +211,9 @@ export async function GET() {
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   }
 
-  const [residentials, scans, deliveries, suggestions, contracts] = await Promise.all([
+  const [residentials, scans, deliveries] = await Promise.all([
     prisma.residential.findMany({
-      select: { id: true, name: true, supportPhone: true, createdAt: true },
+      select: { id: true, name: true },
       orderBy: { createdAt: "asc" },
     }),
     prisma.qrScan.findMany({
@@ -58,15 +231,12 @@ export async function GET() {
         platePhotoSize: true,
         code: {
           select: {
-            code: true,
             visitorName: true,
-            description: true,
-            hasVehicle: true,
-            resident: { select: { fullName: true, email: true, houseNumber: true } },
+            resident: { select: { fullName: true } },
             residential: { select: { id: true, name: true } },
           },
         },
-        scanner: { select: { fullName: true, email: true } },
+        scanner: { select: { fullName: true } },
       },
     }),
     prisma.deliveryAnnouncement.findMany({
@@ -76,34 +246,8 @@ export async function GET() {
         createdAt: true,
         note: true,
         residential: { select: { id: true, name: true } },
-        resident: { select: { fullName: true, email: true, houseNumber: true } },
-        guard: { select: { fullName: true, email: true } },
-      },
-    }),
-    prisma.residentSuggestion.findMany({
-      orderBy: { createdAt: "asc" },
-      select: {
-        id: true,
-        createdAt: true,
-        message: true,
-        residential: { select: { id: true, name: true } },
-        resident: { select: { fullName: true, email: true, houseNumber: true } },
-      },
-    }),
-    prisma.serviceContract.findMany({
-      orderBy: { createdAt: "asc" },
-      select: {
-        id: true,
-        createdAt: true,
-        residentialId: true,
-        residentialName: true,
-        legalRepresentative: true,
-        representativeEmail: true,
-        representativePhone: true,
-        servicePlan: true,
-        monthlyAmount: true,
-        startsOn: true,
-        endsOn: true,
+        resident: { select: { fullName: true } },
+        guard: { select: { fullName: true } },
       },
     }),
   ]);
@@ -122,8 +266,7 @@ export async function GET() {
           residentials: residentials.length,
           qrScans: scans.length,
           deliveries: deliveries.length,
-          suggestions: suggestions.length,
-          contracts: contracts.length,
+          pdfReports: residentials.length,
         },
       },
       null,
@@ -131,154 +274,51 @@ export async function GET() {
     ),
   );
 
-  zip.file(
-    "reports/residentials.csv",
-    toCsv(
-      ["residentialId", "name", "supportPhone", "createdAt"],
-      residentials.map((item) => [item.id, item.name, item.supportPhone, toIsoDate(item.createdAt)]),
-    ),
-  );
+  const scansByResidential = new Map<string, EntryRecord[]>();
+  scans.forEach((scan) => {
+    const residentialId = scan.code.residential.id;
+    const group = scansByResidential.get(residentialId) ?? [];
+    group.push({
+      id: scan.id,
+      scannedAt: scan.scannedAt,
+      reason: scan.reason,
+      visitorName: scan.code.visitorName,
+      residentName: scan.code.resident.fullName,
+      guardName: scan.scanner.fullName,
+      idPhotoData: scan.idPhotoData,
+      idPhotoMimeType: scan.idPhotoMimeType,
+      idPhotoSize: scan.idPhotoSize,
+      platePhotoData: scan.platePhotoData,
+      platePhotoMimeType: scan.platePhotoMimeType,
+      platePhotoSize: scan.platePhotoSize,
+    });
+    scansByResidential.set(residentialId, group);
+  });
 
-  zip.file(
-    "reports/qr-scans.csv",
-    toCsv(
-      [
-        "scanId",
-        "scannedAt",
-        "residentialId",
-        "residentialName",
-        "qrCode",
-        "visitorName",
-        "visitorDescription",
-        "hasVehicle",
-        "residentName",
-        "residentEmail",
-        "residentHouseNumber",
-        "guardName",
-        "guardEmail",
-        "reason",
-        "idPhotoSizeBytes",
-        "platePhotoSizeBytes",
-      ],
-      scans.map((scan) => [
-        scan.id,
-        toIsoDate(scan.scannedAt),
-        scan.code.residential.id,
-        scan.code.residential.name,
-        scan.code.code,
-        scan.code.visitorName,
-        scan.code.description,
-        scan.code.hasVehicle ? "yes" : "no",
-        scan.code.resident.fullName,
-        scan.code.resident.email,
-        scan.code.resident.houseNumber,
-        scan.scanner.fullName,
-        scan.scanner.email,
-        scan.reason,
-        scan.idPhotoSize,
-        scan.platePhotoSize,
-      ]),
-    ),
-  );
+  const deliveriesByResidential = new Map<string, DeliveryRecord[]>();
+  deliveries.forEach((delivery) => {
+    const residentialId = delivery.residential.id;
+    const group = deliveriesByResidential.get(residentialId) ?? [];
+    group.push({
+      id: delivery.id,
+      createdAt: delivery.createdAt,
+      note: delivery.note,
+      residentName: delivery.resident.fullName,
+      guardName: delivery.guard.fullName,
+    });
+    deliveriesByResidential.set(residentialId, group);
+  });
 
-  zip.file(
-    "reports/deliveries.csv",
-    toCsv(
-      [
-        "deliveryId",
-        "createdAt",
-        "residentialId",
-        "residentialName",
-        "residentName",
-        "residentEmail",
-        "residentHouseNumber",
-        "guardName",
-        "guardEmail",
-        "note",
-      ],
-      deliveries.map((delivery) => [
-        delivery.id,
-        toIsoDate(delivery.createdAt),
-        delivery.residential.id,
-        delivery.residential.name,
-        delivery.resident.fullName,
-        delivery.resident.email,
-        delivery.resident.houseNumber,
-        delivery.guard.fullName,
-        delivery.guard.email,
-        delivery.note,
-      ]),
-    ),
-  );
-
-  zip.file(
-    "reports/suggestions.csv",
-    toCsv(
-      [
-        "suggestionId",
-        "createdAt",
-        "residentialId",
-        "residentialName",
-        "residentName",
-        "residentEmail",
-        "residentHouseNumber",
-        "message",
-      ],
-      suggestions.map((suggestion) => [
-        suggestion.id,
-        toIsoDate(suggestion.createdAt),
-        suggestion.residential.id,
-        suggestion.residential.name,
-        suggestion.resident.fullName,
-        suggestion.resident.email,
-        suggestion.resident.houseNumber,
-        suggestion.message,
-      ]),
-    ),
-  );
-
-  zip.file(
-    "reports/service-contracts.csv",
-    toCsv(
-      [
-        "contractId",
-        "createdAt",
-        "residentialId",
-        "residentialName",
-        "legalRepresentative",
-        "representativeEmail",
-        "representativePhone",
-        "servicePlan",
-        "monthlyAmountHNL",
-        "startsOn",
-        "endsOn",
-      ],
-      contracts.map((contract) => [
-        contract.id,
-        toIsoDate(contract.createdAt),
-        contract.residentialId,
-        contract.residentialName,
-        contract.legalRepresentative,
-        contract.representativeEmail,
-        contract.representativePhone,
-        contract.servicePlan,
-        contract.monthlyAmount,
-        toIsoDate(contract.startsOn),
-        contract.endsOn ? toIsoDate(contract.endsOn) : null,
-      ]),
-    ),
-  );
-
-  for (const scan of scans) {
-    if (scan.idPhotoData && scan.idPhotoData.length > 0) {
-      const extension = mimeToExtension(scan.idPhotoMimeType);
-      zip.file(`evidences/id/${scan.id}.${extension}`, Buffer.from(scan.idPhotoData));
-    }
-    if (scan.platePhotoData && scan.platePhotoData.length > 0) {
-      const extension = mimeToExtension(scan.platePhotoMimeType);
-      zip.file(`evidences/plate/${scan.id}.${extension}`, Buffer.from(scan.platePhotoData));
-    }
-  }
+  residentials.forEach((residential) => {
+    const reportPdf = buildResidentialReportPdf({
+      residentialName: residential.name,
+      generatedAt,
+      entries: scansByResidential.get(residential.id) ?? [],
+      deliveries: deliveriesByResidential.get(residential.id) ?? [],
+    });
+    const fileBase = safeFileName(residential.name) || residential.id;
+    zip.file(`reportes-pdf/reporte-${fileBase}.pdf`, new Uint8Array(reportPdf));
+  });
 
   const zipBuffer = await zip.generateAsync({
     type: "nodebuffer",

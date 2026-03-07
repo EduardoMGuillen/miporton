@@ -48,11 +48,11 @@ export function ReportsBackupButton() {
         disabled={isDownloading}
         className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100 disabled:opacity-60"
       >
-        {isDownloading ? "Generando backup..." : "Descargar backup manual de reportes (ZIP)"}
+        {isDownloading ? "Generando backup..." : "Descargar backup PDF por residencial (ZIP)"}
       </button>
       {error ? <p className="text-xs text-red-600">{error}</p> : null}
       <p className="text-xs text-slate-500">
-        Incluye CSV de reportes actuales y evidencias disponibles (ID/placa) en la base de datos.
+        Incluye un PDF por residencial, con entradas, deliveries y evidencias disponibles actualmente.
       </p>
     </div>
   );

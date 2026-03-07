@@ -219,7 +219,7 @@ export default async function SuperAdminPage({
       <Card>
         <h2 className="mb-2 text-lg font-semibold text-slate-900">Backup manual de reportes</h2>
         <p className="mb-4 text-sm text-slate-600">
-          Descarga un respaldo actual de reportes globales en ZIP para archivo interno o envio manual.
+          Descarga un ZIP con un reporte PDF por cada residencial para archivo interno o envio manual.
         </p>
         <ReportsBackupButton />
       </Card>
