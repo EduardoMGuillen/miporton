@@ -180,12 +180,15 @@ export default async function ResidentialAdminLogsPage({
           reportTitle={`Reporte mensual - ${residential?.name ?? "Residencial"}`}
           monthLabel={selectedMonth}
           entries={idEvidenceScans.map((scan) => ({
+            recordId: scan.id,
             dateLabel: formatDateTimeTegucigalpa(scan.scannedAt),
             visitorName: scan.code.visitorName,
             residentName: scan.code.resident.fullName,
             guardName: scan.scanner.fullName,
             method: scan.reason.toLowerCase().includes("manual") ? "Manual" : "QR",
             reason: scan.reason,
+            evidenceImageUrl: scan.idPhotoSize ? `/api/id-evidence/${scan.id}` : undefined,
+            plateImageUrl: scan.platePhotoSize ? `/api/plate-evidence/${scan.id}` : undefined,
           }))}
           deliveries={deliveryEntries.map((delivery) => ({
             dateLabel: formatDateTimeTegucigalpa(delivery.createdAt),
