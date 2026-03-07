@@ -93,11 +93,9 @@ async function optimizeImageToJpegDataUrl(
 
 async function loadLogos(): Promise<LogoBundle> {
   const [nexusLogo, miVisitaLogo] = await Promise.all([
-    optimizeImageToJpegDataUrl("/nexustexto.png", {
-      maxWidth: 900,
-      maxHeight: 220,
-      quality: 0.68,
-    }).catch(() => null),
+    fetch("/nexustexto.png")
+      .then(async (response) => (response.ok ? await fileToDataUrl(await response.blob()) : null))
+      .catch(() => null),
     optimizeImageToJpegDataUrl("/logomivisita.png", {
       maxWidth: 260,
       maxHeight: 260,
@@ -134,7 +132,7 @@ export async function generateServiceContractPdf(input: ServiceContractPdfInput)
 
   let y = 42;
   if (logos.nexusLogo) {
-    doc.addImage(logos.nexusLogo, "JPEG", 40, 24, 210, 56);
+    doc.addImage(logos.nexusLogo, "PNG", 40, 24, 210, 56);
   } else {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
