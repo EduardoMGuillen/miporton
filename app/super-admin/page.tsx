@@ -7,6 +7,7 @@ import { MonthlyAccessReportButton } from "@/app/components/monthly-access-repor
 import { CreateResidentialForm } from "@/app/super-admin/create-residential-form";
 import { QuotationGenerator } from "@/app/super-admin/quotation-generator";
 import { ServiceContractForm } from "@/app/super-admin/service-contract-form";
+import { ReportsBackupButton } from "@/app/super-admin/reports-backup-button";
 import { formatDateTimeTegucigalpa } from "@/lib/datetime";
 import {
   deleteResidentialAdminAction,
@@ -200,6 +201,14 @@ export default async function SuperAdminPage({
             </div>
           ))}
         </div>
+      </Card>
+
+      <Card>
+        <h2 className="mb-2 text-lg font-semibold text-slate-900">Backup manual de reportes</h2>
+        <p className="mb-4 text-sm text-slate-600">
+          Descarga un respaldo actual de reportes globales en ZIP para archivo interno o envio manual.
+        </p>
+        <ReportsBackupButton />
       </Card>
 
       <Card>
