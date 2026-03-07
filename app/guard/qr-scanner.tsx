@@ -285,7 +285,7 @@ export function GuardQrScanner() {
             ) : null}
             {pendingResult?.hasVehicle ? (
               <p className="text-sm font-semibold text-amber-700">
-                Esta visita indico que viene en vehiculo (foto de placa obligatoria).
+                Esta visita es de tipo Vehiculo (foto de placa obligatoria).
               </p>
             ) : null}
 

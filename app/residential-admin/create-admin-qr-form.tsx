@@ -29,8 +29,8 @@ export function CreateAdminQrForm({
         placeholder="Descripcion (opcional)"
       />
       <select name="hasVehicle" defaultValue="no" className="field-base">
-        <option value="no">Sin vehiculo</option>
-        <option value="yes">Viene en vehiculo</option>
+        <option value="no">Acceso peatonal</option>
+        <option value="yes">Vehiculo</option>
       </select>
       <select
         name="qrMode"

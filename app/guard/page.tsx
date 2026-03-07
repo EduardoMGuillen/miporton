@@ -97,7 +97,9 @@ export default async function GuardPage() {
               {invite.description ? (
                 <p className="text-xs text-slate-600">Descripcion: {invite.description}</p>
               ) : null}
-              <p className="text-xs text-slate-500">Vehiculo: {invite.hasVehicle ? "Si" : "No"}</p>
+              <p className="text-xs text-slate-500">
+                Tipo de acceso: {invite.hasVehicle ? "Vehiculo" : "Acceso peatonal"}
+              </p>
               <p className="text-xs text-slate-500">
                 Expira: {formatDateTimeTegucigalpa(invite.validUntil)}
               </p>

@@ -75,7 +75,9 @@ export default async function ResidentialAdminQrPage() {
               <p className="text-sm font-semibold text-slate-900">{qr.visitorName}</p>
               <p className="text-xs text-slate-600">{validityLabel(qr.validityType)}</p>
               {qr.description ? <p className="text-xs text-slate-500">Descripcion: {qr.description}</p> : null}
-              <p className="text-xs text-slate-500">Vehiculo: {qr.hasVehicle ? "Si" : "No"}</p>
+              <p className="text-xs text-slate-500">
+                Tipo de acceso: {qr.hasVehicle ? "Vehiculo" : "Acceso peatonal"}
+              </p>
               <p className="text-xs text-slate-500">Expira: {formatDateTimeTegucigalpa(qr.validUntil)}</p>
               <p className="text-xs text-slate-500">
                 Usos: {qr.usedCount}/{qr.maxUses === 9999 ? "Ilimitado" : qr.maxUses}
@@ -111,7 +113,9 @@ export default async function ResidentialAdminQrPage() {
                 <p className="text-sm font-semibold text-slate-900">{qr.visitorName}</p>
                 <p className="text-xs text-slate-600">{validityLabel(qr.validityType)}</p>
                 {qr.description ? <p className="text-xs text-slate-500">Descripcion: {qr.description}</p> : null}
-                <p className="text-xs text-slate-500">Vehiculo: {qr.hasVehicle ? "Si" : "No"}</p>
+                <p className="text-xs text-slate-500">
+                  Tipo de acceso: {qr.hasVehicle ? "Vehiculo" : "Acceso peatonal"}
+                </p>
                 <p className="text-xs text-slate-500">Expira: {formatDateTimeTegucigalpa(qr.validUntil)}</p>
                 <p className="text-xs text-slate-500">
                   Usos: {qr.usedCount}/{qr.maxUses === 9999 ? "Ilimitado" : qr.maxUses}

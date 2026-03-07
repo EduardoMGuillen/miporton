@@ -189,7 +189,7 @@ export default async function ResidentPage() {
                 <p className="text-xs text-slate-500">Descripcion: {invite.description}</p>
               ) : null}
               <p className="text-xs text-slate-500">
-                Vehiculo: {invite.hasVehicle ? "Si" : "No"}
+                Tipo de acceso: {invite.hasVehicle ? "Vehiculo" : "Acceso peatonal"}
               </p>
               <p className="text-xs text-slate-500">
                 Expira: {formatDateTimeTegucigalpa(invite.validUntil)}
@@ -246,7 +246,7 @@ export default async function ResidentPage() {
                   <p className="text-xs text-slate-500">Descripcion: {invite.description}</p>
                 ) : null}
                 <p className="text-xs text-slate-500">
-                  Vehiculo: {invite.hasVehicle ? "Si" : "No"}
+                  Tipo de acceso: {invite.hasVehicle ? "Vehiculo" : "Acceso peatonal"}
                 </p>
                 <p className="text-xs text-slate-500">
                   Expira: {formatDateTimeTegucigalpa(invite.validUntil)}
