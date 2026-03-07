@@ -131,6 +131,8 @@ export default async function ResidentPage() {
             id: zone.id,
             name: zone.name,
             maxHoursPerReservation: zone.maxHoursPerReservation,
+            scheduleStartHour: zone.scheduleStartHour,
+            scheduleEndHour: zone.scheduleEndHour,
           }))}
           occupiedSlots={[
             ...zoneReservations.map((item) => ({

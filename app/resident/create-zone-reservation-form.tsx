@@ -32,7 +32,13 @@ export function CreateZoneReservationForm({
   zones,
   occupiedSlots,
 }: {
-  zones: Array<{ id: string; name: string; maxHoursPerReservation: number }>;
+  zones: Array<{
+    id: string;
+    name: string;
+    maxHoursPerReservation: number;
+    scheduleStartHour: number;
+    scheduleEndHour: number;
+  }>;
   occupiedSlots: Array<{
     zoneId: string;
     startsAtIso: string;
@@ -65,7 +71,13 @@ export function CreateZoneReservationForm({
     if (!zoneId || !reservationDate) return new Set<number>();
     const dayStart = new Date(`${reservationDate}T00:00`);
     const set = new Set<number>();
+    const startHour = selectedZone?.scheduleStartHour ?? 0;
+    const endHour = selectedZone?.scheduleEndHour ?? 24;
     HOURS.forEach((hour) => {
+      if (hour < startHour || hour >= endHour) {
+        set.add(hour);
+        return;
+      }
       const slotStart = new Date(dayStart);
       slotStart.setHours(hour, 0, 0, 0);
       const slotEnd = new Date(dayStart);
@@ -76,7 +88,7 @@ export function CreateZoneReservationForm({
       if (taken) set.add(hour);
     });
     return set;
-  }, [zoneId, reservationDate, slotRanges]);
+  }, [zoneId, reservationDate, slotRanges, selectedZone]);
 
   const availableStartHours = useMemo(() => HOURS.filter((hour) => !occupiedHours.has(hour)), [occupiedHours]);
   const selectedStartHourNumberRaw = Number(startHour);

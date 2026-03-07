@@ -20,6 +20,26 @@ export function CreateZoneForm() {
         placeholder="Maximo de horas por reserva"
       />
       <input
+        name="scheduleStartHour"
+        required
+        type="number"
+        min={0}
+        max={23}
+        defaultValue={8}
+        className="field-base"
+        placeholder="Hora inicio (0-23)"
+      />
+      <input
+        name="scheduleEndHour"
+        required
+        type="number"
+        min={1}
+        max={24}
+        defaultValue={22}
+        className="field-base"
+        placeholder="Hora fin (1-24)"
+      />
+      <input
         name="description"
         maxLength={180}
         className="field-base md:col-span-2"

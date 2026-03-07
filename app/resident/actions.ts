@@ -61,6 +61,16 @@ function parseTegucigalpaDateTime(value: string) {
   return new Date(Date.UTC(year, month - 1, day, hour + 6, minute, 0, 0));
 }
 
+function parseLocalDateTimeParts(value: string) {
+  const match = value.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/);
+  if (!match) return null;
+  const [, datePart, hourRaw, minuteRaw] = match;
+  const hour = Number(hourRaw);
+  const minute = Number(minuteRaw);
+  if (Number.isNaN(hour) || Number.isNaN(minute)) return null;
+  return { datePart, hour, minute };
+}
+
 export async function createInviteQrAction(_prevState: string | null, formData: FormData) {
   const session = await requireRole(["RESIDENT"]);
   if (!session.residentialId) return "Sesion invalida sin residencial asociada.";
@@ -128,13 +138,32 @@ export async function createZoneReservationAction(_prevState: string | null, for
       residentialId: session.residentialId,
       isActive: true,
     },
-    select: { id: true, name: true, maxHoursPerReservation: true },
+    select: {
+      id: true,
+      name: true,
+      maxHoursPerReservation: true,
+      scheduleStartHour: true,
+      scheduleEndHour: true,
+    },
   });
   if (!zone) return "Zona no disponible.";
 
   const hours = (endsAt.getTime() - startsAt.getTime()) / (1000 * 60 * 60);
   if (hours > zone.maxHoursPerReservation) {
     return `El maximo permitido para esta zona es ${zone.maxHoursPerReservation} hora(s).`;
+  }
+
+  const localStart = parseLocalDateTimeParts(parsed.data.startsAt);
+  const localEnd = parseLocalDateTimeParts(parsed.data.endsAt);
+  if (!localStart || !localEnd) return "Fecha/hora invalida.";
+  if (localStart.datePart !== localEnd.datePart) {
+    return "La reserva debe iniciar y finalizar en la misma fecha.";
+  }
+  if (localStart.minute !== 0 || localEnd.minute !== 0) {
+    return "La reserva debe ser en bloques de hora completa.";
+  }
+  if (localStart.hour < zone.scheduleStartHour || localEnd.hour > zone.scheduleEndHour) {
+    return `Horario no permitido. Esta zona opera de ${String(zone.scheduleStartHour).padStart(2, "0")}:00 a ${String(zone.scheduleEndHour).padStart(2, "0")}:00.`;
   }
 
   const [existingReservations, existingBlocks] = await Promise.all([

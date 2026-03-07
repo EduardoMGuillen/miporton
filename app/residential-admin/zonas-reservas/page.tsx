@@ -1,7 +1,10 @@
 import { Card } from "@/app/components/shell";
 import { CreateZoneForm } from "@/app/residential-admin/create-zone-form";
 import { CreateZoneBlockForm } from "@/app/residential-admin/create-zone-block-form";
-import { cancelZoneReservationByAdminAction } from "@/app/residential-admin/actions";
+import {
+  cancelZoneReservationByAdminAction,
+  updateZoneScheduleAction,
+} from "@/app/residential-admin/actions";
 import { formatDateTimeTegucigalpa } from "@/lib/datetime";
 import { requireRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
@@ -97,7 +100,35 @@ export default async function ResidentialAdminZonesPage({
                 Maximo por reserva: {zone.maxHoursPerReservation} hora(s) | Estado:{" "}
                 {zone.isActive ? "Activa" : "Inactiva"}
               </p>
+              <p className="text-xs text-slate-600">
+                Horario habilitado: {String(zone.scheduleStartHour).padStart(2, "0")}:00 -{" "}
+                {String(zone.scheduleEndHour).padStart(2, "0")}:00
+              </p>
               {zone.description ? <p className="text-xs text-slate-500">{zone.description}</p> : null}
+              <form action={updateZoneScheduleAction} className="mt-2 grid gap-2 sm:grid-cols-2">
+                <input type="hidden" name="zoneId" value={zone.id} />
+                <input
+                  name="scheduleStartHour"
+                  type="number"
+                  min={0}
+                  max={23}
+                  defaultValue={zone.scheduleStartHour}
+                  className="field-base"
+                  required
+                />
+                <input
+                  name="scheduleEndHour"
+                  type="number"
+                  min={1}
+                  max={24}
+                  defaultValue={zone.scheduleEndHour}
+                  className="field-base"
+                  required
+                />
+                <button className="rounded-lg border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 sm:col-span-2 sm:w-max">
+                  Guardar horario
+                </button>
+              </form>
             </div>
           ))}
         </div>

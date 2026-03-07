@@ -29,6 +29,8 @@ const createZoneSchema = z.object({
   name: z.string().min(2, "Nombre de zona invalido."),
   description: z.string().max(180, "Descripcion demasiado larga.").optional(),
   maxHoursPerReservation: z.coerce.number().int().min(1, "El maximo debe ser al menos 1 hora."),
+  scheduleStartHour: z.coerce.number().int().min(0).max(23),
+  scheduleEndHour: z.coerce.number().int().min(1).max(24),
 });
 
 const blockZoneSchema = z.object({
@@ -59,6 +61,12 @@ const updateResidentialSettingsSchema = z.object({
     .trim()
     .min(8, "Ingresa un numero de contacto valido.")
     .max(30, "Numero de contacto demasiado largo."),
+});
+
+const updateZoneScheduleSchema = z.object({
+  zoneId: z.string().min(1),
+  scheduleStartHour: z.coerce.number().int().min(0).max(23),
+  scheduleEndHour: z.coerce.number().int().min(1).max(24),
 });
 
 function overlapRange(startsAt: Date, endsAt: Date, otherStart: Date, otherEnd: Date) {
@@ -205,8 +213,13 @@ export async function createZoneAction(_prevState: string | null, formData: Form
     name: formData.get("name"),
     description: formData.get("description") || undefined,
     maxHoursPerReservation: formData.get("maxHoursPerReservation"),
+    scheduleStartHour: formData.get("scheduleStartHour"),
+    scheduleEndHour: formData.get("scheduleEndHour"),
   });
   if (!parsed.success) return parsed.error.issues[0]?.message ?? "Datos invalidos.";
+  if (parsed.data.scheduleStartHour >= parsed.data.scheduleEndHour) {
+    return "El horario final debe ser mayor al inicial.";
+  }
 
   const existing = await prisma.zone.findFirst({
     where: {
@@ -222,6 +235,8 @@ export async function createZoneAction(_prevState: string | null, formData: Form
       name: parsed.data.name.trim(),
       description: parsed.data.description?.trim() || null,
       maxHoursPerReservation: parsed.data.maxHoursPerReservation,
+      scheduleStartHour: parsed.data.scheduleStartHour,
+      scheduleEndHour: parsed.data.scheduleEndHour,
       residentialId: session.residentialId,
     },
   });
@@ -229,6 +244,32 @@ export async function createZoneAction(_prevState: string | null, formData: Form
   revalidatePath("/residential-admin");
   revalidatePath("/resident");
   return "Zona creada correctamente.";
+}
+
+export async function updateZoneScheduleAction(formData: FormData) {
+  const session = await requireRole(["RESIDENTIAL_ADMIN"]);
+  if (!session.residentialId) return;
+  const parsed = updateZoneScheduleSchema.safeParse({
+    zoneId: formData.get("zoneId"),
+    scheduleStartHour: formData.get("scheduleStartHour"),
+    scheduleEndHour: formData.get("scheduleEndHour"),
+  });
+  if (!parsed.success) return;
+  if (parsed.data.scheduleStartHour >= parsed.data.scheduleEndHour) return;
+
+  await prisma.zone.updateMany({
+    where: {
+      id: parsed.data.zoneId,
+      residentialId: session.residentialId,
+    },
+    data: {
+      scheduleStartHour: parsed.data.scheduleStartHour,
+      scheduleEndHour: parsed.data.scheduleEndHour,
+    },
+  });
+
+  revalidatePath("/residential-admin/zonas-reservas");
+  revalidatePath("/resident");
 }
 
 export async function createZoneBlockAction(_prevState: string | null, formData: FormData) {
