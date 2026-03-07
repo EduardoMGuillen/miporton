@@ -47,14 +47,62 @@ async function fileToDataUrl(blob: Blob) {
   });
 }
 
+function loadImageFromObjectUrl(objectUrl: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("No se pudo cargar la imagen."));
+    image.src = objectUrl;
+  });
+}
+
+async function optimizeImageToJpegDataUrl(
+  path: string,
+  options?: { maxWidth?: number; maxHeight?: number; quality?: number },
+) {
+  const response = await fetch(path);
+  if (!response.ok) return null;
+  const blob = await response.blob();
+
+  const maxWidth = options?.maxWidth ?? 320;
+  const maxHeight = options?.maxHeight ?? 320;
+  const quality = options?.quality ?? 0.65;
+  const sourceUrl = URL.createObjectURL(blob);
+
+  try {
+    const image = await loadImageFromObjectUrl(sourceUrl);
+    const widthRatio = maxWidth / image.width;
+    const heightRatio = maxHeight / image.height;
+    const ratio = Math.min(widthRatio, heightRatio, 1);
+
+    const targetWidth = Math.max(1, Math.round(image.width * ratio));
+    const targetHeight = Math.max(1, Math.round(image.height * ratio));
+    const canvas = document.createElement("canvas");
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+
+    const context = canvas.getContext("2d");
+    if (!context) return await fileToDataUrl(blob);
+
+    context.drawImage(image, 0, 0, targetWidth, targetHeight);
+    return canvas.toDataURL("image/jpeg", quality);
+  } finally {
+    URL.revokeObjectURL(sourceUrl);
+  }
+}
+
 async function loadLogos(): Promise<LogoBundle> {
   const [nexusLogo, miVisitaLogo] = await Promise.all([
-    fetch("/nexustexto.png")
-      .then(async (response) => (response.ok ? await fileToDataUrl(await response.blob()) : null))
-      .catch(() => null),
-    fetch("/logomivisita.png")
-      .then(async (response) => (response.ok ? await fileToDataUrl(await response.blob()) : null))
-      .catch(() => null),
+    optimizeImageToJpegDataUrl("/nexustexto.png", {
+      maxWidth: 900,
+      maxHeight: 220,
+      quality: 0.68,
+    }).catch(() => null),
+    optimizeImageToJpegDataUrl("/logomivisita.png", {
+      maxWidth: 260,
+      maxHeight: 260,
+      quality: 0.62,
+    }).catch(() => null),
   ]);
   return { nexusLogo, miVisitaLogo };
 }
@@ -86,14 +134,14 @@ export async function generateServiceContractPdf(input: ServiceContractPdfInput)
 
   let y = 42;
   if (logos.nexusLogo) {
-    doc.addImage(logos.nexusLogo, "PNG", 40, 24, 210, 56);
+    doc.addImage(logos.nexusLogo, "JPEG", 40, 24, 210, 56);
   } else {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
     doc.text("Nexus Global", 40, 52);
   }
   if (logos.miVisitaLogo) {
-    doc.addImage(logos.miVisitaLogo, "PNG", 500, 22, 54, 54);
+    doc.addImage(logos.miVisitaLogo, "JPEG", 500, 22, 54, 54);
   }
 
   y = 96;
