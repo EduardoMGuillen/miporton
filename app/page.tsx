@@ -1,9 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
+import { StandaloneLoginRedirect } from "@/app/components/standalone-login-redirect";
 
 export default async function Home() {
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-8">
+      <StandaloneLoginRedirect />
       <header className="surface-card flex items-center justify-between px-5 py-3">
         <div className="flex items-center gap-3">
           <Image
