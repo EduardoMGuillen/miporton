@@ -29,8 +29,29 @@ export default async function GuardPage() {
       },
     },
     orderBy: { createdAt: "desc" },
-    take: 20,
+    take: 40,
   });
+  const recentRegisteredAnnouncements = await prisma.qrScan.findMany({
+    where: {
+      isValid: true,
+      code: { residentialId: session.residentialId },
+    },
+    orderBy: { scannedAt: "desc" },
+    take: 20,
+    select: {
+      id: true,
+      scannedAt: true,
+      reason: true,
+      scanner: { select: { fullName: true } },
+      code: {
+        select: {
+          visitorName: true,
+          resident: { select: { fullName: true } },
+        },
+      },
+    },
+  });
+  const pendingInvites = activeInvites.filter((invite) => invite.scans.length === 0);
   const residents = await prisma.user.findMany({
     where: {
       residentialId: session.residentialId,
@@ -64,32 +85,51 @@ export default async function GuardPage() {
       <Card>
         <h2 className="mb-4 text-lg font-semibold text-slate-900">Anuncios recientes</h2>
         <GuardPushSubscriptionCard />
-        <div className="grid gap-3 md:grid-cols-2">
-          {activeInvites.map((invite) => (
+        <h3 className="mt-4 text-sm font-semibold uppercase tracking-wide text-slate-700">
+          Anuncios pendientes
+        </h3>
+        <div className="mt-2 grid gap-3 md:grid-cols-2">
+          {pendingInvites.map((invite) => (
             <div key={invite.id} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
               <p className="font-semibold text-slate-900">{invite.visitorName}</p>
               <p className="text-sm text-slate-600">Residente: {invite.resident.fullName}</p>
               <p className="text-xs text-slate-500">
                 Expira: {new Date(invite.validUntil).toLocaleString("es-DO")}
               </p>
-              {invite.scans[0] ? (
-                <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 p-2 text-xs text-emerald-900">
-                  Aceptado: {new Date(invite.scans[0].scannedAt).toLocaleString("es-DO")}
-                </div>
-              ) : (
-                <form action={acceptAnnouncedVisitAction} className="mt-2">
-                  <input type="hidden" name="qrId" value={invite.id} />
-                  <button className="w-full rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100">
-                    Aceptar llegada manualmente
-                  </button>
-                </form>
-              )}
+              <form action={acceptAnnouncedVisitAction} className="mt-2">
+                <input type="hidden" name="qrId" value={invite.id} />
+                <button className="w-full rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100">
+                  Aceptar llegada manualmente
+                </button>
+              </form>
             </div>
           ))}
-          {activeInvites.length === 0 ? (
-            <p className="text-sm text-slate-600">No hay anuncios activos ahora mismo.</p>
+          {pendingInvites.length === 0 ? (
+            <p className="text-sm text-slate-600">No hay anuncios pendientes ahora mismo.</p>
           ) : null}
         </div>
+
+        <details className="mt-4">
+          <summary className="cursor-pointer text-sm font-semibold uppercase tracking-wide text-slate-700">
+            Ultimos 20 anuncios registrados
+          </summary>
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            {recentRegisteredAnnouncements.map((record) => (
+              <div key={record.id} className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4">
+                <p className="font-semibold text-slate-900">{record.code.visitorName}</p>
+                <p className="text-sm text-slate-700">Residente: {record.code.resident.fullName}</p>
+                <p className="text-xs text-slate-600">Guardia: {record.scanner.fullName}</p>
+                <p className="text-xs text-slate-600">
+                  Registrado: {new Date(record.scannedAt).toLocaleString("es-DO")}
+                </p>
+                <p className="mt-1 text-xs text-slate-600">{record.reason}</p>
+              </div>
+            ))}
+            {recentRegisteredAnnouncements.length === 0 ? (
+              <p className="text-sm text-slate-600">Aun no hay anuncios registrados.</p>
+            ) : null}
+          </div>
+        </details>
       </Card>
     </DashboardShell>
   );
