@@ -8,7 +8,19 @@ import { InstallAppGuide } from "@/app/components/install-app-guide";
 
 export const dynamic = "force-dynamic";
 
-export default async function LoginPage() {
+function getSingleParam(value: string | string[] | undefined) {
+  if (Array.isArray(value)) return value[0] ?? "";
+  return value ?? "";
+}
+
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const shouldOpenInstall = getSingleParam(params.install) === "1";
+
   await ensureSuperAdminExists();
   const dbConfigured =
     Boolean(process.env.DATABASE_URL) ||
@@ -82,7 +94,7 @@ export default async function LoginPage() {
             </div>
           ) : null}
           <div className="mb-4">
-            <InstallAppGuide />
+            <InstallAppGuide initialOpen={shouldOpenInstall} />
           </div>
           <LoginForm />
         </article>

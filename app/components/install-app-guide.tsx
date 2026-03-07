@@ -21,7 +21,13 @@ function isInStandaloneMode() {
   return standaloneFromMedia || standaloneFromNavigator;
 }
 
-export function InstallAppGuide({ compact = false }: { compact?: boolean }) {
+export function InstallAppGuide({
+  compact = false,
+  initialOpen = false,
+}: {
+  compact?: boolean;
+  initialOpen?: boolean;
+}) {
   const [isClient, setIsClient] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<DeferredPromptEvent | null>(null);
@@ -53,6 +59,12 @@ export function InstallAppGuide({ compact = false }: { compact?: boolean }) {
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  useEffect(() => {
+    if (initialOpen) {
+      setIsOpen(true);
+    }
+  }, [initialOpen]);
 
   const canAutoInstall = Boolean(installPrompt) && !isInstalled;
   const showIosGuide = useMemo(() => isIosDevice() && !canAutoInstall, [canAutoInstall]);
