@@ -54,7 +54,6 @@ CRON_SECRET=
 Si aplicas migraciones manualmente en Supabase SQL Editor, ejecuta:
 
 1. `prisma/migrations/20260306113000_full_feature_foundation/migration.sql`
-2. `prisma/migrations/20260306142000_zone_reservation_notifications/migration.sql`
 
 Luego en local:
 
@@ -86,4 +85,3 @@ npm run prisma:generate
 Configurados en `vercel.json`:
 
 - `/api/internal/purge-id-evidence` (purga de evidencias antiguas)
-- `/api/internal/zone-reservation-reminders` (recordatorios de reservas cercanas)

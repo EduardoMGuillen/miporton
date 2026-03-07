@@ -225,7 +225,7 @@ export default async function Home() {
             <li>- Creacion de zonas y politicas por horas maximas.</li>
             <li>- Bloqueo de fechas/rangos de uso en calendario.</li>
             <li>- Notificacion inmediata al admin cuando hay nueva reserva.</li>
-            <li>- Notificacion al residente por cancelaciones y proximidad de reserva.</li>
+            <li>- Notificacion al residente por cancelaciones de reserva por admin.</li>
           </ul>
         </article>
       </section>

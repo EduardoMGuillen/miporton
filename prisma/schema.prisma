@@ -142,7 +142,6 @@ model ZoneReservation {
   endsAt        DateTime
   note          String?
   status        ZoneReservationStatus @default(APPROVED)
-  reminderSentAt DateTime?
   createdAt     DateTime              @default(now())
   updatedAt     DateTime              @updatedAt
   zoneId        String
@@ -154,7 +153,6 @@ model ZoneReservation {
 
   @@index([zoneId, startsAt, endsAt])
   @@index([residentialId, startsAt, endsAt])
-  @@index([status, startsAt, reminderSentAt])
 }
 
 model ZoneBlock {
