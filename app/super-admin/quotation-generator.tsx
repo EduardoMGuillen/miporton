@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { jsPDF } from "jspdf";
+import { formatDateTimeTegucigalpa } from "@/lib/datetime";
 
 type PaymentType = "MENSUAL" | "SEMESTRAL" | "ANUAL";
 
@@ -102,7 +103,7 @@ export function QuotationGenerator() {
 
       const doc = new jsPDF({ unit: "pt", format: "a4" });
       const quoteNumber = `COT-${Date.now()}`;
-      const createdAtLabel = new Date().toLocaleString("es-DO");
+      const createdAtLabel = formatDateTimeTegucigalpa(new Date());
 
       if (nexusLogo) {
         doc.addImage(nexusLogo, "PNG", 40, 30, 210, 60);

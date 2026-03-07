@@ -6,6 +6,7 @@ import { CreateQrForm } from "@/app/resident/create-qr-form";
 import { PushSubscriptionCard } from "@/app/resident/push-subscription";
 import { deleteInviteQrAction } from "@/app/resident/actions";
 import { QrShareActions } from "@/app/resident/qr-share-actions";
+import { formatDateTimeTegucigalpa } from "@/lib/datetime";
 
 type InviteWithImage = {
   id: string;
@@ -87,7 +88,7 @@ export default async function ResidentPage() {
               <p className="mt-3 text-sm font-semibold text-slate-900">{invite.visitorName}</p>
               <p className="text-xs text-slate-600">{validityLabel(invite.validityType)}</p>
               <p className="text-xs text-slate-500">
-                Expira: {new Date(invite.validUntil).toLocaleString("es-DO")}
+                Expira: {formatDateTimeTegucigalpa(invite.validUntil)}
               </p>
               <p className="text-xs text-slate-500">
                 Usos: {invite.usedCount}/{invite.maxUses === 9999 ? "Ilimitado" : invite.maxUses}
@@ -100,7 +101,7 @@ export default async function ResidentPage() {
                 visitorName={invite.visitorName}
                 code={invite.code}
                 validityLabel={validityLabel(invite.validityType)}
-                validUntilLabel={new Date(invite.validUntil).toLocaleString("es-DO")}
+                validUntilLabel={formatDateTimeTegucigalpa(invite.validUntil)}
                 residentialName={residential?.name ?? "Residencial"}
                 residentName={session.fullName}
               />
@@ -138,7 +139,7 @@ export default async function ResidentPage() {
                 <p className="mt-3 text-sm font-semibold text-slate-900">{invite.visitorName}</p>
                 <p className="text-xs text-slate-600">{validityLabel(invite.validityType)}</p>
                 <p className="text-xs text-slate-500">
-                  Expira: {new Date(invite.validUntil).toLocaleString("es-DO")}
+                  Expira: {formatDateTimeTegucigalpa(invite.validUntil)}
                 </p>
                 <p className="text-xs text-slate-500">
                   Usos: {invite.usedCount}/{invite.maxUses === 9999 ? "Ilimitado" : invite.maxUses}

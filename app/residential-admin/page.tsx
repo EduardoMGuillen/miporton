@@ -4,6 +4,7 @@ import { Card, DashboardShell } from "@/app/components/shell";
 import { CreateResidentialUserForm } from "@/app/residential-admin/create-user-form";
 import { EntryRecordExportButton } from "@/app/components/entry-record-export-button";
 import { EntryEvidencePreview } from "@/app/components/entry-evidence-preview";
+import { formatDateTimeTegucigalpa } from "@/lib/datetime";
 import {
   deleteResidentialUserAction,
   updateResidentialUserAction,
@@ -243,7 +244,7 @@ export default async function ResidentialAdminPage({
                 <p className="text-xs text-slate-600">Residente: {scan.code.resident.fullName}</p>
                 <p className="text-xs text-slate-600">Guardia: {scan.scanner.fullName}</p>
                 <p className="text-xs text-slate-500">
-                  Fecha: {new Date(scan.scannedAt).toLocaleString("es-DO")}
+                  Fecha: {formatDateTimeTegucigalpa(scan.scannedAt)}
                 </p>
                 <p className="text-xs text-slate-500">
                   Metodo: {scan.reason.toLowerCase().includes("manual") ? "Manual" : "QR"}
@@ -257,7 +258,7 @@ export default async function ResidentialAdminPage({
                   visitorName={scan.code.visitorName}
                   residentName={scan.code.resident.fullName}
                   guardName={scan.scanner.fullName}
-                  scannedAtLabel={new Date(scan.scannedAt).toLocaleString("es-DO")}
+                  scannedAtLabel={formatDateTimeTegucigalpa(scan.scannedAt)}
                   methodLabel={scan.reason.toLowerCase().includes("manual") ? "Manual" : "QR"}
                   evidenceLabel={scan.idPhotoSize ? "Con evidencia" : "Sin evidencia"}
                   reason={scan.reason}

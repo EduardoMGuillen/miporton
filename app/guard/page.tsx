@@ -6,6 +6,7 @@ import { acceptAnnouncedVisitAction } from "@/app/guard/actions";
 import { GuardPushSubscriptionCard } from "@/app/guard/push-subscription";
 import { GuardAutoRefresh } from "@/app/guard/guard-auto-refresh";
 import { GuardDeliveryAnnouncementForm } from "@/app/guard/delivery-announcement-form";
+import { formatDateTimeTegucigalpa } from "@/lib/datetime";
 
 export default async function GuardPage() {
   const session = await requireRole(["GUARD"]);
@@ -94,7 +95,7 @@ export default async function GuardPage() {
               <p className="font-semibold text-slate-900">{invite.visitorName}</p>
               <p className="text-sm text-slate-600">Residente: {invite.resident.fullName}</p>
               <p className="text-xs text-slate-500">
-                Expira: {new Date(invite.validUntil).toLocaleString("es-DO")}
+                Expira: {formatDateTimeTegucigalpa(invite.validUntil)}
               </p>
               <form action={acceptAnnouncedVisitAction} className="mt-2">
                 <input type="hidden" name="qrId" value={invite.id} />
@@ -120,7 +121,7 @@ export default async function GuardPage() {
                 <p className="text-sm text-slate-700">Residente: {record.code.resident.fullName}</p>
                 <p className="text-xs text-slate-600">Guardia: {record.scanner.fullName}</p>
                 <p className="text-xs text-slate-600">
-                  Registrado: {new Date(record.scannedAt).toLocaleString("es-DO")}
+                  Registrado: {formatDateTimeTegucigalpa(record.scannedAt)}
                 </p>
                 <p className="mt-1 text-xs text-slate-600">{record.reason}</p>
               </div>
