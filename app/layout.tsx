@@ -14,6 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://miporton.vercel.app"),
   title: "MiVisita",
   applicationName: "MiVisita",
   description: "Webapp de control de visitas con QR para residenciales.",
