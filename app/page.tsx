@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { dashboardPathByRole } from "@/lib/authorization";
+import { InstallAppGuide } from "@/app/components/install-app-guide";
 
 export default async function Home() {
   const session = await getSession();
@@ -25,6 +26,7 @@ export default async function Home() {
           </div>
         </div>
         <nav className="flex items-center gap-3">
+          <InstallAppGuide compact />
           {dashboardPath ? (
             <Link
               href={dashboardPath}

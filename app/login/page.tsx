@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { dashboardPathByRole } from "@/lib/authorization";
 import { ensureSuperAdminExists } from "@/lib/bootstrap";
 import { LoginForm } from "@/app/login/login-form";
+import { InstallAppGuide } from "@/app/components/install-app-guide";
 
 export const dynamic = "force-dynamic";
 
@@ -80,6 +81,9 @@ export default async function LoginPage() {
               Falta configurar la conexion a base de datos en variables de entorno.
             </div>
           ) : null}
+          <div className="mb-4">
+            <InstallAppGuide />
+          </div>
           <LoginForm />
         </article>
       </section>
