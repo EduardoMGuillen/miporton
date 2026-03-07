@@ -33,6 +33,11 @@ const createServiceContractSchema = z.object({
   terms: z.string().max(1500, "Terminos demasiado largos.").optional(),
 });
 
+const toggleResidentialSuspensionSchema = z.object({
+  residentialId: z.string().min(1, "Residencial invalida."),
+  nextStatus: z.enum(["suspend", "activate"]),
+});
+
 export async function createResidentialWithAdminAction(
   _prevState: string | null,
   formData: FormData,
@@ -174,4 +179,24 @@ export async function createServiceContractAction(_prevState: string | null, for
 
   revalidatePath("/super-admin");
   return "Contrato de servicio creado correctamente.";
+}
+
+export async function toggleResidentialSuspensionAction(formData: FormData) {
+  await requireRole(["SUPER_ADMIN"]);
+  const parsed = toggleResidentialSuspensionSchema.safeParse({
+    residentialId: formData.get("residentialId"),
+    nextStatus: formData.get("nextStatus"),
+  });
+  if (!parsed.success) return;
+
+  const shouldSuspend = parsed.data.nextStatus === "suspend";
+  await prisma.residential.update({
+    where: { id: parsed.data.residentialId },
+    data: {
+      isSuspended: shouldSuspend,
+      suspendedAt: shouldSuspend ? new Date() : null,
+    },
+  });
+
+  revalidatePath("/super-admin");
 }

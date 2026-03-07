@@ -9,6 +9,7 @@ import { QuotationGenerator } from "@/app/super-admin/quotation-generator";
 import { ServiceContractForm } from "@/app/super-admin/service-contract-form";
 import { ServiceContractPrintButton } from "@/app/super-admin/service-contract-print-button";
 import { ReportsBackupButton } from "@/app/super-admin/reports-backup-button";
+import { ResidentialSuspensionToggle } from "@/app/super-admin/residential-suspension-toggle";
 import { formatDateTimeTegucigalpa } from "@/lib/datetime";
 import {
   deleteResidentialAdminAction,
@@ -229,7 +230,18 @@ export default async function SuperAdminPage({
         <div className="grid gap-3 md:grid-cols-2">
           {residentials.map((residential) => (
             <div key={residential.id} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
-              <p className="font-semibold text-slate-900">{residential.name}</p>
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-semibold text-slate-900">{residential.name}</p>
+                <span
+                  className={
+                    residential.isSuspended
+                      ? "rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700"
+                      : "rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700"
+                  }
+                >
+                  {residential.isSuspended ? "Suspendida" : "Activa"}
+                </span>
+              </div>
               <p className="mt-1 text-sm text-slate-600">
                 Admin:{" "}
                 {residential.users[0]
@@ -239,6 +251,16 @@ export default async function SuperAdminPage({
               <p className="mt-2 text-xs text-slate-500">
                 Usuarios: {residential._count.users} | QRs generados: {residential._count.qrCodes}
               </p>
+              {residential.isSuspended && residential.suspendedAt ? (
+                <p className="mt-1 text-xs text-amber-700">
+                  Suspendida desde: {formatDateTimeTegucigalpa(residential.suspendedAt)}
+                </p>
+              ) : null}
+              <ResidentialSuspensionToggle
+                residentialId={residential.id}
+                residentialName={residential.name}
+                isSuspended={residential.isSuspended}
+              />
             </div>
           ))}
           {residentials.length === 0 ? (

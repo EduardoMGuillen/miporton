@@ -39,6 +39,8 @@ model Residential {
   id            String               @id @default(cuid())
   name          String
   supportPhone  String?
+  isSuspended   Boolean              @default(false)
+  suspendedAt   DateTime?
   createdAt     DateTime             @default(now())
   users         User[]
   qrCodes       QrCode[]

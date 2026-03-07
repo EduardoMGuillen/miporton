@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
+import { prisma } from "@/lib/prisma";
 
 export const SESSION_COOKIE_NAME = "mivisita_session";
 
@@ -38,7 +39,22 @@ export async function getSession() {
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 
   if (!token) return null;
-  return readSessionToken(token);
+  const session = await readSessionToken(token);
+  if (!session) return null;
+  if (session.role === "SUPER_ADMIN") return session;
+  if (!session.residentialId) return session;
+
+  try {
+    const residential = await prisma.residential.findUnique({
+      where: { id: session.residentialId },
+      select: { isSuspended: true },
+    });
+    if (!residential || residential.isSuspended) return null;
+  } catch {
+    return session;
+  }
+
+  return session;
 }
 
 export async function setSessionCookie(session: SessionData) {

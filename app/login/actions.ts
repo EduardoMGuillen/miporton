@@ -30,6 +30,16 @@ export async function loginAction(_prevState: string | null, formData: FormData)
   const isPasswordValid = await bcrypt.compare(parsed.data.password, user.passwordHash);
   if (!isPasswordValid) return "Correo o password incorrectos.";
 
+  if (user.role !== "SUPER_ADMIN" && user.residentialId) {
+    const residential = await prisma.residential.findUnique({
+      where: { id: user.residentialId },
+      select: { isSuspended: true },
+    });
+    if (residential?.isSuspended) {
+      return "Tu residencial esta suspendida temporalmente. Contacta al administrador principal.";
+    }
+  }
+
   await setSessionCookie({
     userId: user.id,
     fullName: user.fullName,
