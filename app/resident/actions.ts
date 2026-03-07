@@ -38,6 +38,8 @@ export async function createInviteQrAction(_prevState: string | null, formData: 
   const parsed = createInviteSchema.safeParse({
     visitorName: formData.get("visitorName"),
     validityType: formData.get("validityType"),
+    description: formData.get("description") || undefined,
+    hasVehicle: formData.get("hasVehicle") || "no",
   });
 
   if (!parsed.success) return parsed.error.issues[0]?.message ?? "Datos invalidos.";
