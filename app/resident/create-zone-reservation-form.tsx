@@ -12,7 +12,9 @@ function pad2(value: number) {
 }
 
 function formatHourLabel(hour: number) {
-  return `${pad2(hour)}:00`;
+  const period = hour >= 12 ? "PM" : "AM";
+  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+  return `${hour12}:00 ${period}`;
 }
 
 function dateOnly(value: Date) {
