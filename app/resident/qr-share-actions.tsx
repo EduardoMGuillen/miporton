@@ -94,13 +94,11 @@ export function QrShareActions(props: Props) {
     }
 
     await downloadPdf();
-    window.open(
-      `https://wa.me/?text=${encodeURIComponent(
-        `${shareText}. Te acabo de descargar el PDF para que lo adjuntes en WhatsApp.`,
-      )}`,
-      "_blank",
-      "noopener,noreferrer",
-    );
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(
+      `${shareText}. Te acabo de descargar el PDF para que lo adjuntes en WhatsApp.`,
+    )}`;
+    // Use top-level navigation to avoid popup blocking on Android browsers.
+    window.location.href = whatsappUrl;
   }
 
   return (
