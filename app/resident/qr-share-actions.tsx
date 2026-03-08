@@ -64,6 +64,73 @@ async function buildQrPdfBlob({
   return doc.output("blob");
 }
 
+function loadImageFromDataUrl(dataUrl: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("No se pudo cargar el QR para la imagen."));
+    image.src = dataUrl;
+  });
+}
+
+async function buildQrImageBlob({
+  qrDataUrl,
+  visitorName,
+  code,
+  validityLabel,
+  validUntilLabel,
+  residentialName,
+  residentName,
+}: Props) {
+  const width = 1200;
+  const height = 1600;
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("No se pudo generar la imagen.");
+
+  context.fillStyle = "#f8fafc";
+  context.fillRect(0, 0, width, height);
+
+  context.fillStyle = "#1d4ed8";
+  context.fillRect(0, 0, width, 220);
+  context.fillStyle = "#ffffff";
+  context.font = "bold 62px Arial";
+  context.fillText("MiVisita - Pase de Visita", 64, 132);
+
+  context.fillStyle = "#0f172a";
+  context.font = "500 40px Arial";
+  context.fillText(`Residencial: ${residentialName}`, 64, 320);
+  context.fillText(`Residente: ${residentName}`, 64, 390);
+  context.fillText(`Visita: ${visitorName}`, 64, 460);
+  context.fillText(`Validez: ${validityLabel}`, 64, 530);
+  context.fillText(`Expira: ${validUntilLabel}`, 64, 600);
+  context.fillText(`Codigo: MP:${code}`, 64, 670);
+
+  context.strokeStyle = "#cbd5e1";
+  context.lineWidth = 4;
+  const qrCardX = 270;
+  const qrCardY = 760;
+  const qrCardSize = 660;
+  context.strokeRect(qrCardX, qrCardY, qrCardSize, qrCardSize);
+  context.fillStyle = "#ffffff";
+  context.fillRect(qrCardX + 16, qrCardY + 16, qrCardSize - 32, qrCardSize - 32);
+
+  const qrImage = await loadImageFromDataUrl(qrDataUrl);
+  context.drawImage(qrImage, qrCardX + 40, qrCardY + 40, qrCardSize - 80, qrCardSize - 80);
+
+  context.fillStyle = "#475569";
+  context.font = "500 30px Arial";
+  context.fillText("Presentar este pase al guardia para validar acceso.", 120, 1490);
+
+  const blob = await new Promise<Blob | null>((resolve) => {
+    canvas.toBlob((result) => resolve(result), "image/png");
+  });
+  if (!blob) throw new Error("No se pudo exportar la imagen.");
+  return blob;
+}
+
 export function QrShareActions(props: Props) {
   const fileBaseName = `mivisita-pase-${safeFilePart(props.visitorName || "visita")}`;
 
@@ -101,13 +168,16 @@ export function QrShareActions(props: Props) {
     window.location.href = whatsappUrl;
   }
 
-  function downloadImage() {
+  async function downloadImage() {
+    const blob = await buildQrImageBlob(props);
+    const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = props.qrDataUrl;
+    a.href = url;
     a.download = `${fileBaseName}.png`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 
   return (
@@ -125,7 +195,7 @@ export function QrShareActions(props: Props) {
         Descargar PDF
       </button>
       <button
-        onClick={downloadImage}
+        onClick={() => downloadImage().catch(() => {})}
         className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-center text-xs font-medium text-indigo-700 transition hover:bg-indigo-100"
       >
         Descargar Imagen
