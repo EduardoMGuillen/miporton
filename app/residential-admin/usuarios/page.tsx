@@ -20,6 +20,8 @@ export default async function ResidentialAdminUsersPage() {
     },
     orderBy: { createdAt: "desc" },
   });
+  const residentUsersCount = users.filter((user) => user.role === "RESIDENT").length;
+  const guardUsersCount = users.filter((user) => user.role === "GUARD").length;
   const residentCategoryLabel = (value: "OWNER" | "TENANT") => (value === "OWNER" ? "Dueño" : "Inquilino");
 
   return (
@@ -30,7 +32,10 @@ export default async function ResidentialAdminUsersPage() {
       </Card>
 
       <Card>
-        <h2 className="mb-4 text-lg font-semibold text-slate-900">Usuarios de la residencial</h2>
+        <h2 className="mb-4 text-lg font-semibold text-slate-900">
+          Usuarios de la residencial (Total: {users.length} | Residentes: {residentUsersCount} | Guardias:{" "}
+          {guardUsersCount})
+        </h2>
         <div className="space-y-3">
           {users.map((user) => (
             <div key={user.id} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
