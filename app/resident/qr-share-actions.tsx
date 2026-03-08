@@ -101,8 +101,17 @@ export function QrShareActions(props: Props) {
     window.location.href = whatsappUrl;
   }
 
+  function downloadImage() {
+    const a = document.createElement("a");
+    a.href = props.qrDataUrl;
+    a.download = `${fileBaseName}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
   return (
-    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+    <div className="mt-3 grid gap-2 sm:grid-cols-3">
       <button
         onClick={shareToWhatsApp}
         className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-center text-xs font-medium text-emerald-700 transition hover:bg-emerald-100"
@@ -114,6 +123,12 @@ export function QrShareActions(props: Props) {
         className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-center text-xs font-medium text-blue-700 transition hover:bg-blue-100"
       >
         Descargar PDF
+      </button>
+      <button
+        onClick={downloadImage}
+        className="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-center text-xs font-medium text-indigo-700 transition hover:bg-indigo-100"
+      >
+        Descargar Imagen
       </button>
     </div>
   );
