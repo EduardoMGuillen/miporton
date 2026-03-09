@@ -1,4 +1,5 @@
 import { Card } from "@/app/components/shell";
+import { ConfirmSubmitButton } from "@/app/components/confirm-submit-button";
 import { PasswordField } from "@/app/components/password-field";
 import { CreateResidentialUserForm } from "@/app/residential-admin/create-user-form";
 import { requireRole } from "@/lib/authorization";
@@ -100,13 +101,16 @@ export default async function ResidentialAdminUsersPage() {
                       ) : null}
                       <button className="btn-primary w-full">Guardar cambios</button>
                     </form>
+                    <form action={deleteResidentialUserAction} className="mt-2">
+                      <input type="hidden" name="userId" value={user.id} />
+                      <ConfirmSubmitButton
+                        confirmMessage={`¿Seguro que deseas eliminar a ${user.fullName}?`}
+                        className="w-full rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100"
+                      >
+                        Eliminar usuario
+                      </ConfirmSubmitButton>
+                    </form>
                   </details>
-                  <form action={deleteResidentialUserAction}>
-                    <input type="hidden" name="userId" value={user.id} />
-                    <button className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100">
-                      Eliminar
-                    </button>
-                  </form>
                 </div>
               </div>
             </div>
