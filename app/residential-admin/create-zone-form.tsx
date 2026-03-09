@@ -45,6 +45,10 @@ export function CreateZoneForm() {
         className="field-base md:col-span-2"
         placeholder="Descripcion (opcional)"
       />
+      <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 md:col-span-2">
+        <input type="checkbox" name="oneReservationPerDay" className="h-4 w-4 accent-blue-600" />
+        1 reserva por dia
+      </label>
       <button type="submit" disabled={isPending} className="btn-primary disabled:opacity-60 md:w-max">
         {isPending ? "Creando..." : "Crear zona"}
       </button>

@@ -33,6 +33,7 @@ const createZoneSchema = z.object({
   maxHoursPerReservation: z.coerce.number().int().min(1, "El maximo debe ser al menos 1 hora."),
   scheduleStartHour: z.coerce.number().int().min(0).max(23),
   scheduleEndHour: z.coerce.number().int().min(1).max(24),
+  oneReservationPerDay: z.enum(["on"]).optional(),
 });
 
 const blockZoneSchema = z.object({
@@ -69,6 +70,7 @@ const updateZoneScheduleSchema = z.object({
   zoneId: z.string().min(1),
   scheduleStartHour: z.coerce.number().int().min(0).max(23),
   scheduleEndHour: z.coerce.number().int().min(1).max(24),
+  oneReservationPerDay: z.enum(["on"]).optional(),
 });
 
 function overlapRange(startsAt: Date, endsAt: Date, otherStart: Date, otherEnd: Date) {
@@ -224,6 +226,7 @@ export async function createZoneAction(_prevState: string | null, formData: Form
     maxHoursPerReservation: formData.get("maxHoursPerReservation"),
     scheduleStartHour: formData.get("scheduleStartHour"),
     scheduleEndHour: formData.get("scheduleEndHour"),
+    oneReservationPerDay: formData.get("oneReservationPerDay") || undefined,
   });
   if (!parsed.success) return parsed.error.issues[0]?.message ?? "Datos invalidos.";
   if (parsed.data.scheduleStartHour >= parsed.data.scheduleEndHour) {
@@ -246,6 +249,7 @@ export async function createZoneAction(_prevState: string | null, formData: Form
       maxHoursPerReservation: parsed.data.maxHoursPerReservation,
       scheduleStartHour: parsed.data.scheduleStartHour,
       scheduleEndHour: parsed.data.scheduleEndHour,
+      oneReservationPerDay: parsed.data.oneReservationPerDay === "on",
       residentialId: session.residentialId,
     },
   });
@@ -262,6 +266,7 @@ export async function updateZoneScheduleAction(formData: FormData) {
     zoneId: formData.get("zoneId"),
     scheduleStartHour: formData.get("scheduleStartHour"),
     scheduleEndHour: formData.get("scheduleEndHour"),
+    oneReservationPerDay: formData.get("oneReservationPerDay") || undefined,
   });
   if (!parsed.success) return;
   if (parsed.data.scheduleStartHour >= parsed.data.scheduleEndHour) return;
@@ -274,6 +279,7 @@ export async function updateZoneScheduleAction(formData: FormData) {
     data: {
       scheduleStartHour: parsed.data.scheduleStartHour,
       scheduleEndHour: parsed.data.scheduleEndHour,
+      oneReservationPerDay: parsed.data.oneReservationPerDay === "on",
     },
   });
 

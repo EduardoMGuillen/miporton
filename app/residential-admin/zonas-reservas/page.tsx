@@ -104,6 +104,9 @@ export default async function ResidentialAdminZonesPage({
                 Horario habilitado: {String(zone.scheduleStartHour).padStart(2, "0")}:00 -{" "}
                 {String(zone.scheduleEndHour).padStart(2, "0")}:00
               </p>
+              <p className="text-xs text-slate-600">
+                Limite diario: {zone.oneReservationPerDay ? "1 reserva por dia" : "Multiples reservas por dia"}
+              </p>
               {zone.description ? <p className="text-xs text-slate-500">{zone.description}</p> : null}
               <form action={updateZoneScheduleAction} className="mt-2 grid gap-2 sm:grid-cols-2">
                 <input type="hidden" name="zoneId" value={zone.id} />
@@ -125,6 +128,15 @@ export default async function ResidentialAdminZonesPage({
                   className="field-base"
                   required
                 />
+                <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs text-slate-700 sm:col-span-2">
+                  <input
+                    type="checkbox"
+                    name="oneReservationPerDay"
+                    defaultChecked={zone.oneReservationPerDay}
+                    className="h-4 w-4 accent-blue-600"
+                  />
+                  Activar 1 reserva por dia
+                </label>
                 <button className="rounded-lg border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 sm:col-span-2 sm:w-max">
                   Guardar horario
                 </button>

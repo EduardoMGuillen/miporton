@@ -145,6 +145,7 @@ export default async function ResidentPage() {
             id: zone.id,
             name: zone.name,
             maxHoursPerReservation: zone.maxHoursPerReservation,
+            oneReservationPerDay: zone.oneReservationPerDay,
             scheduleStartHour: zone.scheduleStartHour,
             scheduleEndHour: zone.scheduleEndHour,
           }))}

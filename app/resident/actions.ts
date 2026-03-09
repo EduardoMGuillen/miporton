@@ -142,6 +142,7 @@ export async function createZoneReservationAction(_prevState: string | null, for
       id: true,
       name: true,
       maxHoursPerReservation: true,
+      oneReservationPerDay: true,
       scheduleStartHour: true,
       scheduleEndHour: true,
     },
@@ -164,6 +165,29 @@ export async function createZoneReservationAction(_prevState: string | null, for
   }
   if (localStart.hour < zone.scheduleStartHour || localEnd.hour > zone.scheduleEndHour) {
     return `Horario no permitido. Esta zona opera de ${String(zone.scheduleStartHour).padStart(2, "0")}:00 a ${String(zone.scheduleEndHour).padStart(2, "0")}:00.`;
+  }
+
+  if (zone.oneReservationPerDay) {
+    const [yearRaw, monthRaw, dayRaw] = localStart.datePart.split("-");
+    const year = Number(yearRaw);
+    const month = Number(monthRaw);
+    const day = Number(dayRaw);
+    const dayStartUtc = new Date(Date.UTC(year, month - 1, day, 6, 0, 0, 0));
+    const dayEndUtc = new Date(Date.UTC(year, month - 1, day + 1, 6, 0, 0, 0));
+    const reservationInDay = await prisma.zoneReservation.findFirst({
+      where: {
+        zoneId: zone.id,
+        status: "APPROVED",
+        startsAt: {
+          gte: dayStartUtc,
+          lt: dayEndUtc,
+        },
+      },
+      select: { id: true },
+    });
+    if (reservationInDay) {
+      return "Esta zona permite solo 1 reserva por dia y ya existe una reserva para esa fecha.";
+    }
   }
 
   const [existingReservations, existingBlocks] = await Promise.all([

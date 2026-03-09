@@ -38,6 +38,7 @@ export function CreateZoneReservationForm({
     id: string;
     name: string;
     maxHoursPerReservation: number;
+    oneReservationPerDay: boolean;
     scheduleStartHour: number;
     scheduleEndHour: number;
   }>;
@@ -72,9 +73,21 @@ export function CreateZoneReservationForm({
   const occupiedHours = useMemo(() => {
     if (!zoneId || !reservationDate) return new Set<number>();
     const dayStart = new Date(`${reservationDate}T00:00`);
+    const dayEnd = new Date(`${reservationDate}T23:59:59`);
     const set = new Set<number>();
     const startHour = selectedZone?.scheduleStartHour ?? 0;
     const endHour = selectedZone?.scheduleEndHour ?? 24;
+    const hasReservationInDay =
+      selectedZone?.oneReservationPerDay &&
+      slotRanges.some(
+        (slot) =>
+          slot.source === "reservation" &&
+          overlapRange(dayStart, dayEnd, slot.startsAt, slot.endsAt),
+      );
+    if (hasReservationInDay) {
+      HOURS.forEach((hour) => set.add(hour));
+      return set;
+    }
     HOURS.forEach((hour) => {
       if (hour < startHour || hour >= endHour) {
         set.add(hour);
