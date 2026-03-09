@@ -1,6 +1,7 @@
 import { requireRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
 import { Card, DashboardShell } from "@/app/components/shell";
+import { PasswordField } from "@/app/components/password-field";
 import { EntryRecordExportButton } from "@/app/components/entry-record-export-button";
 import { EntryEvidencePreview } from "@/app/components/entry-evidence-preview";
 import { MonthlyAccessReportButton } from "@/app/components/monthly-access-report-button";
@@ -302,11 +303,10 @@ export default async function SuperAdminPage({
                     placeholder="Correo"
                     required
                   />
-                  <input
+                  <PasswordField
                     name="password"
-                    type="password"
-                    className="field-base"
                     placeholder="Nueva password (opcional)"
+                    autoComplete="new-password"
                   />
                   <button className="btn-primary w-full">Guardar cambios</button>
                 </form>

@@ -1,4 +1,5 @@
 import { Card } from "@/app/components/shell";
+import { PasswordField } from "@/app/components/password-field";
 import { CreateResidentialUserForm } from "@/app/residential-admin/create-user-form";
 import { requireRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
@@ -74,11 +75,10 @@ export default async function ResidentialAdminUsersPage() {
                         placeholder="Correo"
                         required
                       />
-                      <input
+                      <PasswordField
                         name="password"
-                        type="password"
-                        className="field-base"
                         placeholder="Nueva password (opcional)"
+                        autoComplete="new-password"
                       />
                       {user.role === "RESIDENT" ? (
                         <>

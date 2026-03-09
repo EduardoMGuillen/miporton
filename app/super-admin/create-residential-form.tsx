@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { createResidentialWithAdminAction } from "@/app/super-admin/actions";
+import { PasswordField } from "@/app/components/password-field";
 
 const initialState: string | null = null;
 
@@ -32,12 +33,11 @@ export function CreateResidentialForm() {
         required
         className="field-base"
       />
-      <input
+      <PasswordField
         name="adminPassword"
-        type="password"
         placeholder="Password inicial"
         required
-        className="field-base"
+        autoComplete="new-password"
       />
       <button
         type="submit"
