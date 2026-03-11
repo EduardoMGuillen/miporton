@@ -6,6 +6,8 @@ import { z } from "zod";
 import { requireRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
 
+const RESIDENTIAL_ADMIN_DELETE_SECURITY_PASSWORD = "Guillen01..";
+
 const createResidentialSchema = z.object({
   residentialName: z.string().min(3, "Nombre de residencial invalido."),
   adminName: z.string().min(3, "Nombre del admin invalido."),
@@ -129,7 +131,8 @@ export async function updateResidentialAdminAction(formData: FormData) {
 export async function deleteResidentialAdminAction(formData: FormData) {
   await requireRole(["SUPER_ADMIN"]);
   const userId = String(formData.get("userId") ?? "");
-  if (!userId) return;
+  const deletePassword = String(formData.get("deletePassword") ?? "");
+  if (!userId || deletePassword !== RESIDENTIAL_ADMIN_DELETE_SECURITY_PASSWORD) return;
 
   await prisma.user.deleteMany({
     where: { id: userId, role: "RESIDENTIAL_ADMIN" },

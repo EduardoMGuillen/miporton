@@ -314,6 +314,13 @@ export default async function SuperAdminPage({
                 </form>
                 <form action={deleteResidentialAdminAction}>
                   <input type="hidden" name="userId" value={admin.id} />
+                  <input
+                    name="deletePassword"
+                    type="password"
+                    className="field-base mb-2"
+                    placeholder='Clave de seguridad para eliminar ("Guillen01..")'
+                    required
+                  />
                   <button className="w-full rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 transition hover:bg-red-100">
                     Eliminar admin
                   </button>
