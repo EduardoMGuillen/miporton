@@ -106,6 +106,8 @@ model QrCode {
 model QrScan {
   id                String   @id @default(cuid())
   scannedAt         DateTime @default(now())
+  exitedAt          DateTime?
+  exitNote          String?
   isValid           Boolean
   reason            String
   idPhotoData       Bytes?
@@ -119,6 +121,9 @@ model QrScan {
   scannerId         String
   code              QrCode   @relation(fields: [codeId], references: [id], onDelete: Cascade)
   scanner           User     @relation(fields: [scannerId], references: [id], onDelete: Cascade)
+
+  @@index([codeId, exitedAt])
+  @@index([isValid, exitedAt, scannedAt])
 }
 
 model PushSubscription {

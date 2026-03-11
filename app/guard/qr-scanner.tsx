@@ -13,6 +13,7 @@ type ScanResult = {
   residentialName?: string | null;
   residentId?: string | null;
 };
+type ScanMode = "entry" | "exit";
 
 const MAX_IMAGE_UPLOAD_BYTES = 2 * 1024 * 1024;
 
@@ -119,15 +120,17 @@ export function GuardQrScanner() {
   const [idPhotoFile, setIdPhotoFile] = useState<File | null>(null);
   const [platePhotoFile, setPlatePhotoFile] = useState<File | null>(null);
   const [preferredFacing, setPreferredFacing] = useState<"environment" | "user">("environment");
+  const [scanMode, setScanMode] = useState<ScanMode>("entry");
   const scannerId = useMemo(() => `qr-reader-${Math.random().toString(36).slice(2)}`, []);
   const scannerRef = useRef<ScannerInstance | null>(null);
   const isHandlingRef = useRef(false);
   const [isClient, setIsClient] = useState(false);
 
-  async function validateCode(code: string) {
+  async function validateCode(code: string, mode: ScanMode) {
     setError(null);
     setIdCaptureError(null);
-    const response = await fetch("/api/guard/scan", {
+    const endpoint = mode === "entry" ? "/api/guard/scan" : "/api/guard/scan-exit";
+    const response = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code }),
@@ -140,7 +143,7 @@ export function GuardQrScanner() {
     }
 
     const payload = (await response.json()) as ScanResult;
-    if (payload.valid) {
+    if (payload.valid && mode === "entry") {
       setPendingScannedCode(code);
       setPendingResult(payload);
       setIsIdCaptureOpen(true);
@@ -234,11 +237,12 @@ export function GuardQrScanner() {
       const scanner = new Html5Qrcode(scannerId);
       scannerRef.current = scanner;
 
+      const activeMode = scanMode;
       const onSuccess = async (decodedText: string) => {
         if (isHandlingRef.current) return;
         isHandlingRef.current = true;
         await scanner.stop().catch(() => {});
-        await validateCode(decodedText);
+        await validateCode(decodedText, activeMode);
         setIsScannerOpen(false);
       };
 
@@ -302,21 +306,39 @@ export function GuardQrScanner() {
       : result?.valid
         ? "valid"
         : "invalid";
+  const successTitle =
+    result?.valid && result.reason.toLowerCase().includes("salida")
+      ? "SALIDA REGISTRADA"
+      : "QR VALIDO";
 
   return (
     <div className="space-y-4">
-      <button
-        onClick={() => {
-          isHandlingRef.current = false;
-          setError(null);
-          setIsScannerOpen(true);
-        }}
-        className="w-full rounded-2xl bg-blue-700 px-5 py-5 text-lg font-bold text-white shadow-lg transition hover:bg-blue-800"
-      >
-        Escanear QR
-      </button>
+      <div className="grid gap-2 md:grid-cols-2">
+        <button
+          onClick={() => {
+            isHandlingRef.current = false;
+            setError(null);
+            setScanMode("entry");
+            setIsScannerOpen(true);
+          }}
+          className="w-full rounded-2xl bg-blue-700 px-5 py-4 text-base font-bold text-white shadow-lg transition hover:bg-blue-800"
+        >
+          Escanear Entrada
+        </button>
+        <button
+          onClick={() => {
+            isHandlingRef.current = false;
+            setError(null);
+            setScanMode("exit");
+            setIsScannerOpen(true);
+          }}
+          className="w-full rounded-2xl bg-slate-800 px-5 py-4 text-base font-bold text-white shadow-lg transition hover:bg-slate-900"
+        >
+          Escanear Salida
+        </button>
+      </div>
       <p className="text-center text-xs text-slate-500">
-        El ingreso se completara cuando tomes la foto del ID del visitante.
+        Entrada solicita foto del ID. Salida solo registra la hora de salida.
       </p>
 
       {isClient && isScannerOpen
@@ -324,7 +346,9 @@ export function GuardQrScanner() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-4 shadow-2xl">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-base font-semibold text-slate-900">Escaneo de acceso</h3>
+              <h3 className="text-base font-semibold text-slate-900">
+                {scanMode === "entry" ? "Escaneo de entrada" : "Escaneo de salida"}
+              </h3>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => {
@@ -457,7 +481,7 @@ export function GuardQrScanner() {
           >
             <p className="text-2xl font-bold">
               {resultTone === "valid"
-                ? "QR VALIDO"
+                ? successTitle
                 : resultTone === "used"
                   ? "QR YA UTILIZADO"
                   : "QR INVALIDO"}

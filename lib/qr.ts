@@ -17,6 +17,10 @@ export function calculateValidityWindow(
   return { validFrom, validUntil: addDays(validFrom, 3), maxUses: 9999 };
 }
 
+function normalizeScannedCode(scannedCode: string) {
+  return scannedCode.startsWith("MP:") ? scannedCode.slice(3) : scannedCode;
+}
+
 export async function validateAndConsumeQr({
   scannedCode,
   scannerId,
@@ -37,7 +41,7 @@ export async function validateAndConsumeQr({
     platePhotoSize?: number;
   };
 }) {
-  const code = scannedCode.startsWith("MP:") ? scannedCode.slice(3) : scannedCode;
+  const code = normalizeScannedCode(scannedCode);
 
   const qr = await prisma.qrCode.findUnique({
     where: { code },
@@ -93,17 +97,40 @@ export async function validateAndConsumeQr({
   }
 
   if (consume) {
-    await prisma.$transaction([
-      prisma.qrCode.update({
+    await prisma.$transaction(async (tx) => {
+      const pendingEntry = await tx.qrScan.findFirst({
+        where: {
+          codeId: qr.id,
+          isValid: true,
+          exitedAt: null,
+        },
+        orderBy: { scannedAt: "desc" },
+        select: { id: true },
+      });
+
+      if (pendingEntry) {
+        await tx.qrScan.update({
+          where: { id: pendingEntry.id },
+          data: {
+            exitedAt: new Date(),
+            exitNote: "Salida automatica por reingreso; no se escaneo salida previa.",
+          },
+        });
+      }
+
+      await tx.qrCode.update({
         where: { id: qr.id },
         data: { usedCount: { increment: 1 } },
-      }),
-      prisma.qrScan.create({
+      });
+
+      await tx.qrScan.create({
         data: {
           codeId: qr.id,
           scannerId,
           isValid: true,
-          reason: "Ingreso autorizado.",
+          reason: pendingEntry
+            ? "Ingreso autorizado. Se cerro salida pendiente automaticamente."
+            : "Ingreso autorizado.",
           idPhotoData: scanEvidence
             ? (scanEvidence.idPhotoData as unknown as Uint8Array<ArrayBuffer>)
             : null,
@@ -116,8 +143,8 @@ export async function validateAndConsumeQr({
           platePhotoMimeType: scanEvidence?.platePhotoMimeType,
           platePhotoSize: scanEvidence?.platePhotoSize,
         },
-      }),
-    ]);
+      });
+    });
   }
 
   return {
@@ -126,6 +153,74 @@ export async function validateAndConsumeQr({
     visitorName: qr.visitorName,
     visitorDescription: qr.description,
     hasVehicle: qr.hasVehicle,
+    residentialName: qr.residential.name,
+    residentName: qr.resident.fullName,
+    residentId: qr.residentId,
+  };
+}
+
+export async function registerQrExit({
+  scannedCode,
+  scannerResidentialId,
+}: {
+  scannedCode: string;
+  scannerResidentialId: string | null;
+}) {
+  const code = normalizeScannedCode(scannedCode);
+  const qr = await prisma.qrCode.findUnique({
+    where: { code },
+    include: {
+      resident: { select: { fullName: true } },
+      residential: { select: { name: true } },
+    },
+  });
+
+  if (!qr) {
+    return { valid: false, reason: "QR no encontrado.", visitorName: null, residentialName: null };
+  }
+
+  if (!scannerResidentialId || qr.residentialId !== scannerResidentialId) {
+    return {
+      valid: false,
+      reason: "Este QR no pertenece a la residencial del guardia.",
+      visitorName: qr.visitorName,
+      residentialName: qr.residential.name,
+      residentName: qr.resident.fullName,
+    };
+  }
+
+  const pendingEntry = await prisma.qrScan.findFirst({
+    where: {
+      codeId: qr.id,
+      isValid: true,
+      exitedAt: null,
+    },
+    orderBy: { scannedAt: "desc" },
+    select: { id: true },
+  });
+
+  if (!pendingEntry) {
+    return {
+      valid: false,
+      reason: "No hay un ingreso pendiente para registrar salida.",
+      visitorName: qr.visitorName,
+      residentialName: qr.residential.name,
+      residentName: qr.resident.fullName,
+    };
+  }
+
+  await prisma.qrScan.update({
+    where: { id: pendingEntry.id },
+    data: {
+      exitedAt: new Date(),
+      exitNote: "Salida registrada por escaneo de salida.",
+    },
+  });
+
+  return {
+    valid: true,
+    reason: "Salida registrada correctamente.",
+    visitorName: qr.visitorName,
     residentialName: qr.residential.name,
     residentName: qr.resident.fullName,
     residentId: qr.residentId,
