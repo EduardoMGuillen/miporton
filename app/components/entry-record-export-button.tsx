@@ -9,7 +9,10 @@ type EntryRecordExportButtonProps = {
   residentName: string;
   guardName: string;
   residentialName?: string;
-  scannedAtLabel: string;
+  entryAtLabel: string;
+  exitAtLabel: string;
+  exitStatusLabel: string;
+  exitNote?: string;
   methodLabel: string;
   evidenceLabel: string;
   reason: string;
@@ -36,7 +39,10 @@ export function EntryRecordExportButton({
   residentName,
   guardName,
   residentialName,
-  scannedAtLabel,
+  entryAtLabel,
+  exitAtLabel,
+  exitStatusLabel,
+  exitNote,
   methodLabel,
   evidenceLabel,
   reason,
@@ -54,7 +60,7 @@ export function EntryRecordExportButton({
 
       doc.setFont("helvetica", "bold");
       doc.setFontSize(16);
-      doc.text("Registro de entrada - MiVisita", 40, 48);
+      doc.text("Registro de acceso - MiVisita", 40, 48);
 
       doc.setFont("helvetica", "normal");
       doc.setFontSize(11);
@@ -65,15 +71,23 @@ export function EntryRecordExportButton({
       if (residentialName) {
         doc.text(`Residencial: ${residentialName}`, 40, 152);
       }
-      doc.text(`Fecha: ${scannedAtLabel}`, 40, residentialName ? 172 : 152);
-      doc.text(`Metodo: ${methodLabel}`, 40, residentialName ? 192 : 172);
-      doc.text(`Evidencia: ${evidenceLabel}`, 40, residentialName ? 212 : 192);
+      doc.text(`Entrada: ${entryAtLabel}`, 40, residentialName ? 172 : 152);
+      doc.text(`Salida: ${exitAtLabel} (${exitStatusLabel})`, 40, residentialName ? 192 : 172);
+      doc.text(`Metodo: ${methodLabel}`, 40, residentialName ? 212 : 192);
+      doc.text(`Evidencia: ${evidenceLabel}`, 40, residentialName ? 232 : 212);
 
-      const reasonY = residentialName ? 236 : 216;
+      const reasonY = residentialName ? 256 : 236;
       const reasonLines = doc.splitTextToSize(`Motivo: ${reason}`, 515);
       doc.text(reasonLines, 40, reasonY);
 
-      const imageStartY = reasonY + reasonLines.length * 14 + 18;
+      let detailsEndY = reasonY + reasonLines.length * 14 + 18;
+      if (exitNote) {
+        const exitNoteLines = doc.splitTextToSize(`Nota de salida: ${exitNote}`, 515);
+        doc.text(exitNoteLines, 40, detailsEndY);
+        detailsEndY += exitNoteLines.length * 14 + 8;
+      }
+
+      const imageStartY = detailsEndY;
       if (evidenceImageData) {
         doc.setFont("helvetica", "bold");
         doc.text("Evidencia del ID", 40, imageStartY);
@@ -92,7 +106,7 @@ export function EntryRecordExportButton({
         }
       }
 
-      doc.save(`registro-entrada-${recordId}.pdf`);
+      doc.save(`registro-acceso-${recordId}.pdf`);
     } finally {
       setIsGenerating(false);
     }

@@ -36,6 +36,8 @@ function imageFormat(mimeType: string | null) {
 type EntryRecord = {
   id: string;
   scannedAt: Date;
+  exitedAt: Date | null;
+  exitNote: string | null;
   reason: string;
   visitorName: string;
   residentName: string;
@@ -105,7 +107,8 @@ function buildResidentialReportPdf({
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
       const metaLines = [
-        `Fecha: ${formatDateTimeTegucigalpa(entry.scannedAt)}`,
+        `Entrada: ${formatDateTimeTegucigalpa(entry.scannedAt)}`,
+        `Salida: ${entry.exitedAt ? formatDateTimeTegucigalpa(entry.exitedAt) : "Pendiente"}`,
         `Residente: ${entry.residentName}`,
         `Guardia: ${entry.guardName}`,
         `Registro: ${entry.id}`,
@@ -117,6 +120,11 @@ function buildResidentialReportPdf({
       const reasonLines = doc.splitTextToSize(`Motivo: ${entry.reason}`, contentWidth);
       doc.text(reasonLines, 40, y);
       y += reasonLines.length * 10 + 4;
+      if (entry.exitNote) {
+        const exitNoteLines = doc.splitTextToSize(`Nota de salida: ${entry.exitNote}`, contentWidth);
+        doc.text(exitNoteLines, 40, y);
+        y += exitNoteLines.length * 10 + 4;
+      }
 
       const hasIdImage = Boolean(entry.idPhotoData && entry.idPhotoData.length > 0);
       const hasPlateImage = Boolean(entry.platePhotoData && entry.platePhotoData.length > 0);
@@ -222,6 +230,8 @@ export async function GET() {
       select: {
         id: true,
         scannedAt: true,
+        exitedAt: true,
+        exitNote: true,
         reason: true,
         idPhotoData: true,
         idPhotoMimeType: true,
@@ -281,6 +291,8 @@ export async function GET() {
     group.push({
       id: scan.id,
       scannedAt: scan.scannedAt,
+      exitedAt: scan.exitedAt,
+      exitNote: scan.exitNote,
       reason: scan.reason,
       visitorName: scan.code.visitorName,
       residentName: scan.code.resident.fullName,

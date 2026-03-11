@@ -94,6 +94,8 @@ export default async function ResidentialAdminLogsPage({
       select: {
         id: true,
         scannedAt: true,
+        exitedAt: true,
+        exitNote: true,
         reason: true,
         idPhotoSize: true,
         platePhotoSize: true,
@@ -181,7 +183,10 @@ export default async function ResidentialAdminLogsPage({
           monthLabel={selectedMonth}
           entries={idEvidenceScans.map((scan) => ({
             recordId: scan.id,
-            dateLabel: formatDateTimeTegucigalpa(scan.scannedAt),
+            entryDateLabel: formatDateTimeTegucigalpa(scan.scannedAt),
+            exitDateLabel: scan.exitedAt ? formatDateTimeTegucigalpa(scan.exitedAt) : "Pendiente",
+            exitStatusLabel: scan.exitedAt ? "Completada" : "Pendiente",
+            exitNote: scan.exitNote ?? undefined,
             visitorName: scan.code.visitorName,
             residentName: scan.code.resident.fullName,
             guardName: scan.scanner.fullName,
@@ -212,7 +217,10 @@ export default async function ResidentialAdminLogsPage({
             <p className="mt-3 text-sm font-semibold text-slate-900">Visita: {scan.code.visitorName}</p>
             <p className="text-xs text-slate-600">Residente: {scan.code.resident.fullName}</p>
             <p className="text-xs text-slate-600">Guardia: {scan.scanner.fullName}</p>
-            <p className="text-xs text-slate-500">Fecha: {formatDateTimeTegucigalpa(scan.scannedAt)}</p>
+            <p className="text-xs text-slate-500">Entrada: {formatDateTimeTegucigalpa(scan.scannedAt)}</p>
+            <p className="text-xs text-slate-500">
+              Salida: {scan.exitedAt ? formatDateTimeTegucigalpa(scan.exitedAt) : "Pendiente"}
+            </p>
             <p className="text-xs text-slate-500">
               Metodo: {scan.reason.toLowerCase().includes("manual") ? "Manual" : "QR"}
             </p>
@@ -232,12 +240,16 @@ export default async function ResidentialAdminLogsPage({
               </div>
             ) : null}
             <p className="mt-2 text-xs text-slate-500">{scan.reason}</p>
+            {scan.exitNote ? <p className="text-xs text-slate-500">Nota salida: {scan.exitNote}</p> : null}
             <EntryRecordExportButton
               recordId={scan.id}
               visitorName={scan.code.visitorName}
               residentName={scan.code.resident.fullName}
               guardName={scan.scanner.fullName}
-              scannedAtLabel={formatDateTimeTegucigalpa(scan.scannedAt)}
+              entryAtLabel={formatDateTimeTegucigalpa(scan.scannedAt)}
+              exitAtLabel={scan.exitedAt ? formatDateTimeTegucigalpa(scan.exitedAt) : "Pendiente"}
+              exitStatusLabel={scan.exitedAt ? "Completada" : "Pendiente"}
+              exitNote={scan.exitNote ?? undefined}
               methodLabel={scan.reason.toLowerCase().includes("manual") ? "Manual" : "QR"}
               evidenceLabel={scan.idPhotoSize || scan.platePhotoSize ? "Con evidencia" : "Sin evidencia"}
               reason={scan.reason}

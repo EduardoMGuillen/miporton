@@ -5,7 +5,10 @@ import { useState } from "react";
 
 type EntryItem = {
   recordId: string;
-  dateLabel: string;
+  entryDateLabel: string;
+  exitDateLabel: string;
+  exitStatusLabel: string;
+  exitNote?: string;
   visitorName: string;
   residentName: string;
   guardName: string;
@@ -93,7 +96,8 @@ export function MonthlyAccessReportButton({
         doc.setFont("helvetica", "normal");
         doc.setFontSize(9);
         const meta = [
-          `Fecha: ${entry.dateLabel}`,
+          `Entrada: ${entry.entryDateLabel}`,
+          `Salida: ${entry.exitDateLabel} (${entry.exitStatusLabel})`,
           `Residente: ${entry.residentName}`,
           `Guardia: ${entry.guardName}`,
           `Registro: ${entry.recordId}`,
@@ -106,6 +110,12 @@ export function MonthlyAccessReportButton({
         const reasonLines = doc.splitTextToSize(`Motivo: ${entry.reason}`, contentWidth);
         doc.text(reasonLines, 40, y);
         y += reasonLines.length * 10 + 4;
+
+        if (entry.exitNote) {
+          const exitNoteLines = doc.splitTextToSize(`Nota de salida: ${entry.exitNote}`, contentWidth);
+          doc.text(exitNoteLines, 40, y);
+          y += exitNoteLines.length * 10 + 4;
+        }
 
         const [idImage, plateImage] = await Promise.all([
           entry.evidenceImageUrl ? imageUrlToDataUrl(entry.evidenceImageUrl) : Promise.resolve(null),
