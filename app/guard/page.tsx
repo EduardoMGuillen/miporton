@@ -8,11 +8,24 @@ import { GuardAutoRefresh } from "@/app/guard/guard-auto-refresh";
 import { GuardDeliveryAnnouncementForm } from "@/app/guard/delivery-announcement-form";
 import { formatDateTimeTegucigalpa } from "@/lib/datetime";
 
+function tegucigalpaTodayRange(now = new Date()) {
+  const tegucigalpaOffsetHours = 6;
+  const shifted = new Date(now.getTime() - tegucigalpaOffsetHours * 60 * 60 * 1000);
+  const year = shifted.getUTCFullYear();
+  const month = shifted.getUTCMonth();
+  const day = shifted.getUTCDate();
+  const start = new Date(Date.UTC(year, month, day, tegucigalpaOffsetHours, 0, 0, 0));
+  const end = new Date(Date.UTC(year, month, day + 1, tegucigalpaOffsetHours, 0, 0, 0));
+  return { start, end };
+}
+
 export default async function GuardPage() {
   const session = await requireRole(["GUARD"]);
   if (!session.residentialId) {
     return <p className="p-8 text-red-600">Sesion invalida sin residencial.</p>;
   }
+
+  const { start: todayStart, end: todayEnd } = tegucigalpaTodayRange();
 
   const activeInvites = await prisma.qrCode.findMany({
     where: {
@@ -52,6 +65,19 @@ export default async function GuardPage() {
       },
     },
   });
+  const todayZoneReservations = await prisma.zoneReservation.findMany({
+    where: {
+      residentialId: session.residentialId,
+      status: "APPROVED",
+      startsAt: { gte: todayStart, lt: todayEnd },
+    },
+    include: {
+      zone: { select: { name: true } },
+      resident: { select: { fullName: true } },
+    },
+    orderBy: { startsAt: "asc" },
+    take: 80,
+  });
   const pendingInvites = activeInvites.filter((invite) => invite.scans.length === 0);
   const residents = await prisma.user.findMany({
     where: {
@@ -81,6 +107,29 @@ export default async function GuardPage() {
           Selecciona el residente y notifica que su delivery esta en la entrada.
         </p>
         <GuardDeliveryAnnouncementForm residents={residents} />
+      </Card>
+
+      <Card>
+        <h2 className="mb-2 text-lg font-semibold text-slate-900">Reservas de zonas para hoy</h2>
+        <p className="mb-4 text-sm text-slate-600">
+          Reservas activas del dia actual para control de acceso en caseta.
+        </p>
+        <div className="grid gap-3 md:grid-cols-2">
+          {todayZoneReservations.map((reservation) => (
+            <div key={reservation.id} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+              <p className="font-semibold text-slate-900">{reservation.zone.name}</p>
+              <p className="text-sm text-slate-700">Residente: {reservation.resident.fullName}</p>
+              <p className="text-xs text-slate-600">
+                Horario: {formatDateTimeTegucigalpa(reservation.startsAt)} -{" "}
+                {formatDateTimeTegucigalpa(reservation.endsAt)}
+              </p>
+              {reservation.note ? <p className="mt-1 text-xs text-slate-500">{reservation.note}</p> : null}
+            </div>
+          ))}
+          {todayZoneReservations.length === 0 ? (
+            <p className="text-sm text-slate-600">No hay reservas activas para hoy.</p>
+          ) : null}
+        </div>
       </Card>
 
       <Card>
