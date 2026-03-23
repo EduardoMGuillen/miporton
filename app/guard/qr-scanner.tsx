@@ -116,6 +116,7 @@ export function GuardQrScanner() {
   const [isStarting, setIsStarting] = useState(false);
   const [isIdCaptureOpen, setIsIdCaptureOpen] = useState(false);
   const [isSubmittingIdPhoto, setIsSubmittingIdPhoto] = useState(false);
+  const [isManualValidationLoading, setIsManualValidationLoading] = useState(false);
   const [pendingScannedCode, setPendingScannedCode] = useState<string | null>(null);
   const [pendingResult, setPendingResult] = useState<ScanResult | null>(null);
   const [idPhotoFile, setIdPhotoFile] = useState<File | null>(null);
@@ -292,18 +293,24 @@ export function GuardQrScanner() {
     const manualCode = searchParams.get("manualCode")?.trim();
     if (!manualCode) {
       handledManualCodeRef.current = null;
+      setIsManualValidationLoading(false);
       return;
     }
     if (handledManualCodeRef.current === manualCode) return;
     handledManualCodeRef.current = manualCode;
 
+    setIsManualValidationLoading(true);
     setResult(null);
     setError(null);
     setIdCaptureError(null);
     setScanMode("entry");
-    validateCode(manualCode, "entry").catch(() => {
-      setError("No se pudo validar el QR manual.");
-    });
+    validateCode(manualCode, "entry")
+      .catch(() => {
+        setError("No se pudo validar el QR manual.");
+      })
+      .finally(() => {
+        setIsManualValidationLoading(false);
+      });
 
     const nextParams = new URLSearchParams(searchParams.toString());
     nextParams.delete("manualCode");
@@ -367,6 +374,11 @@ export function GuardQrScanner() {
       <p className="text-center text-xs text-slate-500">
         Entrada solicita foto del ID. Salida solo registra la hora de salida.
       </p>
+      {isManualValidationLoading ? (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700">
+          Procesando confirmacion manual... en segundos se abrira la captura de evidencia.
+        </div>
+      ) : null}
 
       {isClient && isScannerOpen
         ? createPortal(

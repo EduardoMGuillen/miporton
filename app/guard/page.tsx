@@ -1,12 +1,12 @@
 import { requireRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
-import Link from "next/link";
 import { Card, DashboardShell } from "@/app/components/shell";
 import { GuardQrScanner } from "@/app/guard/qr-scanner";
 import { confirmManualExitAction } from "@/app/guard/actions";
 import { GuardPushSubscriptionCard } from "@/app/guard/push-subscription";
 import { GuardAutoRefresh } from "@/app/guard/guard-auto-refresh";
 import { GuardDeliveryAnnouncementForm } from "@/app/guard/delivery-announcement-form";
+import { ManualConfirmStartButton } from "@/app/guard/manual-confirm-start-button";
 import { formatDateTimeTegucigalpa } from "@/lib/datetime";
 
 function tegucigalpaTodayRange(now = new Date()) {
@@ -66,10 +66,9 @@ export default async function GuardPage() {
       },
     },
   });
-  const pendingManualEntries = await prisma.qrScan.findMany({
+  const pendingExitEntries = await prisma.qrScan.findMany({
     where: {
       isValid: true,
-      reason: { contains: "manual", mode: "insensitive" },
       exitedAt: null,
       code: { residentialId: session.residentialId },
     },
@@ -177,12 +176,7 @@ export default async function GuardPage() {
               <p className="text-xs text-slate-500">
                 Expira: {formatDateTimeTegucigalpa(invite.validUntil)}
               </p>
-              <Link
-                href={`/guard?manualCode=${encodeURIComponent(`MP:${invite.code}`)}`}
-                className="mt-2 inline-flex w-full justify-center rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100"
-              >
-                Confirmar llegada manual
-              </Link>
+              <ManualConfirmStartButton code={invite.code} />
             </div>
           ))}
           {pendingInvites.length === 0 ? (
@@ -194,10 +188,10 @@ export default async function GuardPage() {
           Confirmar salida manual
         </h3>
         <p className="mt-1 text-xs text-slate-600">
-          Solo muestra entradas manuales pendientes. Tambien pueden marcar salida escaneando QR.
+          Muestra todas las entradas pendientes. Tambien pueden marcar salida escaneando QR.
         </p>
         <div className="mt-2 grid gap-3 md:grid-cols-2">
-          {pendingManualEntries.map((entry) => (
+          {pendingExitEntries.map((entry) => (
             <div key={entry.id} className="rounded-xl border border-amber-200 bg-amber-50/70 p-4">
               <p className="font-semibold text-slate-900">{entry.code.visitorName}</p>
               <p className="text-sm text-slate-700">Residente: {entry.code.resident.fullName}</p>
@@ -218,8 +212,8 @@ export default async function GuardPage() {
               </form>
             </div>
           ))}
-          {pendingManualEntries.length === 0 ? (
-            <p className="text-sm text-slate-600">No hay entradas manuales pendientes de salida.</p>
+          {pendingExitEntries.length === 0 ? (
+            <p className="text-sm text-slate-600">No hay entradas pendientes de salida.</p>
           ) : null}
         </div>
 
