@@ -177,6 +177,15 @@ export default async function ResidentialAdminLogsPage({
         <button className="btn-primary w-full md:col-span-2">Aplicar filtros</button>
       </form>
 
+      <div className="mt-3 flex flex-wrap gap-2">
+        <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700">
+          Entradas registradas: {idEvidenceScans.length}
+        </div>
+        <div className="inline-flex rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
+          Delivery registrados: {deliveryEntries.length}
+        </div>
+      </div>
+
       <div className="mt-3">
         <MonthlyAccessReportButton
           reportTitle={`Reporte mensual - ${residential?.name ?? "Residencial"}`}

@@ -1,4 +1,5 @@
 import { Card } from "@/app/components/shell";
+import type { Prisma } from "@prisma/client";
 import { ConfirmSubmitButton } from "@/app/components/confirm-submit-button";
 import { PasswordField } from "@/app/components/password-field";
 import { CreateResidentialUserForm } from "@/app/residential-admin/create-user-form";
@@ -10,18 +11,57 @@ import {
   updateResidentialUserAction,
 } from "@/app/residential-admin/actions";
 
-export default async function ResidentialAdminUsersPage() {
+function getSingleParam(value: string | string[] | undefined) {
+  if (Array.isArray(value)) return value[0] ?? "";
+  return value ?? "";
+}
+
+export default async function ResidentialAdminUsersPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const session = await requireRole(["RESIDENTIAL_ADMIN"]);
   if (!session.residentialId) {
     return <p className="p-8 text-red-600">Sesion invalida: no hay residencial asociada.</p>;
   }
 
+  const params = await searchParams;
+  const searchTerm = getSingleParam(params.q).trim();
+  const roleFilter = getSingleParam(params.role).trim();
+  const statusFilter = getSingleParam(params.status).trim();
+  const normalizedRoleFilter = roleFilter === "RESIDENT" || roleFilter === "GUARD" ? roleFilter : "";
+
+  const usersWhere: Prisma.UserWhereInput = {
+    residentialId: session.residentialId,
+    role: normalizedRoleFilter
+      ? (normalizedRoleFilter as "RESIDENT" | "GUARD")
+      : { in: ["RESIDENT", "GUARD"] },
+    ...(statusFilter === "active"
+      ? { isSuspended: false }
+      : statusFilter === "suspended"
+        ? { isSuspended: true }
+        : {}),
+    ...(searchTerm
+      ? {
+          OR: [
+            { fullName: { contains: searchTerm, mode: "insensitive" as const } },
+            { email: { contains: searchTerm, mode: "insensitive" as const } },
+            { houseNumber: { contains: searchTerm, mode: "insensitive" as const } },
+          ],
+        }
+      : {}),
+  };
+
   const users = await prisma.user.findMany({
+    where: usersWhere,
+    orderBy: { createdAt: "desc" },
+  });
+  const totalUsersInResidential = await prisma.user.count({
     where: {
       residentialId: session.residentialId,
       role: { in: ["RESIDENT", "GUARD"] },
     },
-    orderBy: { createdAt: "desc" },
   });
   const residentUsersCount = users.filter((user) => user.role === "RESIDENT").length;
   const guardUsersCount = users.filter((user) => user.role === "GUARD").length;
@@ -36,9 +76,28 @@ export default async function ResidentialAdminUsersPage() {
 
       <Card>
         <h2 className="mb-4 text-lg font-semibold text-slate-900">
-          Usuarios de la residencial (Total: {users.length} | Residentes: {residentUsersCount} | Guardias:{" "}
-          {guardUsersCount})
+          Usuarios de la residencial (Mostrando: {users.length} de {totalUsersInResidential} | Residentes:{" "}
+          {residentUsersCount} | Guardias: {guardUsersCount})
         </h2>
+        <form className="mb-4 grid gap-2 md:grid-cols-4">
+          <input
+            name="q"
+            defaultValue={searchTerm}
+            className="field-base md:col-span-2"
+            placeholder="Buscar por nombre, correo o vivienda"
+          />
+          <select name="role" defaultValue={roleFilter} className="field-base">
+            <option value="">Todos los roles</option>
+            <option value="RESIDENT">Residentes</option>
+            <option value="GUARD">Guardias</option>
+          </select>
+          <select name="status" defaultValue={statusFilter} className="field-base">
+            <option value="">Todos los estados</option>
+            <option value="active">Activos</option>
+            <option value="suspended">Suspendidos</option>
+          </select>
+          <button className="btn-primary w-full md:w-max">Aplicar filtros</button>
+        </form>
         <div className="space-y-3">
           {users.map((user) => (
             <div key={user.id} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
