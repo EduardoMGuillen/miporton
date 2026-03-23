@@ -65,6 +65,29 @@ export default async function GuardPage() {
       },
     },
   });
+  const recentManualEntries = await prisma.qrScan.findMany({
+    where: {
+      isValid: true,
+      reason: { contains: "manual", mode: "insensitive" },
+      code: { residentialId: session.residentialId },
+    },
+    orderBy: { scannedAt: "desc" },
+    take: 20,
+    select: {
+      id: true,
+      scannedAt: true,
+      reason: true,
+      idPhotoSize: true,
+      platePhotoSize: true,
+      scanner: { select: { fullName: true } },
+      code: {
+        select: {
+          visitorName: true,
+          resident: { select: { fullName: true } },
+        },
+      },
+    },
+  });
   const todayZoneReservations = await prisma.zoneReservation.findMany({
     where: {
       residentialId: session.residentialId,
@@ -152,16 +175,66 @@ export default async function GuardPage() {
               <p className="text-xs text-slate-500">
                 Expira: {formatDateTimeTegucigalpa(invite.validUntil)}
               </p>
-              <form action={acceptAnnouncedVisitAction} className="mt-2">
+              <form action={acceptAnnouncedVisitAction} className="mt-2 grid gap-2">
                 <input type="hidden" name="qrId" value={invite.id} />
+                <label className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                  Foto del ID
+                </label>
+                <input
+                  type="file"
+                  name="idPhoto"
+                  accept="image/jpeg,image/png,image/webp"
+                  capture="environment"
+                  required
+                  className="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-700"
+                />
+                {invite.hasVehicle ? (
+                  <>
+                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-600">
+                      Foto de placa
+                    </label>
+                    <input
+                      type="file"
+                      name="platePhoto"
+                      accept="image/jpeg,image/png,image/webp"
+                      capture="environment"
+                      required
+                      className="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-700"
+                    />
+                  </>
+                ) : null}
                 <button className="w-full rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100">
-                  Aceptar llegada manualmente
+                  Confirmar llegada manual
                 </button>
               </form>
             </div>
           ))}
           {pendingInvites.length === 0 ? (
             <p className="text-sm text-slate-600">No hay anuncios pendientes ahora mismo.</p>
+          ) : null}
+        </div>
+
+        <h3 className="mt-6 text-sm font-semibold uppercase tracking-wide text-slate-700">
+          Entradas manuales registradas
+        </h3>
+        <div className="mt-2 grid gap-3 md:grid-cols-2">
+          {recentManualEntries.map((entry) => (
+            <div key={entry.id} className="rounded-xl border border-amber-200 bg-amber-50/70 p-4">
+              <p className="font-semibold text-slate-900">{entry.code.visitorName}</p>
+              <p className="text-sm text-slate-700">Residente: {entry.code.resident.fullName}</p>
+              <p className="text-xs text-slate-600">Guardia: {entry.scanner.fullName}</p>
+              <p className="text-xs text-slate-600">
+                Registrado: {formatDateTimeTegucigalpa(entry.scannedAt)}
+              </p>
+              <p className="text-xs text-slate-500">
+                Evidencia ID: {entry.idPhotoSize ? "Si" : "No"} | Evidencia placa:{" "}
+                {entry.platePhotoSize ? "Si" : "No"}
+              </p>
+              <p className="mt-1 text-xs text-slate-600">{entry.reason}</p>
+            </div>
+          ))}
+          {recentManualEntries.length === 0 ? (
+            <p className="text-sm text-slate-600">Aun no hay entradas manuales registradas.</p>
           ) : null}
         </div>
 
