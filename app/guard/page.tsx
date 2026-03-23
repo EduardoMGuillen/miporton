@@ -7,6 +7,7 @@ import { GuardPushSubscriptionCard } from "@/app/guard/push-subscription";
 import { GuardAutoRefresh } from "@/app/guard/guard-auto-refresh";
 import { GuardDeliveryAnnouncementForm } from "@/app/guard/delivery-announcement-form";
 import { ManualConfirmStartButton } from "@/app/guard/manual-confirm-start-button";
+import { ManualExitSubmitButton } from "@/app/guard/manual-exit-submit-button";
 import { formatDateTimeTegucigalpa } from "@/lib/datetime";
 
 function tegucigalpaTodayRange(now = new Date()) {
@@ -206,9 +207,7 @@ export default async function GuardPage() {
               <p className="mt-1 text-xs text-slate-600">{entry.reason}</p>
               <form action={confirmManualExitAction} className="mt-2">
                 <input type="hidden" name="scanId" value={entry.id} />
-                <button className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">
-                  Marcar salida manual
-                </button>
+                <ManualExitSubmitButton />
               </form>
             </div>
           ))}

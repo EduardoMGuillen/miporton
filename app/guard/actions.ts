@@ -23,7 +23,6 @@ export async function confirmManualExitAction(formData: FormData) {
       id: scanId,
       isValid: true,
       exitedAt: null,
-      reason: { contains: "manual", mode: "insensitive" },
       code: { residentialId: session.residentialId },
     },
     select: { id: true },
@@ -34,7 +33,7 @@ export async function confirmManualExitAction(formData: FormData) {
     where: { id: targetScan.id },
     data: {
       exitedAt: new Date(),
-      exitNote: "Salida registrada manualmente por guardia.",
+      exitNote: "Salida confirmada manualmente por guardia.",
     },
   });
 
