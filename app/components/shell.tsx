@@ -1,5 +1,6 @@
 import { logoutAction } from "@/app/login/actions";
 import { RefreshButton } from "@/app/components/refresh-button";
+import { LogoutSubmitButton } from "@/app/components/logout-submit-button";
 
 export function DashboardShell({
   title,
@@ -24,9 +25,7 @@ export function DashboardShell({
         <div className="flex items-center gap-2">
           <RefreshButton />
           <form action={logoutAction}>
-            <button className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50">
-              Cerrar sesion
-            </button>
+            <LogoutSubmitButton />
           </form>
         </div>
       </header>
