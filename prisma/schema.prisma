@@ -45,6 +45,10 @@ model Residential {
   id            String               @id @default(cuid())
   name          String
   supportPhone  String?
+  allowResidentQrSingleUse Boolean   @default(true)
+  allowResidentQrOneDay    Boolean   @default(true)
+  allowResidentQrThreeDays Boolean   @default(true)
+  allowResidentQrInfinite  Boolean   @default(true)
   isSuspended   Boolean              @default(false)
   suspendedAt   DateTime?
   createdAt     DateTime             @default(now())
@@ -65,6 +69,8 @@ model User {
   email                   String                      @unique
   passwordHash            String
   role                    Role
+  isSuspended             Boolean                     @default(false)
+  suspendedAt             DateTime?
   residentCategory        ResidentCategory        @default(OWNER)
   houseNumber             String?
   createdAt               DateTime                    @default(now())

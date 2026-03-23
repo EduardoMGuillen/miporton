@@ -6,6 +6,7 @@ import { requireRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
 import {
   deleteResidentialUserAction,
+  toggleResidentialUserSuspensionAction,
   updateResidentialUserAction,
 } from "@/app/residential-admin/actions";
 
@@ -47,6 +48,9 @@ export default async function ResidentialAdminUsersPage() {
                   <p className="text-sm text-slate-600">
                     {user.email} - {user.role === "RESIDENT" ? "Residente" : "Guardia"}
                   </p>
+                  <p className="text-xs text-slate-500">
+                    Estado: {user.isSuspended ? "Suspendido" : "Activo"}
+                  </p>
                   {user.role === "RESIDENT" ? (
                     <p className="text-xs text-slate-500">
                       Categoria: {residentCategoryLabel(user.residentCategory)}
@@ -55,6 +59,28 @@ export default async function ResidentialAdminUsersPage() {
                   <p className="text-xs text-slate-500">Vivienda: {user.houseNumber || "Sin definir"}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
+                  <form action={toggleResidentialUserSuspensionAction}>
+                    <input type="hidden" name="userId" value={user.id} />
+                    <input
+                      type="hidden"
+                      name="nextStatus"
+                      value={user.isSuspended ? "activate" : "suspend"}
+                    />
+                    <ConfirmSubmitButton
+                      confirmMessage={
+                        user.isSuspended
+                          ? `¿Seguro que deseas activar la cuenta de ${user.fullName}?`
+                          : `¿Seguro que deseas suspender la cuenta de ${user.fullName}?`
+                      }
+                      className={
+                        user.isSuspended
+                          ? "rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100"
+                          : "rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-700 transition hover:bg-amber-100"
+                      }
+                    >
+                      {user.isSuspended ? "Activar cuenta" : "Suspender cuenta"}
+                    </ConfirmSubmitButton>
+                  </form>
                   <details>
                     <summary className="cursor-pointer rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 transition hover:bg-blue-100">
                       Editar

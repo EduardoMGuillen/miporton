@@ -84,6 +84,26 @@ export async function createInviteQrAction(_prevState: string | null, formData: 
 
   if (!parsed.success) return parsed.error.issues[0]?.message ?? "Datos invalidos.";
 
+  const residential = await prisma.residential.findUnique({
+    where: { id: session.residentialId },
+    select: {
+      allowResidentQrSingleUse: true,
+      allowResidentQrOneDay: true,
+      allowResidentQrThreeDays: true,
+      allowResidentQrInfinite: true,
+    },
+  });
+  if (!residential) return "No se encontro la residencial asociada.";
+
+  const validityAllowed =
+    (parsed.data.validityType === "SINGLE_USE" && residential.allowResidentQrSingleUse) ||
+    (parsed.data.validityType === "ONE_DAY" && residential.allowResidentQrOneDay) ||
+    (parsed.data.validityType === "THREE_DAYS" && residential.allowResidentQrThreeDays) ||
+    (parsed.data.validityType === "INFINITE" && residential.allowResidentQrInfinite);
+  if (!validityAllowed) {
+    return "La administracion de tu residencial desactivo ese tipo de vigencia QR.";
+  }
+
   const generatedCode = randomUUID().replaceAll("-", "");
   const validityWindow = calculateValidityWindow(parsed.data.validityType);
 

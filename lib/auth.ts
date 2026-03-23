@@ -41,6 +41,17 @@ export async function getSession() {
   if (!token) return null;
   const session = await readSessionToken(token);
   if (!session) return null;
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: session.userId },
+      select: { isSuspended: true },
+    });
+    if (!user || user.isSuspended) return null;
+  } catch {
+    return session;
+  }
+
   if (session.role === "SUPER_ADMIN") return session;
   if (!session.residentialId) return session;
 

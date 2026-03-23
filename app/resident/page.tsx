@@ -35,9 +35,21 @@ export default async function ResidentPage() {
   const residential = session.residentialId
     ? await prisma.residential.findUnique({
         where: { id: session.residentialId },
-        select: { name: true, supportPhone: true },
+        select: {
+          name: true,
+          supportPhone: true,
+          allowResidentQrSingleUse: true,
+          allowResidentQrOneDay: true,
+          allowResidentQrThreeDays: true,
+          allowResidentQrInfinite: true,
+        },
       })
     : null;
+  const allowedValidityTypes: Array<"SINGLE_USE" | "ONE_DAY" | "THREE_DAYS" | "INFINITE"> = [];
+  if (residential?.allowResidentQrSingleUse ?? true) allowedValidityTypes.push("SINGLE_USE");
+  if (residential?.allowResidentQrOneDay ?? true) allowedValidityTypes.push("ONE_DAY");
+  if (residential?.allowResidentQrThreeDays ?? true) allowedValidityTypes.push("THREE_DAYS");
+  if (residential?.allowResidentQrInfinite ?? true) allowedValidityTypes.push("INFINITE");
 
   const invites = await prisma.qrCode.findMany({
     where: { residentId: session.userId },
@@ -135,7 +147,7 @@ export default async function ResidentPage() {
 
       <Card>
         <h2 className="mb-4 text-lg font-semibold text-slate-900">Crear anuncio de visita</h2>
-        <CreateQrForm />
+        <CreateQrForm allowedValidityTypes={allowedValidityTypes} />
       </Card>
 
       <Card>

@@ -23,18 +23,27 @@ export async function loginAction(_prevState: string | null, formData: FormData)
   }
 
   const email = parsed.data.email.toLowerCase();
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await prisma.user.findUnique({
+    where: { email },
+    include: {
+      residential: {
+        select: { name: true, isSuspended: true },
+      },
+    },
+  });
 
   if (!user) return "Correo o password incorrectos.";
 
   const isPasswordValid = await bcrypt.compare(parsed.data.password, user.passwordHash);
   if (!isPasswordValid) return "Correo o password incorrectos.";
 
+  if (user.isSuspended) {
+    const residentialName = user.residential?.name ?? "tu residencial";
+    return `Cuenta suspendida por la Administracion de "${residentialName}", contactarlos para mas informacion`;
+  }
+
   if (user.role !== "SUPER_ADMIN" && user.residentialId) {
-    const residential = await prisma.residential.findUnique({
-      where: { id: user.residentialId },
-      select: { isSuspended: true },
-    });
+    const residential = user.residential;
     if (residential?.isSuspended) {
       return "Tu residencial esta suspendida temporalmente. Contacta al administrador principal.";
     }

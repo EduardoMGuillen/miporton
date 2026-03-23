@@ -12,14 +12,26 @@ export default async function ResidentialAdminConfigurationPage() {
 
   const residential = await prisma.residential.findUnique({
     where: { id: session.residentialId },
-    select: { supportPhone: true },
+    select: {
+      supportPhone: true,
+      allowResidentQrSingleUse: true,
+      allowResidentQrOneDay: true,
+      allowResidentQrThreeDays: true,
+      allowResidentQrInfinite: true,
+    },
   });
 
   return (
     <>
       <Card>
         <h2 className="mb-4 text-lg font-semibold text-slate-900">Configuracion</h2>
-        <UpdateResidentialSettingsForm supportPhone={residential?.supportPhone ?? ""} />
+        <UpdateResidentialSettingsForm
+          supportPhone={residential?.supportPhone ?? ""}
+          allowResidentQrSingleUse={residential?.allowResidentQrSingleUse ?? true}
+          allowResidentQrOneDay={residential?.allowResidentQrOneDay ?? true}
+          allowResidentQrThreeDays={residential?.allowResidentQrThreeDays ?? true}
+          allowResidentQrInfinite={residential?.allowResidentQrInfinite ?? true}
+        />
       </Card>
       <Card>
         <h2 className="mb-4 text-lg font-semibold text-slate-900">Notificaciones</h2>

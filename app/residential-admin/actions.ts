@@ -27,6 +27,11 @@ const updateUserSchema = z.object({
   houseNumber: z.string().max(30, "Numero de vivienda demasiado largo.").optional(),
 });
 
+const toggleUserSuspensionSchema = z.object({
+  userId: z.string().min(1),
+  nextStatus: z.enum(["suspend", "activate"]),
+});
+
 const createZoneSchema = z.object({
   name: z.string().min(2, "Nombre de zona invalido."),
   description: z.string().max(180, "Descripcion demasiado larga.").optional(),
@@ -64,6 +69,10 @@ const updateResidentialSettingsSchema = z.object({
     .trim()
     .min(8, "Ingresa un numero de contacto valido.")
     .max(30, "Numero de contacto demasiado largo."),
+  allowResidentQrSingleUse: z.enum(["on"]).optional(),
+  allowResidentQrOneDay: z.enum(["on"]).optional(),
+  allowResidentQrThreeDays: z.enum(["on"]).optional(),
+  allowResidentQrInfinite: z.enum(["on"]).optional(),
 });
 
 const updateZoneScheduleSchema = z.object({
@@ -214,6 +223,33 @@ export async function deleteResidentialUserAction(formData: FormData) {
   });
 
   revalidatePath("/residential-admin");
+}
+
+export async function toggleResidentialUserSuspensionAction(formData: FormData) {
+  const session = await requireRole(["RESIDENTIAL_ADMIN"]);
+  if (!session.residentialId) return;
+
+  const parsed = toggleUserSuspensionSchema.safeParse({
+    userId: formData.get("userId"),
+    nextStatus: formData.get("nextStatus"),
+  });
+  if (!parsed.success) return;
+
+  const shouldSuspend = parsed.data.nextStatus === "suspend";
+  await prisma.user.updateMany({
+    where: {
+      id: parsed.data.userId,
+      residentialId: session.residentialId,
+      role: { in: ["RESIDENT", "GUARD"] },
+    },
+    data: {
+      isSuspended: shouldSuspend,
+      suspendedAt: shouldSuspend ? new Date() : null,
+    },
+  });
+
+  revalidatePath("/residential-admin");
+  revalidatePath("/residential-admin/usuarios");
 }
 
 export async function createZoneAction(_prevState: string | null, formData: FormData) {
@@ -541,13 +577,35 @@ export async function updateResidentialSettingsAction(_prevState: string | null,
 
   const parsed = updateResidentialSettingsSchema.safeParse({
     supportPhone: formData.get("supportPhone"),
+    allowResidentQrSingleUse: formData.get("allowResidentQrSingleUse") || undefined,
+    allowResidentQrOneDay: formData.get("allowResidentQrOneDay") || undefined,
+    allowResidentQrThreeDays: formData.get("allowResidentQrThreeDays") || undefined,
+    allowResidentQrInfinite: formData.get("allowResidentQrInfinite") || undefined,
   });
   if (!parsed.success) return parsed.error.issues[0]?.message ?? "Datos invalidos.";
+
+  const allowResidentQrSingleUse = parsed.data.allowResidentQrSingleUse === "on";
+  const allowResidentQrOneDay = parsed.data.allowResidentQrOneDay === "on";
+  const allowResidentQrThreeDays = parsed.data.allowResidentQrThreeDays === "on";
+  const allowResidentQrInfinite = parsed.data.allowResidentQrInfinite === "on";
+
+  if (
+    !allowResidentQrSingleUse &&
+    !allowResidentQrOneDay &&
+    !allowResidentQrThreeDays &&
+    !allowResidentQrInfinite
+  ) {
+    return "Debes mantener al menos una vigencia QR habilitada para residentes.";
+  }
 
   await prisma.residential.update({
     where: { id: session.residentialId },
     data: {
       supportPhone: parsed.data.supportPhone,
+      allowResidentQrSingleUse,
+      allowResidentQrOneDay,
+      allowResidentQrThreeDays,
+      allowResidentQrInfinite,
     },
   });
 
