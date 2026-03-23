@@ -2,10 +2,11 @@ import { requireRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
 import { Card, DashboardShell } from "@/app/components/shell";
 import { GuardQrScanner } from "@/app/guard/qr-scanner";
-import { acceptAnnouncedVisitAction } from "@/app/guard/actions";
+import { confirmManualExitAction } from "@/app/guard/actions";
 import { GuardPushSubscriptionCard } from "@/app/guard/push-subscription";
 import { GuardAutoRefresh } from "@/app/guard/guard-auto-refresh";
 import { GuardDeliveryAnnouncementForm } from "@/app/guard/delivery-announcement-form";
+import { ManualArrivalConfirmation } from "@/app/guard/manual-arrival-confirmation";
 import { formatDateTimeTegucigalpa } from "@/lib/datetime";
 
 function tegucigalpaTodayRange(now = new Date()) {
@@ -65,10 +66,11 @@ export default async function GuardPage() {
       },
     },
   });
-  const recentManualEntries = await prisma.qrScan.findMany({
+  const pendingManualEntries = await prisma.qrScan.findMany({
     where: {
       isValid: true,
       reason: { contains: "manual", mode: "insensitive" },
+      exitedAt: null,
       code: { residentialId: session.residentialId },
     },
     orderBy: { scannedAt: "desc" },
@@ -175,38 +177,7 @@ export default async function GuardPage() {
               <p className="text-xs text-slate-500">
                 Expira: {formatDateTimeTegucigalpa(invite.validUntil)}
               </p>
-              <form action={acceptAnnouncedVisitAction} className="mt-2 grid gap-2">
-                <input type="hidden" name="qrId" value={invite.id} />
-                <label className="text-xs font-semibold uppercase tracking-wide text-slate-600">
-                  Foto del ID
-                </label>
-                <input
-                  type="file"
-                  name="idPhoto"
-                  accept="image/jpeg,image/png,image/webp"
-                  capture="environment"
-                  required
-                  className="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-700"
-                />
-                {invite.hasVehicle ? (
-                  <>
-                    <label className="text-xs font-semibold uppercase tracking-wide text-slate-600">
-                      Foto de placa
-                    </label>
-                    <input
-                      type="file"
-                      name="platePhoto"
-                      accept="image/jpeg,image/png,image/webp"
-                      capture="environment"
-                      required
-                      className="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-700"
-                    />
-                  </>
-                ) : null}
-                <button className="w-full rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100">
-                  Confirmar llegada manual
-                </button>
-              </form>
+              <ManualArrivalConfirmation qrId={invite.id} hasVehicle={invite.hasVehicle} />
             </div>
           ))}
           {pendingInvites.length === 0 ? (
@@ -215,10 +186,13 @@ export default async function GuardPage() {
         </div>
 
         <h3 className="mt-6 text-sm font-semibold uppercase tracking-wide text-slate-700">
-          Entradas manuales registradas
+          Confirmar salida manual
         </h3>
+        <p className="mt-1 text-xs text-slate-600">
+          Solo muestra entradas manuales pendientes. Tambien pueden marcar salida escaneando QR.
+        </p>
         <div className="mt-2 grid gap-3 md:grid-cols-2">
-          {recentManualEntries.map((entry) => (
+          {pendingManualEntries.map((entry) => (
             <div key={entry.id} className="rounded-xl border border-amber-200 bg-amber-50/70 p-4">
               <p className="font-semibold text-slate-900">{entry.code.visitorName}</p>
               <p className="text-sm text-slate-700">Residente: {entry.code.resident.fullName}</p>
@@ -231,10 +205,16 @@ export default async function GuardPage() {
                 {entry.platePhotoSize ? "Si" : "No"}
               </p>
               <p className="mt-1 text-xs text-slate-600">{entry.reason}</p>
+              <form action={confirmManualExitAction} className="mt-2">
+                <input type="hidden" name="scanId" value={entry.id} />
+                <button className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50">
+                  Marcar salida manual
+                </button>
+              </form>
             </div>
           ))}
-          {recentManualEntries.length === 0 ? (
-            <p className="text-sm text-slate-600">Aun no hay entradas manuales registradas.</p>
+          {pendingManualEntries.length === 0 ? (
+            <p className="text-sm text-slate-600">No hay entradas manuales pendientes de salida.</p>
           ) : null}
         </div>
 

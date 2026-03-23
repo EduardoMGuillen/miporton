@@ -33,13 +33,16 @@ MiVisita es una plataforma de control de acceso residencial con arquitectura mul
 - Escaneo de QR.
 - Validacion con evidencia de identificacion.
 - Evidencia de placa obligatoria cuando el QR indica vehiculo.
-- Confirmacion manual de llegada para visitas anunciadas.
+- Confirmacion manual de llegada para visitas anunciadas (con evidencia obligatoria de ID y placa cuando aplica).
 - Anuncio de delivery a residente con push inmediato.
 - Vista de anuncios pendientes y recientes.
+- Seccion dedicada para revisar entradas manuales registradas.
 
 ### Admin residencial
 
 - Gestion de usuarios de su residencial (crear, editar, eliminar).
+- Suspension/reactivacion temporal de cuentas de residentes y guardias.
+- Filtros en usuarios por texto (nombre/correo/vivienda), rol y estado (activo/suspendido).
 - Gestion de zonas:
   - alta de zonas
   - bloqueo de rangos de fecha/hora
@@ -54,6 +57,7 @@ MiVisita es una plataforma de control de acceso residencial con arquitectura mul
 - Configuracion:
   - activacion de notificaciones
   - telefono de soporte residencial
+  - control de vigencias QR permitidas para residentes (1 uso, 1 dia, 3 dias, infinito).
 - Vista de sugerencias de residentes.
 
 ### Super Admin
@@ -62,7 +66,7 @@ MiVisita es una plataforma de control de acceso residencial con arquitectura mul
 - Gestion de admins residenciales.
 - Cotizador con PDF.
 - Contrato de servicio con PDF profesional e impresion posterior.
-- Registro global de entradas (por residencial) con filtros.
+- Registro global de entradas (por residencial) con filtros y contadores de entradas/delivery.
 - Exportes PDF por registro y reporte mensual global.
 - Backup manual de reportes:
   - ZIP con un PDF por residencial.
@@ -70,6 +74,15 @@ MiVisita es una plataforma de control de acceso residencial con arquitectura mul
   - ZIP con snapshot JSON de tablas principales
   - evidencia de escaneos serializada en base64.
 - Switch de suspension temporal por residencial (activar/desactivar operacion).
+- Navegacion por modulos separados: residenciales, contratos, respaldos, registros y estadisticas.
+- Panel de estadisticas con KPIs de consumo y tendencia.
+
+## Novedades recientes
+
+- Footer con enlaces legales a `Politicas de Privacidad` y `Terminos de Uso`.
+- Paginas legales dedicadas con boton para regresar al inicio/panel segun sesion.
+- Soporte de suspension de usuarios por admin residencial con bloqueo de login al estar suspendidos.
+- Politica por residencial para definir vigencias QR habilitadas a residentes (sin afectar admins).
 
 ## Seguridad, evidencia y retencion
 
@@ -133,6 +146,7 @@ Ejecutar en orden:
 2. `prisma/migrations/20260306213000_residential_support_phone/migration.sql`
 3. `prisma/migrations/20260306222000_resident_suggestions/migration.sql`
 4. `prisma/migrations/20260307101000_residential_suspension_control/migration.sql`
+5. `prisma/migrations/20260323130000_user_suspension_and_residential_qr_policy/migration.sql`
 
 Luego:
 

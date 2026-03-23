@@ -97,6 +97,36 @@ export async function acceptAnnouncedVisitAction(formData: FormData) {
   revalidatePath("/guard");
 }
 
+export async function confirmManualExitAction(formData: FormData) {
+  const session = await requireRole(["GUARD"]);
+  if (!session.residentialId) return;
+
+  const scanId = String(formData.get("scanId") ?? "");
+  if (!scanId) return;
+
+  const targetScan = await prisma.qrScan.findFirst({
+    where: {
+      id: scanId,
+      isValid: true,
+      exitedAt: null,
+      reason: { contains: "manual", mode: "insensitive" },
+      code: { residentialId: session.residentialId },
+    },
+    select: { id: true },
+  });
+  if (!targetScan) return;
+
+  await prisma.qrScan.update({
+    where: { id: targetScan.id },
+    data: {
+      exitedAt: new Date(),
+      exitNote: "Salida registrada manualmente por guardia.",
+    },
+  });
+
+  revalidatePath("/guard");
+}
+
 export async function announceDeliveryAtGateAction(_prevState: string | null, formData: FormData) {
   const session = await requireRole(["GUARD"]);
   if (!session.residentialId) return "Sesion invalida sin residencial asociada.";
