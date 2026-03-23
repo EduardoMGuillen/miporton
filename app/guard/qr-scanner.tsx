@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type ScanResult = {
   valid: boolean;
@@ -125,6 +126,9 @@ export function GuardQrScanner() {
   const scannerRef = useRef<ScannerInstance | null>(null);
   const isHandlingRef = useRef(false);
   const [isClient, setIsClient] = useState(false);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const handledManualCodeRef = useRef<string | null>(null);
 
   async function validateCode(code: string, mode: ScanMode) {
     setError(null);
@@ -283,6 +287,29 @@ export function GuardQrScanner() {
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  useEffect(() => {
+    const manualCode = searchParams.get("manualCode")?.trim();
+    if (!manualCode) {
+      handledManualCodeRef.current = null;
+      return;
+    }
+    if (handledManualCodeRef.current === manualCode) return;
+    handledManualCodeRef.current = manualCode;
+
+    setResult(null);
+    setError(null);
+    setIdCaptureError(null);
+    setScanMode("entry");
+    validateCode(manualCode, "entry").catch(() => {
+      setError("No se pudo validar el QR manual.");
+    });
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete("manualCode");
+    const nextPath = nextParams.toString() ? `/guard?${nextParams.toString()}` : "/guard";
+    router.replace(nextPath);
+  }, [router, searchParams]);
 
   useEffect(() => {
     if (isScannerOpen) {

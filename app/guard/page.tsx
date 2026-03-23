@@ -1,12 +1,12 @@
 import { requireRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
+import Link from "next/link";
 import { Card, DashboardShell } from "@/app/components/shell";
 import { GuardQrScanner } from "@/app/guard/qr-scanner";
 import { confirmManualExitAction } from "@/app/guard/actions";
 import { GuardPushSubscriptionCard } from "@/app/guard/push-subscription";
 import { GuardAutoRefresh } from "@/app/guard/guard-auto-refresh";
 import { GuardDeliveryAnnouncementForm } from "@/app/guard/delivery-announcement-form";
-import { ManualArrivalConfirmation } from "@/app/guard/manual-arrival-confirmation";
 import { formatDateTimeTegucigalpa } from "@/lib/datetime";
 
 function tegucigalpaTodayRange(now = new Date()) {
@@ -177,7 +177,12 @@ export default async function GuardPage() {
               <p className="text-xs text-slate-500">
                 Expira: {formatDateTimeTegucigalpa(invite.validUntil)}
               </p>
-              <ManualArrivalConfirmation qrId={invite.id} hasVehicle={invite.hasVehicle} />
+              <Link
+                href={`/guard?manualCode=${encodeURIComponent(`MP:${invite.code}`)}`}
+                className="mt-2 inline-flex w-full justify-center rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100"
+              >
+                Confirmar llegada manual
+              </Link>
             </div>
           ))}
           {pendingInvites.length === 0 ? (
