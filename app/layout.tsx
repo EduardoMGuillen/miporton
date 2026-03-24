@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import "./globals.css";
 import { PwaBootstrap } from "@/app/components/pwa-bootstrap";
+import { GoogleAnalytics } from "@/app/components/google-analytics";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -57,6 +58,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <GoogleAnalytics />
         <PwaBootstrap />
         <div className="flex min-h-screen flex-col">
           <div className="flex-1">{children}</div>
