@@ -1,0 +1,8 @@
+/*
+ * Root Gradle — Android TWA shell for MiVisita (PWA on Vercel).
+ * La app web en producción no se modifica desde aquí.
+ */
+
+plugins {
+    id 'com.android.application' version '8.7.3' apply false
+}

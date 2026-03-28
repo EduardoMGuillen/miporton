@@ -1,0 +1,121 @@
+/*
+ * Trusted Web Activity: abre la misma PWA que ya usas en el navegador.
+ *
+ * Debe coincidir con el dominio donde sirves la PWA y /.well-known/assetlinks.json (p. ej. mivisita.app).
+ */
+
+plugins {
+    id 'com.android.application'
+}
+
+import groovy.xml.MarkupBuilder
+import groovy.util.IndentPrinter
+
+def twaManifest = [
+    applicationId       : 'com.mivisita.app',
+    hostName            : 'mivisita.app',
+    launchUrl           : '/login',
+    name                : 'MiVisita',
+    themeColor          : '#1d4ed8',
+    navigationColor     : '#1d4ed8',
+    backgroundColor     : '#f4f7fb',
+    enableNotifications : true,
+    shortcuts           : [],
+    splashScreenFadeOutDuration: 300,
+]
+
+android {
+    namespace twaManifest.applicationId
+    compileSdk 35
+
+    defaultConfig {
+        applicationId twaManifest.applicationId
+        minSdk 23
+        targetSdk 35
+        versionCode 1
+        versionName "1.0.0"
+
+        resValue "string", "appName", twaManifest.name
+
+        def launchUrl = "https://" + twaManifest.hostName + twaManifest.launchUrl
+        resValue "string", "launchUrl", launchUrl
+        resValue "string", "crosLaunchUrl", launchUrl
+        resValue "string", "hostName", twaManifest.hostName
+
+        resValue "string", "assetStatements", """
+            [{
+                "relation": ["delegate_permission/common.handle_all_urls"],
+                "target": {
+                    "namespace": "web",
+                    "site": "https://${twaManifest.hostName}"
+                }
+            }]"""
+
+        resValue "color", "colorPrimary", twaManifest.themeColor
+        resValue "color", "navigationColor", twaManifest.navigationColor
+        resValue "color", "backgroundColor", twaManifest.backgroundColor
+        resValue "string", "providerAuthority", twaManifest.applicationId + '.fileprovider'
+        resValue "bool", "enableNotification", twaManifest.enableNotifications.toString()
+
+        twaManifest.shortcuts.eachWithIndex { shortcut, index ->
+            resValue "string", "shortcut_name_$index", "$shortcut.name"
+            resValue "string", "shortcut_short_name_$index", "$shortcut.short_name"
+        }
+
+        resValue "integer", "splashScreenFadeOutDuration", twaManifest.splashScreenFadeOutDuration.toString()
+    }
+
+    buildTypes {
+        release {
+            // R8 puede romper reflección en algunas libs; desactivado para primera publicación estable.
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+task generateShorcutsFile {
+    assert twaManifest.shortcuts.size() < 5, "You can have at most 4 shortcuts."
+    twaManifest.shortcuts.eachWithIndex { s, i ->
+        assert s.name != null, 'Missing `name` in shortcut #' + i
+        assert s.short_name != null, 'Missing `short_name` in shortcut #' + i
+        assert s.url != null, 'Missing `url` in shortcut #' + i
+        assert s.icon != null, 'Missing `icon` in shortcut #' + i
+    }
+
+    def shortcutsFile = new File("$projectDir/src/main/res/xml", "shortcuts.xml")
+
+    def xmlWriter = new StringWriter()
+    def xmlMarkup = new MarkupBuilder(new IndentPrinter(xmlWriter, "    ", true))
+
+    xmlMarkup
+        .'shortcuts'('xmlns:android': 'http://schemas.android.com/apk/res/android') {
+            twaManifest.shortcuts.eachWithIndex { s, i ->
+                'shortcut'(
+                        'android:shortcutId': 'shortcut' + i,
+                        'android:enabled': 'true',
+                        'android:icon': '@drawable/' + s.icon,
+                        'android:shortcutShortLabel': '@string/shortcut_short_name_' + i,
+                        'android:shortcutLongLabel': '@string/shortcut_name_' + i) {
+                    'intent'(
+                            'android:action': 'android.intent.action.MAIN',
+                            'android:targetPackage': twaManifest.applicationId,
+                            'android:targetClass': 'com.google.androidbrowserhelper.trusted.LauncherActivity',
+                            'android:data': 'https://' + twaManifest.hostName + s.url)
+                    'categories'('android:name': 'android.intent.category.LAUNCHER')
+                }
+            }
+        }
+    shortcutsFile.text = xmlWriter.toString() + '\n'
+}
+
+preBuild.dependsOn(generateShorcutsFile)
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
+}

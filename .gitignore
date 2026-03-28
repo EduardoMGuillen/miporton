@@ -1,0 +1,25 @@
+# Raíz — MiPorton (Next.js + Android TWA)
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Secretos y variables locales (cualquier carpeta)
+.env
+.env.*
+!.env.example
+
+# Firmas Android — no versionar nunca
+*.jks
+*.keystore
+*.p12
+
+# Artefactos Android / Gradle (también hay .gitignore en miporton-android)
+**/.gradle/
+**/local.properties
+*.apk
+*.aab
+
+# IDE
+.idea/
+*.iml

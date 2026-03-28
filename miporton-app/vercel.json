@@ -1,0 +1,19 @@
+{
+  "crons": [
+    {
+      "path": "/api/internal/purge-id-evidence",
+      "schedule": "0 3 * * *"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/.well-known/(.*)",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/json"
+        }
+      ]
+    }
+  ]
+}

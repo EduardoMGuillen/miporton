@@ -1,0 +1,274 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  RESIDENTIAL_ADMIN
+  RESIDENT
+  GUARD
+}
+
+enum QrValidity {
+  SINGLE_USE
+  ONE_DAY
+  THREE_DAYS
+  INFINITE
+}
+
+enum AnnouncementTargetMode {
+  ALL_RESIDENTS
+  SELECTED_RESIDENTS
+  OWNERS_ONLY
+}
+
+enum ResidentCategory {
+  OWNER
+  TENANT
+}
+
+enum ZoneReservationStatus {
+  APPROVED
+  CANCELLED
+}
+
+model Residential {
+  id            String               @id @default(cuid())
+  name          String
+  supportPhone  String?
+  allowResidentQrSingleUse Boolean   @default(true)
+  allowResidentQrOneDay    Boolean   @default(true)
+  allowResidentQrThreeDays Boolean   @default(true)
+  allowResidentQrInfinite  Boolean   @default(true)
+  isSuspended   Boolean              @default(false)
+  suspendedAt   DateTime?
+  createdAt     DateTime             @default(now())
+  users         User[]
+  qrCodes       QrCode[]
+  zones         Zone[]
+  zoneReservations ZoneReservation[]
+  zoneBlocks    ZoneBlock[]
+  announcements AdminAnnouncement[]
+  contracts     ServiceContract[]
+  deliveries    DeliveryAnnouncement[]
+  suggestions   ResidentSuggestion[]
+}
+
+model User {
+  id                      String                      @id @default(cuid())
+  fullName                String
+  email                   String                      @unique
+  passwordHash            String
+  role                    Role
+  isSuspended             Boolean                     @default(false)
+  suspendedAt             DateTime?
+  residentCategory        ResidentCategory        @default(OWNER)
+  houseNumber             String?
+  createdAt               DateTime                    @default(now())
+  residentialId           String?
+  residential             Residential?                @relation(fields: [residentialId], references: [id], onDelete: Cascade)
+  createdCodes            QrCode[]                    @relation("CreatedByResident")
+  scannedCodes            QrScan[]
+  subscriptions           PushSubscription[]
+  zoneReservations        ZoneReservation[]
+  zoneBlocksCreated       ZoneBlock[]
+  deliveryAnnouncements   DeliveryAnnouncement[]      @relation("DeliveryAnnouncedByGuard")
+  receivedDeliveries      DeliveryAnnouncement[]      @relation("DeliveryToResident")
+  createdAnnouncements    AdminAnnouncement[]         @relation("AdminAnnouncementCreatedBy")
+  receivedAnnouncements   AdminAnnouncementRecipient[]
+  createdServiceContracts ServiceContract[]           @relation("ServiceContractCreatedBy")
+  residentSuggestions     ResidentSuggestion[]
+}
+
+model QrCode {
+  id            String      @id @default(cuid())
+  code          String      @unique
+  visitorName   String
+  description   String?
+  hasVehicle    Boolean     @default(false)
+  validityType  QrValidity
+  validFrom     DateTime
+  validUntil    DateTime
+  maxUses       Int
+  usedCount     Int         @default(0)
+  isRevoked     Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  residentialId String
+  residentId    String
+  residential   Residential @relation(fields: [residentialId], references: [id], onDelete: Cascade)
+  resident      User        @relation("CreatedByResident", fields: [residentId], references: [id], onDelete: Cascade)
+  scans         QrScan[]
+}
+
+model QrScan {
+  id                String   @id @default(cuid())
+  scannedAt         DateTime @default(now())
+  exitedAt          DateTime?
+  exitNote          String?
+  isValid           Boolean
+  reason            String
+  idPhotoData       Bytes?
+  idPhotoMimeType   String?
+  idPhotoSize       Int?
+  idCapturedAt      DateTime?
+  platePhotoData    Bytes?
+  platePhotoMimeType String?
+  platePhotoSize    Int?
+  codeId            String
+  scannerId         String
+  code              QrCode   @relation(fields: [codeId], references: [id], onDelete: Cascade)
+  scanner           User     @relation(fields: [scannerId], references: [id], onDelete: Cascade)
+
+  @@index([codeId, exitedAt])
+  @@index([isValid, exitedAt, scannedAt])
+}
+
+model PushSubscription {
+  id         String   @id @default(cuid())
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  userId     String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Zone {
+  id                     String            @id @default(cuid())
+  name                   String
+  description            String?
+  maxHoursPerReservation Int
+  oneReservationPerDay   Boolean           @default(false)
+  scheduleStartHour      Int               @default(0)
+  scheduleEndHour        Int               @default(24)
+  isActive               Boolean           @default(true)
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+  residentialId          String
+  residential            Residential       @relation(fields: [residentialId], references: [id], onDelete: Cascade)
+  reservations           ZoneReservation[]
+  blocks                 ZoneBlock[]
+
+  @@unique([residentialId, name])
+}
+
+model ZoneReservation {
+  id            String                @id @default(cuid())
+  startsAt      DateTime
+  endsAt        DateTime
+  note          String?
+  status        ZoneReservationStatus @default(APPROVED)
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  zoneId        String
+  residentId    String
+  residentialId String
+  zone          Zone                  @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  resident      User                  @relation(fields: [residentId], references: [id], onDelete: Cascade)
+  residential   Residential           @relation(fields: [residentialId], references: [id], onDelete: Cascade)
+
+  @@index([zoneId, startsAt, endsAt])
+  @@index([residentialId, startsAt, endsAt])
+}
+
+model ZoneBlock {
+  id            String      @id @default(cuid())
+  startsAt      DateTime
+  endsAt        DateTime
+  reason        String?
+  createdAt     DateTime    @default(now())
+  zoneId        String
+  createdById   String
+  residentialId String
+  zone          Zone        @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  createdBy     User        @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  residential   Residential @relation(fields: [residentialId], references: [id], onDelete: Cascade)
+
+  @@index([zoneId, startsAt, endsAt])
+  @@index([residentialId, startsAt, endsAt])
+}
+
+model DeliveryAnnouncement {
+  id            String      @id @default(cuid())
+  note          String
+  createdAt     DateTime    @default(now())
+  residentId    String
+  guardId       String
+  residentialId String
+  resident      User        @relation("DeliveryToResident", fields: [residentId], references: [id], onDelete: Cascade)
+  guard         User        @relation("DeliveryAnnouncedByGuard", fields: [guardId], references: [id], onDelete: Cascade)
+  residential   Residential @relation(fields: [residentialId], references: [id], onDelete: Cascade)
+
+  @@index([residentialId, createdAt])
+  @@index([residentId, createdAt])
+}
+
+model AdminAnnouncement {
+  id            String                   @id @default(cuid())
+  title         String
+  message       String
+  targetMode    AnnouncementTargetMode
+  createdAt     DateTime                 @default(now())
+  residentialId String
+  createdById   String
+  residential   Residential              @relation(fields: [residentialId], references: [id], onDelete: Cascade)
+  createdBy     User                     @relation("AdminAnnouncementCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+  recipients    AdminAnnouncementRecipient[]
+
+  @@index([residentialId, createdAt])
+}
+
+model AdminAnnouncementRecipient {
+  id             String            @id @default(cuid())
+  userId         String
+  announcementId String
+  createdAt      DateTime          @default(now())
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  announcement   AdminAnnouncement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, announcementId])
+}
+
+model ServiceContract {
+  id                     String      @id @default(cuid())
+  residentialName        String
+  legalRepresentative    String
+  representativeEmail    String
+  representativePhone    String
+  servicePlan            String
+  monthlyAmount          Float
+  startsOn               DateTime
+  endsOn                 DateTime?
+  terms                  String?
+  createdAt              DateTime    @default(now())
+  residentialId          String?
+  createdById            String
+  residential            Residential? @relation(fields: [residentialId], references: [id], onDelete: SetNull)
+  createdBy              User        @relation("ServiceContractCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([residentialId, createdAt])
+}
+
+model ResidentSuggestion {
+  id            String      @id @default(cuid())
+  message       String
+  createdAt     DateTime    @default(now())
+  residentialId String
+  residentId    String
+  residential   Residential @relation(fields: [residentialId], references: [id], onDelete: Cascade)
+  resident      User        @relation(fields: [residentId], references: [id], onDelete: Cascade)
+
+  @@index([residentialId, createdAt])
+  @@index([residentId, createdAt])
+}

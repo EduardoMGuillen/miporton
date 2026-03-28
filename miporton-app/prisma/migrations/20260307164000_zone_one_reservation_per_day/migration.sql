@@ -1,0 +1,2 @@
+ALTER TABLE "Zone"
+  ADD COLUMN IF NOT EXISTS "oneReservationPerDay" BOOLEAN NOT NULL DEFAULT false;
