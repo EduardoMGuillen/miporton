@@ -14,8 +14,20 @@ export function DatabaseBackupButton() {
         method: "GET",
       });
       if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(payload?.error || "No se pudo generar el backup de base de datos.");
+        const contentType = response.headers.get("content-type") ?? "";
+        if (contentType.includes("application/json")) {
+          const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+          throw new Error(payload?.error || "No se pudo generar el backup de base de datos.");
+        }
+        if (response.status === 413) {
+          throw new Error(
+            "El archivo supera el tamano maximo de descarga del servidor. Usa el backup PDF o contacta soporte.",
+          );
+        }
+        if (response.status === 504 || response.status === 408) {
+          throw new Error("Tiempo agotado al generar el backup. Reintenta en un momento.");
+        }
+        throw new Error("No se pudo generar el backup de base de datos.");
       }
 
       const blob = await response.blob();
@@ -52,7 +64,7 @@ export function DatabaseBackupButton() {
       </button>
       {error ? <p className="text-xs text-red-600">{error}</p> : null}
       <p className="text-xs text-slate-500">
-        Incluye el estado completo actual de tablas y evidencia en base64 para respaldo total.
+        Incluye tablas en JSON y fotos de evidencia como archivos dentro de evidence/ (ZIP mas eficiente que base64).
       </p>
     </div>
   );
