@@ -51,11 +51,33 @@ export default async function ResidentPage() {
   if (residential?.allowResidentQrThreeDays ?? true) allowedValidityTypes.push("THREE_DAYS");
   if (residential?.allowResidentQrInfinite ?? true) allowedValidityTypes.push("INFINITE");
 
-  const invites = await prisma.qrCode.findMany({
-    where: { residentId: session.userId },
-    orderBy: [{ validUntil: "asc" }, { createdAt: "desc" }],
-    take: 40,
-  });
+  const now = new Date();
+
+  // Importante: antes se ordenaba por validUntil asc + take(40), así los 40 "más viejos"
+  // por fecha de expiración eran casi siempre expirados y el QR recién creado quedaba fuera.
+  const [futureDated, expiredByDate, totalQrCount] = await Promise.all([
+    prisma.qrCode.findMany({
+      where: { residentId: session.userId, validUntil: { gte: now } },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.qrCode.findMany({
+      where: { residentId: session.userId, validUntil: { lt: now } },
+      orderBy: { createdAt: "desc" },
+      take: 30,
+    }),
+    prisma.qrCode.count({ where: { residentId: session.userId } }),
+  ]);
+
+  const activeRows = futureDated.filter((i) => !i.isRevoked && i.usedCount < i.maxUses);
+  const expiredFromFuture = futureDated.filter((i) => i.isRevoked || i.usedCount >= i.maxUses);
+
+  const expiredById = new Map<string, (typeof futureDated)[0]>();
+  for (const row of [...expiredFromFuture, ...expiredByDate]) {
+    expiredById.set(row.id, row);
+  }
+  const expiredRows = Array.from(expiredById.values())
+    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    .slice(0, 20);
   const [zones, reservations, zoneReservations, zoneBlocks, latestAnnouncementRecipient] = await Promise.all([
     prisma.zone.findMany({
       where: { residentialId: session.residentialId ?? "", isActive: true },
@@ -112,28 +134,23 @@ export default async function ResidentPage() {
   ]);
   const latestAnnouncement = latestAnnouncementRecipient?.announcement ?? null;
 
-  const invitesWithImage: InviteWithImage[] = await Promise.all(
-    invites.map(async (invite) => ({
-      id: invite.id,
-      code: invite.code,
-      visitorName: invite.visitorName,
-      validityType: invite.validityType,
-      description: invite.description,
-      hasVehicle: invite.hasVehicle,
-      validUntil: invite.validUntil,
-      usedCount: invite.usedCount,
-      maxUses: invite.maxUses,
-      image: await QRCode.toDataURL(`MP:${invite.code}`),
-    })),
-  );
+  const mapToInviteWithImage = async (invite: (typeof activeRows)[0]): Promise<InviteWithImage> => ({
+    id: invite.id,
+    code: invite.code,
+    visitorName: invite.visitorName,
+    validityType: invite.validityType,
+    description: invite.description,
+    hasVehicle: invite.hasVehicle,
+    validUntil: invite.validUntil,
+    usedCount: invite.usedCount,
+    maxUses: invite.maxUses,
+    image: await QRCode.toDataURL(`MP:${invite.code}`),
+  });
 
-  const now = new Date();
-  const activeInvites = invitesWithImage.filter(
-    (invite) => invite.validUntil >= now && invite.usedCount < invite.maxUses,
-  );
-  const expiredInvites = invitesWithImage.filter(
-    (invite) => invite.validUntil < now || invite.usedCount >= invite.maxUses,
-  );
+  const [activeInvites, expiredInvites] = await Promise.all([
+    Promise.all(activeRows.map(mapToInviteWithImage)),
+    Promise.all(expiredRows.map(mapToInviteWithImage)),
+  ]);
   const supportPhoneDigits = (residential?.supportPhone ?? "").replaceAll(/\D+/g, "");
   const supportWhatsappUrl = supportPhoneDigits ? `https://wa.me/${supportPhoneDigits}` : null;
 
@@ -255,6 +272,11 @@ export default async function ResidentPage() {
           <summary className="cursor-pointer list-none text-lg font-semibold text-slate-900">
             <span className="inline-flex items-center gap-2">QRs expirados ({expiredInvites.length})</span>
           </summary>
+          {totalQrCount > activeInvites.length + expiredInvites.length ? (
+            <p className="mt-2 text-xs text-slate-500">
+              Listado limitado a los 20 mas recientes para que la pagina cargue rapido.
+            </p>
+          ) : null}
           <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {expiredInvites.map((invite) => (
               <article
@@ -289,7 +311,7 @@ export default async function ResidentPage() {
             {expiredInvites.length === 0 ? (
               <p className="text-sm text-slate-600">Aun no tienes QRs expirados.</p>
             ) : null}
-            {invitesWithImage.length === 0 ? (
+            {totalQrCount === 0 ? (
               <p className="text-sm text-slate-600">Aun no has generado QRs.</p>
             ) : null}
           </div>
