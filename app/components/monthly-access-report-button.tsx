@@ -10,6 +10,7 @@ type EntryItem = {
   exitStatusLabel: string;
   exitNote?: string;
   visitorName: string;
+  visitorDescription?: string | null;
   residentName: string;
   guardName: string;
   method: string;
@@ -95,6 +96,14 @@ export function MonthlyAccessReportButton({
 
         doc.setFont("helvetica", "normal");
         doc.setFontSize(9);
+        if (entry.visitorDescription?.trim()) {
+          const descLines = doc.splitTextToSize(
+            `Descripcion del QR: ${entry.visitorDescription.trim()}`,
+            contentWidth,
+          );
+          doc.text(descLines, 40, y);
+          y += descLines.length * 10 + 4;
+        }
         const meta = [
           `Entrada: ${entry.entryDateLabel}`,
           `Salida: ${entry.exitDateLabel} (${entry.exitStatusLabel})`,

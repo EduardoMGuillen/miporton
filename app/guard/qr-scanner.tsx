@@ -508,34 +508,68 @@ export function GuardQrScanner() {
 
       {isClient && result
         ? createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/55 p-4">
+        <div
+          className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${
+            resultTone === "valid" ? "bg-slate-900/55" : "bg-red-950/80 backdrop-blur-[2px]"
+          }`}
+        >
           <div
-            className={`w-full max-w-md rounded-2xl border p-6 text-center shadow-2xl ${
+            className={`w-full max-w-md rounded-2xl p-6 text-center shadow-2xl ${
               resultTone === "valid"
-                ? "border-emerald-300 bg-emerald-50 text-emerald-900"
-                : resultTone === "used"
-                  ? "border-amber-300 bg-amber-50 text-amber-900"
-                  : "border-red-300 bg-red-50 text-red-900"
+                ? "border border-emerald-300 bg-emerald-50 text-emerald-900"
+                : "border-4 border-red-400 bg-gradient-to-b from-red-600 to-red-900 text-white shadow-[0_0_40px_rgba(220,38,38,0.55),0_25px_50px_-12px_rgba(0,0,0,0.45)] ring-2 ring-red-300/90"
             }`}
           >
-            <p className="text-2xl font-bold">
+            <p
+              className={
+                resultTone === "valid"
+                  ? "text-2xl font-bold"
+                  : "text-3xl font-black uppercase tracking-wide text-white drop-shadow-sm"
+              }
+            >
               {resultTone === "valid"
                 ? successTitle
                 : resultTone === "used"
                   ? "QR YA UTILIZADO"
                   : "QR INVALIDO"}
             </p>
-            <p className="mt-2 text-sm">{result.reason}</p>
-            {result.visitorName ? <p className="mt-3 text-sm">Visita: {result.visitorName}</p> : null}
-            {result.residentName ? <p className="text-sm">Anunciado por: {result.residentName}</p> : null}
-            {result.residentialName ? <p className="text-sm">Residencial: {result.residentialName}</p> : null}
+            <p
+              className={
+                resultTone === "valid" ? "mt-2 text-sm" : "mt-3 text-base font-semibold text-red-100"
+              }
+            >
+              {result.reason}
+            </p>
+            {result.visitorName ? (
+              <p
+                className={
+                  resultTone === "valid" ? "mt-3 text-sm" : "mt-3 text-sm font-medium text-red-50/95"
+                }
+              >
+                Visita: {result.visitorName}
+              </p>
+            ) : null}
+            {result.residentName ? (
+              <p className={resultTone === "valid" ? "text-sm" : "text-sm text-red-50/95"}>
+                Anunciado por: {result.residentName}
+              </p>
+            ) : null}
+            {result.residentialName ? (
+              <p className={resultTone === "valid" ? "text-sm" : "text-sm text-red-50/95"}>
+                Residencial: {result.residentialName}
+              </p>
+            ) : null}
 
             <button
               onClick={() => {
                 setResult(null);
                 isHandlingRef.current = false;
               }}
-              className="mt-5 w-full rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
+              className={
+                resultTone === "valid"
+                  ? "mt-5 w-full rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
+                  : "mt-6 w-full rounded-xl bg-white px-4 py-3 text-sm font-bold text-red-800 shadow-lg transition hover:bg-red-50"
+              }
             >
               Cerrar resultado
             </button>
@@ -545,7 +579,11 @@ export function GuardQrScanner() {
                 isHandlingRef.current = false;
                 setIsScannerOpen(true);
               }}
-              className="mt-2 w-full rounded-lg border border-slate-400 bg-white px-4 py-2 text-sm font-semibold text-slate-800"
+              className={
+                resultTone === "valid"
+                  ? "mt-2 w-full rounded-lg border border-slate-400 bg-white px-4 py-2 text-sm font-semibold text-slate-800"
+                  : "mt-2 w-full rounded-xl border-2 border-white/80 bg-transparent px-4 py-3 text-sm font-bold text-white transition hover:bg-white/10"
+              }
             >
               Escanear otro QR
             </button>

@@ -40,6 +40,7 @@ type EntryRecord = {
   exitNote: string | null;
   reason: string;
   visitorName: string;
+  visitorDescription: string | null;
   residentName: string;
   guardName: string;
   idPhotoData: Uint8Array | null;
@@ -106,6 +107,14 @@ function buildResidentialReportPdf({
       y += 12;
       doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
+      if (entry.visitorDescription?.trim()) {
+        const descLines = doc.splitTextToSize(
+          `Descripcion del QR: ${entry.visitorDescription.trim()}`,
+          contentWidth,
+        );
+        doc.text(descLines, 40, y);
+        y += descLines.length * 10 + 4;
+      }
       const metaLines = [
         `Entrada: ${formatDateTimeTegucigalpa(entry.scannedAt)}`,
         `Salida: ${entry.exitedAt ? formatDateTimeTegucigalpa(entry.exitedAt) : "Pendiente"}`,
@@ -242,6 +251,7 @@ export async function GET() {
         code: {
           select: {
             visitorName: true,
+            description: true,
             resident: { select: { fullName: true } },
             residential: { select: { id: true, name: true } },
           },
@@ -295,6 +305,7 @@ export async function GET() {
       exitNote: scan.exitNote,
       reason: scan.reason,
       visitorName: scan.code.visitorName,
+      visitorDescription: scan.code.description,
       residentName: scan.code.resident.fullName,
       guardName: scan.scanner.fullName,
       idPhotoData: scan.idPhotoData,

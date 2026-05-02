@@ -6,6 +6,7 @@ import { useState } from "react";
 type EntryRecordExportButtonProps = {
   recordId: string;
   visitorName: string;
+  visitorDescription?: string | null;
   residentName: string;
   guardName: string;
   residentialName?: string;
@@ -36,6 +37,7 @@ async function imageUrlToDataUrl(url: string) {
 export function EntryRecordExportButton({
   recordId,
   visitorName,
+  visitorDescription,
   residentName,
   guardName,
   residentialName,
@@ -58,29 +60,44 @@ export function EntryRecordExportButton({
       const evidenceImageData = evidenceImageUrl ? await imageUrlToDataUrl(evidenceImageUrl) : null;
       const plateImageData = plateImageUrl ? await imageUrlToDataUrl(plateImageUrl) : null;
 
+      let y = 48;
       doc.setFont("helvetica", "bold");
       doc.setFontSize(16);
-      doc.text("Registro de acceso - MiVisita", 40, 48);
+      doc.text("Registro de acceso - MiVisita", 40, y);
+      y += 24;
 
       doc.setFont("helvetica", "normal");
       doc.setFontSize(11);
-      doc.text(`ID de registro: ${recordId}`, 40, 72);
-      doc.text(`Visita: ${visitorName}`, 40, 92);
-      doc.text(`Residente: ${residentName}`, 40, 112);
-      doc.text(`Guardia: ${guardName}`, 40, 132);
-      if (residentialName) {
-        doc.text(`Residencial: ${residentialName}`, 40, 152);
+      doc.text(`ID de registro: ${recordId}`, 40, y);
+      y += 20;
+      doc.text(`Visita: ${visitorName}`, 40, y);
+      y += 20;
+      if (visitorDescription?.trim()) {
+        const descLines = doc.splitTextToSize(`Descripcion del QR: ${visitorDescription.trim()}`, 515);
+        doc.text(descLines, 40, y);
+        y += descLines.length * 14 + 6;
       }
-      doc.text(`Entrada: ${entryAtLabel}`, 40, residentialName ? 172 : 152);
-      doc.text(`Salida: ${exitAtLabel} (${exitStatusLabel})`, 40, residentialName ? 192 : 172);
-      doc.text(`Metodo: ${methodLabel}`, 40, residentialName ? 212 : 192);
-      doc.text(`Evidencia: ${evidenceLabel}`, 40, residentialName ? 232 : 212);
+      doc.text(`Residente: ${residentName}`, 40, y);
+      y += 20;
+      doc.text(`Guardia: ${guardName}`, 40, y);
+      y += 20;
+      if (residentialName) {
+        doc.text(`Residencial: ${residentialName}`, 40, y);
+        y += 20;
+      }
+      doc.text(`Entrada: ${entryAtLabel}`, 40, y);
+      y += 20;
+      doc.text(`Salida: ${exitAtLabel} (${exitStatusLabel})`, 40, y);
+      y += 20;
+      doc.text(`Metodo: ${methodLabel}`, 40, y);
+      y += 20;
+      doc.text(`Evidencia: ${evidenceLabel}`, 40, y);
+      y += 20;
 
-      const reasonY = residentialName ? 256 : 236;
       const reasonLines = doc.splitTextToSize(`Motivo: ${reason}`, 515);
-      doc.text(reasonLines, 40, reasonY);
+      doc.text(reasonLines, 40, y);
 
-      let detailsEndY = reasonY + reasonLines.length * 14 + 18;
+      let detailsEndY = y + reasonLines.length * 14 + 18;
       if (exitNote) {
         const exitNoteLines = doc.splitTextToSize(`Nota de salida: ${exitNote}`, 515);
         doc.text(exitNoteLines, 40, detailsEndY);

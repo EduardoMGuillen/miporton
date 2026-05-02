@@ -107,6 +107,7 @@ export default async function SuperAdminLogsPage({
           code: {
             select: {
               visitorName: true,
+              description: true,
               resident: { select: { fullName: true } },
               residential: { select: { name: true } },
             },
@@ -216,6 +217,7 @@ export default async function SuperAdminLogsPage({
               exitStatusLabel: scan.exitedAt ? "Completada" : "Pendiente",
               exitNote: scan.exitNote ?? undefined,
               visitorName: scan.code.visitorName,
+              visitorDescription: scan.code.description,
               residentName: scan.code.resident.fullName,
               guardName: scan.scanner.fullName,
               method: scan.reason.toLowerCase().includes("manual") ? "Manual" : "QR",
@@ -249,6 +251,9 @@ export default async function SuperAdminLogsPage({
                 </div>
               )}
               <p className="mt-3 text-sm font-semibold text-slate-900">Visita: {scan.code.visitorName}</p>
+              {scan.code.description?.trim() ? (
+                <p className="mt-1 text-xs text-slate-700">Descripcion del QR: {scan.code.description}</p>
+              ) : null}
               <p className="text-xs text-slate-600">Residente: {scan.code.resident.fullName}</p>
               <p className="text-xs text-slate-600">Guardia: {scan.scanner.fullName}</p>
               <p className="text-xs text-slate-600">Residencial: {scan.code.residential.name}</p>
@@ -278,6 +283,7 @@ export default async function SuperAdminLogsPage({
               <EntryRecordExportButton
                 recordId={scan.id}
                 visitorName={scan.code.visitorName}
+                visitorDescription={scan.code.description ?? undefined}
                 residentName={scan.code.resident.fullName}
                 guardName={scan.scanner.fullName}
                 residentialName={scan.code.residential.name}
