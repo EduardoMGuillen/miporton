@@ -12,7 +12,7 @@ export default async function SuperAdminBackupsPage() {
       <p className="mb-4 text-sm text-slate-600">
         Descarga respaldos de reportes PDF y snapshot completo de datos para archivo interno.
       </p>
-      <div className="grid gap-3">
+      <div className="grid gap-4">
         <ReportsBackupButton />
         <DatabaseBackupButton />
       </div>

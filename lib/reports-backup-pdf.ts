@@ -1,22 +1,7 @@
-import { NextResponse } from "next/server";
-import JSZip from "jszip";
 import { jsPDF } from "jspdf";
-import { getSession } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { formatDateTimeTegucigalpa } from "@/lib/datetime";
 
-/** Evita OOM y timeouts: Buffer no existe en Edge; el ZIP usa APIs de Node. */
-export const runtime = "nodejs";
-export const maxDuration = 300;
-
-function formatDateTimeTegucigalpa(date: Date) {
-  return new Intl.DateTimeFormat("es-HN", {
-    timeZone: "America/Tegucigalpa",
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(date);
-}
-
-function safeFileName(value: string) {
+export function safeFileNameForReport(value: string) {
   return value.trim().toLowerCase().replaceAll(/[^a-z0-9]+/g, "-").replaceAll(/^-+|-+$/g, "");
 }
 
@@ -37,7 +22,7 @@ function imageFormat(mimeType: string | null) {
   return "JPEG";
 }
 
-type EntryRecord = {
+export type ReportBackupEntryRecord = {
   id: string;
   scannedAt: Date;
   exitedAt: Date | null;
@@ -55,7 +40,7 @@ type EntryRecord = {
   platePhotoSize: number | null;
 };
 
-type DeliveryRecord = {
+export type ReportBackupDeliveryRecord = {
   id: string;
   createdAt: Date;
   note: string;
@@ -63,19 +48,21 @@ type DeliveryRecord = {
   guardName: string;
 };
 
-function buildResidentialReportPdf({
+export function buildResidentialReportPdf({
   residentialName,
   generatedAt,
   entries,
   deliveries,
   embedEvidenceImages,
+  periodLabel,
 }: {
   residentialName: string;
   generatedAt: Date;
-  entries: EntryRecord[];
-  deliveries: DeliveryRecord[];
-  /** false = PDF liviano para backup global (sin cargar bytes de fotos en servidor). */
+  entries: ReportBackupEntryRecord[];
+  deliveries: ReportBackupDeliveryRecord[];
   embedEvidenceImages: boolean;
+  /** Ej. "Mes calendario: 2026-05 (America/Tegucigalpa)" */
+  periodLabel?: string;
 }) {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const contentWidth = 515;
@@ -87,6 +74,10 @@ function buildResidentialReportPdf({
   y += 18;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
+  if (periodLabel) {
+    doc.text(periodLabel, 40, y);
+    y += 14;
+  }
   doc.text(`Generado: ${formatDateTimeTegucigalpa(generatedAt)} (America/Tegucigalpa)`, 40, y);
   y += 14;
   doc.text(`Entradas: ${entries.length} | Delivery: ${deliveries.length}`, 40, y);
@@ -243,176 +234,4 @@ function buildResidentialReportPdf({
   }
 
   return doc.output("arraybuffer");
-}
-
-/** Sin bytes de imagen: el backup ZIP aguanta hosting con poco tiempo/RAM; las fotos van en backup de BD. */
-const scanSelect = {
-  id: true,
-  scannedAt: true,
-  exitedAt: true,
-  exitNote: true,
-  reason: true,
-  idPhotoMimeType: true,
-  idPhotoSize: true,
-  platePhotoMimeType: true,
-  platePhotoSize: true,
-  code: {
-    select: {
-      visitorName: true,
-      description: true,
-      resident: { select: { fullName: true } },
-    },
-  },
-  scanner: { select: { fullName: true } },
-} as const;
-
-function mapScanToEntry(
-  scan: {
-    id: string;
-    scannedAt: Date;
-    exitedAt: Date | null;
-    exitNote: string | null;
-    reason: string;
-    idPhotoMimeType: string | null;
-    idPhotoSize: number | null;
-    platePhotoMimeType: string | null;
-    platePhotoSize: number | null;
-    code: {
-      visitorName: string;
-      description: string | null;
-      resident: { fullName: string };
-    };
-    scanner: { fullName: string };
-  },
-): EntryRecord {
-  return {
-    id: scan.id,
-    scannedAt: scan.scannedAt,
-    exitedAt: scan.exitedAt,
-    exitNote: scan.exitNote,
-    reason: scan.reason,
-    visitorName: scan.code.visitorName,
-    visitorDescription: scan.code.description,
-    residentName: scan.code.resident.fullName,
-    guardName: scan.scanner.fullName,
-    idPhotoData: null,
-    idPhotoMimeType: scan.idPhotoMimeType,
-    idPhotoSize: scan.idPhotoSize,
-    platePhotoData: null,
-    platePhotoMimeType: scan.platePhotoMimeType,
-    platePhotoSize: scan.platePhotoSize,
-  };
-}
-
-export async function GET() {
-  const session = await getSession();
-  if (!session || session.role !== "SUPER_ADMIN") {
-    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
-  }
-
-  try {
-    const [residentials, deliveries] = await Promise.all([
-      prisma.residential.findMany({
-        select: { id: true, name: true },
-        orderBy: { createdAt: "asc" },
-      }),
-      prisma.deliveryAnnouncement.findMany({
-        orderBy: { createdAt: "asc" },
-        select: {
-          id: true,
-          createdAt: true,
-          note: true,
-          residential: { select: { id: true, name: true } },
-          resident: { select: { fullName: true } },
-          guard: { select: { fullName: true } },
-        },
-      }),
-    ]);
-
-    const deliveriesByResidential = new Map<string, DeliveryRecord[]>();
-    deliveries.forEach((delivery) => {
-      const residentialId = delivery.residential.id;
-      const group = deliveriesByResidential.get(residentialId) ?? [];
-      group.push({
-        id: delivery.id,
-        createdAt: delivery.createdAt,
-        note: delivery.note,
-        residentName: delivery.resident.fullName,
-        guardName: delivery.guard.fullName,
-      });
-      deliveriesByResidential.set(residentialId, group);
-    });
-
-    let totalQrScans = 0;
-    const zip = new JSZip();
-    const generatedAt = new Date();
-
-    for (const residential of residentials) {
-      const scans = await prisma.qrScan.findMany({
-        where: { isValid: true, code: { residentialId: residential.id } },
-        orderBy: { scannedAt: "asc" },
-        select: scanSelect,
-      });
-      totalQrScans += scans.length;
-      const entries = scans.map(mapScanToEntry);
-      const reportPdf = buildResidentialReportPdf({
-        residentialName: residential.name,
-        generatedAt,
-        entries,
-        deliveries: deliveriesByResidential.get(residential.id) ?? [],
-        embedEvidenceImages: false,
-      });
-      const namePart = safeFileName(residential.name) || "residencial";
-      const fileBase = `${namePart}-${residential.id.slice(0, 10)}`;
-      zip.file(`reportes-pdf/reporte-${fileBase}.pdf`, new Uint8Array(reportPdf));
-    }
-
-    zip.file(
-      "manifest.json",
-      JSON.stringify(
-        {
-          generatedAt: generatedAt.toISOString(),
-          generatedBy: session.fullName,
-          generatedByUserId: session.userId,
-          counts: {
-            residentials: residentials.length,
-            qrScans: totalQrScans,
-            deliveries: deliveries.length,
-            pdfReports: residentials.length,
-          },
-        },
-        null,
-        2,
-      ),
-    );
-
-    const zipBuffer = await zip.generateAsync({
-      type: "nodebuffer",
-      compression: "DEFLATE",
-      compressionOptions: { level: 6 },
-    });
-    const body = new Uint8Array(zipBuffer);
-
-    const fileName = `mivisita-reports-backup-${generatedAt.toISOString().slice(0, 10)}.zip`;
-    return new NextResponse(body, {
-      status: 200,
-      headers: {
-        "Content-Type": "application/zip",
-        "Content-Disposition": `attachment; filename="${fileName}"`,
-        "Cache-Control": "no-store",
-      },
-    });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Error desconocido al generar el backup.";
-    console.error("[reports-backup]", error);
-    return NextResponse.json(
-      {
-        error:
-          message.length > 400
-            ? `${message.slice(0, 400)}... (revisa logs del servidor)`
-            : message,
-      },
-      { status: 500 },
-    );
-  }
 }
