@@ -4,6 +4,10 @@ import { jsPDF } from "jspdf";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+/** Evita OOM y timeouts: Buffer no existe en Edge; el ZIP usa APIs de Node. */
+export const runtime = "nodejs";
+export const maxDuration = 300;
+
 function formatDateTimeTegucigalpa(date: Date) {
   return new Intl.DateTimeFormat("es-HN", {
     timeZone: "America/Tegucigalpa",
@@ -222,141 +226,176 @@ function buildResidentialReportPdf({
   return doc.output("arraybuffer");
 }
 
+const scanSelect = {
+  id: true,
+  scannedAt: true,
+  exitedAt: true,
+  exitNote: true,
+  reason: true,
+  idPhotoData: true,
+  idPhotoMimeType: true,
+  idPhotoSize: true,
+  platePhotoData: true,
+  platePhotoMimeType: true,
+  platePhotoSize: true,
+  code: {
+    select: {
+      visitorName: true,
+      description: true,
+      resident: { select: { fullName: true } },
+    },
+  },
+  scanner: { select: { fullName: true } },
+} as const;
+
+function mapScanToEntry(
+  scan: {
+    id: string;
+    scannedAt: Date;
+    exitedAt: Date | null;
+    exitNote: string | null;
+    reason: string;
+    idPhotoData: Uint8Array | null;
+    idPhotoMimeType: string | null;
+    idPhotoSize: number | null;
+    platePhotoData: Uint8Array | null;
+    platePhotoMimeType: string | null;
+    platePhotoSize: number | null;
+    code: {
+      visitorName: string;
+      description: string | null;
+      resident: { fullName: string };
+    };
+    scanner: { fullName: string };
+  },
+): EntryRecord {
+  return {
+    id: scan.id,
+    scannedAt: scan.scannedAt,
+    exitedAt: scan.exitedAt,
+    exitNote: scan.exitNote,
+    reason: scan.reason,
+    visitorName: scan.code.visitorName,
+    visitorDescription: scan.code.description,
+    residentName: scan.code.resident.fullName,
+    guardName: scan.scanner.fullName,
+    idPhotoData: scan.idPhotoData,
+    idPhotoMimeType: scan.idPhotoMimeType,
+    idPhotoSize: scan.idPhotoSize,
+    platePhotoData: scan.platePhotoData,
+    platePhotoMimeType: scan.platePhotoMimeType,
+    platePhotoSize: scan.platePhotoSize,
+  };
+}
+
 export async function GET() {
   const session = await getSession();
   if (!session || session.role !== "SUPER_ADMIN") {
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   }
 
-  const [residentials, scans, deliveries] = await Promise.all([
-    prisma.residential.findMany({
-      select: { id: true, name: true },
-      orderBy: { createdAt: "asc" },
-    }),
-    prisma.qrScan.findMany({
-      where: { isValid: true },
-      orderBy: { scannedAt: "asc" },
-      select: {
-        id: true,
-        scannedAt: true,
-        exitedAt: true,
-        exitNote: true,
-        reason: true,
-        idPhotoData: true,
-        idPhotoMimeType: true,
-        idPhotoSize: true,
-        platePhotoData: true,
-        platePhotoMimeType: true,
-        platePhotoSize: true,
-        code: {
-          select: {
-            visitorName: true,
-            description: true,
-            resident: { select: { fullName: true } },
-            residential: { select: { id: true, name: true } },
+  try {
+    const [residentials, deliveries] = await Promise.all([
+      prisma.residential.findMany({
+        select: { id: true, name: true },
+        orderBy: { createdAt: "asc" },
+      }),
+      prisma.deliveryAnnouncement.findMany({
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          createdAt: true,
+          note: true,
+          residential: { select: { id: true, name: true } },
+          resident: { select: { fullName: true } },
+          guard: { select: { fullName: true } },
+        },
+      }),
+    ]);
+
+    const deliveriesByResidential = new Map<string, DeliveryRecord[]>();
+    deliveries.forEach((delivery) => {
+      const residentialId = delivery.residential.id;
+      const group = deliveriesByResidential.get(residentialId) ?? [];
+      group.push({
+        id: delivery.id,
+        createdAt: delivery.createdAt,
+        note: delivery.note,
+        residentName: delivery.resident.fullName,
+        guardName: delivery.guard.fullName,
+      });
+      deliveriesByResidential.set(residentialId, group);
+    });
+
+    let totalQrScans = 0;
+    const zip = new JSZip();
+    const generatedAt = new Date();
+
+    for (const residential of residentials) {
+      const scans = await prisma.qrScan.findMany({
+        where: { isValid: true, code: { residentialId: residential.id } },
+        orderBy: { scannedAt: "asc" },
+        select: scanSelect,
+      });
+      totalQrScans += scans.length;
+      const entries = scans.map(mapScanToEntry);
+      const reportPdf = buildResidentialReportPdf({
+        residentialName: residential.name,
+        generatedAt,
+        entries,
+        deliveries: deliveriesByResidential.get(residential.id) ?? [],
+      });
+      const namePart = safeFileName(residential.name) || "residencial";
+      const fileBase = `${namePart}-${residential.id.slice(0, 10)}`;
+      zip.file(`reportes-pdf/reporte-${fileBase}.pdf`, new Uint8Array(reportPdf));
+    }
+
+    zip.file(
+      "manifest.json",
+      JSON.stringify(
+        {
+          generatedAt: generatedAt.toISOString(),
+          generatedBy: session.fullName,
+          generatedByUserId: session.userId,
+          counts: {
+            residentials: residentials.length,
+            qrScans: totalQrScans,
+            deliveries: deliveries.length,
+            pdfReports: residentials.length,
           },
         },
-        scanner: { select: { fullName: true } },
-      },
-    }),
-    prisma.deliveryAnnouncement.findMany({
-      orderBy: { createdAt: "asc" },
-      select: {
-        id: true,
-        createdAt: true,
-        note: true,
-        residential: { select: { id: true, name: true } },
-        resident: { select: { fullName: true } },
-        guard: { select: { fullName: true } },
-      },
-    }),
-  ]);
+        null,
+        2,
+      ),
+    );
 
-  const zip = new JSZip();
-  const generatedAt = new Date();
+    const zipBuffer = await zip.generateAsync({
+      type: "nodebuffer",
+      compression: "DEFLATE",
+      compressionOptions: { level: 6 },
+    });
+    const body = new Uint8Array(zipBuffer);
 
-  zip.file(
-    "manifest.json",
-    JSON.stringify(
+    const fileName = `mivisita-reports-backup-${generatedAt.toISOString().slice(0, 10)}.zip`;
+    return new NextResponse(body, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/zip",
+        "Content-Disposition": `attachment; filename="${fileName}"`,
+        "Cache-Control": "no-store",
+      },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Error desconocido al generar el backup.";
+    console.error("[reports-backup]", error);
+    return NextResponse.json(
       {
-        generatedAt: generatedAt.toISOString(),
-        generatedBy: session.fullName,
-        generatedByUserId: session.userId,
-        counts: {
-          residentials: residentials.length,
-          qrScans: scans.length,
-          deliveries: deliveries.length,
-          pdfReports: residentials.length,
-        },
+        error:
+          message.length > 400
+            ? `${message.slice(0, 400)}... (revisa logs del servidor)`
+            : message,
       },
-      null,
-      2,
-    ),
-  );
-
-  const scansByResidential = new Map<string, EntryRecord[]>();
-  scans.forEach((scan) => {
-    const residentialId = scan.code.residential.id;
-    const group = scansByResidential.get(residentialId) ?? [];
-    group.push({
-      id: scan.id,
-      scannedAt: scan.scannedAt,
-      exitedAt: scan.exitedAt,
-      exitNote: scan.exitNote,
-      reason: scan.reason,
-      visitorName: scan.code.visitorName,
-      visitorDescription: scan.code.description,
-      residentName: scan.code.resident.fullName,
-      guardName: scan.scanner.fullName,
-      idPhotoData: scan.idPhotoData,
-      idPhotoMimeType: scan.idPhotoMimeType,
-      idPhotoSize: scan.idPhotoSize,
-      platePhotoData: scan.platePhotoData,
-      platePhotoMimeType: scan.platePhotoMimeType,
-      platePhotoSize: scan.platePhotoSize,
-    });
-    scansByResidential.set(residentialId, group);
-  });
-
-  const deliveriesByResidential = new Map<string, DeliveryRecord[]>();
-  deliveries.forEach((delivery) => {
-    const residentialId = delivery.residential.id;
-    const group = deliveriesByResidential.get(residentialId) ?? [];
-    group.push({
-      id: delivery.id,
-      createdAt: delivery.createdAt,
-      note: delivery.note,
-      residentName: delivery.resident.fullName,
-      guardName: delivery.guard.fullName,
-    });
-    deliveriesByResidential.set(residentialId, group);
-  });
-
-  residentials.forEach((residential) => {
-    const reportPdf = buildResidentialReportPdf({
-      residentialName: residential.name,
-      generatedAt,
-      entries: scansByResidential.get(residential.id) ?? [],
-      deliveries: deliveriesByResidential.get(residential.id) ?? [],
-    });
-    const fileBase = safeFileName(residential.name) || residential.id;
-    zip.file(`reportes-pdf/reporte-${fileBase}.pdf`, new Uint8Array(reportPdf));
-  });
-
-  const zipBuffer = await zip.generateAsync({
-    type: "nodebuffer",
-    compression: "DEFLATE",
-    compressionOptions: { level: 6 },
-  });
-  const body = new Uint8Array(zipBuffer);
-
-  const fileName = `mivisita-reports-backup-${generatedAt.toISOString().slice(0, 10)}.zip`;
-  return new NextResponse(body, {
-    status: 200,
-    headers: {
-      "Content-Type": "application/zip",
-      "Content-Disposition": `attachment; filename="${fileName}"`,
-      "Cache-Control": "no-store",
-    },
-  });
+      { status: 500 },
+    );
+  }
 }
