@@ -12,10 +12,25 @@ export function ReportsBackupButton() {
     try {
       const response = await fetch("/api/super-admin/reports-backup", {
         method: "GET",
+        credentials: "same-origin",
       });
       if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(payload?.error || "No se pudo generar el backup.");
+        const contentType = response.headers.get("content-type") ?? "";
+        if (contentType.includes("application/json")) {
+          const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+          throw new Error(payload?.error || "No se pudo generar el backup.");
+        }
+        if (response.status === 504 || response.status === 408) {
+          throw new Error(
+            "Tiempo agotado en el servidor al generar el ZIP. Reintenta; si persiste, el plan de hosting puede limitar la duracion de la funcion.",
+          );
+        }
+        const fallbackText = (await response.text().catch(() => "")).trim().slice(0, 280);
+        throw new Error(
+          fallbackText
+            ? `Error ${response.status}: ${fallbackText}`
+            : `Error HTTP ${response.status} al generar el backup (respuesta no JSON).`,
+        );
       }
 
       const blob = await response.blob();
@@ -52,7 +67,8 @@ export function ReportsBackupButton() {
       </button>
       {error ? <p className="text-xs text-red-600">{error}</p> : null}
       <p className="text-xs text-slate-500">
-        Incluye un PDF por residencial, con entradas, deliveries y evidencias disponibles actualmente.
+        Un PDF por residencial (entradas, delivery, descripcion del QR). Las fotos de evidencia no se incrustan aqui
+        para evitar timeouts; usa el backup de base de datos para archivar imagenes.
       </p>
     </div>
   );

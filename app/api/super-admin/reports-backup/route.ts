@@ -68,11 +68,14 @@ function buildResidentialReportPdf({
   generatedAt,
   entries,
   deliveries,
+  embedEvidenceImages,
 }: {
   residentialName: string;
   generatedAt: Date;
   entries: EntryRecord[];
   deliveries: DeliveryRecord[];
+  /** false = PDF liviano para backup global (sin cargar bytes de fotos en servidor). */
+  embedEvidenceImages: boolean;
 }) {
   const doc = new jsPDF({ unit: "pt", format: "a4" });
   const contentWidth = 515;
@@ -139,12 +142,15 @@ function buildResidentialReportPdf({
         y += exitNoteLines.length * 10 + 4;
       }
 
-      const hasIdImage = Boolean(entry.idPhotoData && entry.idPhotoData.length > 0);
-      const hasPlateImage = Boolean(entry.platePhotoData && entry.platePhotoData.length > 0);
-      if (hasIdImage || hasPlateImage) {
+      const hasIdBytes = Boolean(entry.idPhotoData && entry.idPhotoData.length > 0);
+      const hasPlateBytes = Boolean(entry.platePhotoData && entry.platePhotoData.length > 0);
+      const hasIdMeta = Boolean(entry.idPhotoSize && entry.idPhotoSize > 0);
+      const hasPlateMeta = Boolean(entry.platePhotoSize && entry.platePhotoSize > 0);
+
+      if (embedEvidenceImages && (hasIdBytes || hasPlateBytes)) {
         y = ensurePage(doc, y, 140);
         let imageX = 40;
-        if (hasIdImage && entry.idPhotoData) {
+        if (hasIdBytes && entry.idPhotoData) {
           try {
             doc.setFont("helvetica", "bold");
             doc.setFontSize(9);
@@ -164,7 +170,7 @@ function buildResidentialReportPdf({
             imageX += 170;
           }
         }
-        if (hasPlateImage && entry.platePhotoData) {
+        if (hasPlateBytes && entry.platePhotoData) {
           try {
             doc.setFont("helvetica", "bold");
             doc.setFontSize(9);
@@ -183,6 +189,19 @@ function buildResidentialReportPdf({
           }
         }
         y += 114;
+      } else if (!embedEvidenceImages && (hasIdMeta || hasPlateMeta)) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        const parts: string[] = [];
+        if (hasIdMeta) {
+          parts.push(`Evidencia ID en sistema (${entry.idPhotoSize} bytes, no incrustada en este PDF)`);
+        }
+        if (hasPlateMeta) {
+          parts.push(`Evidencia placa en sistema (${entry.platePhotoSize} bytes, no incrustada en este PDF)`);
+        }
+        const evLines = doc.splitTextToSize(parts.join(" | "), contentWidth);
+        doc.text(evLines, 40, y);
+        y += evLines.length * 10 + 4;
       } else {
         doc.setFont("helvetica", "italic");
         doc.text("Sin evidencia de imagen en este registro.", 40, y);
@@ -226,16 +245,15 @@ function buildResidentialReportPdf({
   return doc.output("arraybuffer");
 }
 
+/** Sin bytes de imagen: el backup ZIP aguanta hosting con poco tiempo/RAM; las fotos van en backup de BD. */
 const scanSelect = {
   id: true,
   scannedAt: true,
   exitedAt: true,
   exitNote: true,
   reason: true,
-  idPhotoData: true,
   idPhotoMimeType: true,
   idPhotoSize: true,
-  platePhotoData: true,
   platePhotoMimeType: true,
   platePhotoSize: true,
   code: {
@@ -255,10 +273,8 @@ function mapScanToEntry(
     exitedAt: Date | null;
     exitNote: string | null;
     reason: string;
-    idPhotoData: Uint8Array | null;
     idPhotoMimeType: string | null;
     idPhotoSize: number | null;
-    platePhotoData: Uint8Array | null;
     platePhotoMimeType: string | null;
     platePhotoSize: number | null;
     code: {
@@ -279,10 +295,10 @@ function mapScanToEntry(
     visitorDescription: scan.code.description,
     residentName: scan.code.resident.fullName,
     guardName: scan.scanner.fullName,
-    idPhotoData: scan.idPhotoData,
+    idPhotoData: null,
     idPhotoMimeType: scan.idPhotoMimeType,
     idPhotoSize: scan.idPhotoSize,
-    platePhotoData: scan.platePhotoData,
+    platePhotoData: null,
     platePhotoMimeType: scan.platePhotoMimeType,
     platePhotoSize: scan.platePhotoSize,
   };
@@ -344,6 +360,7 @@ export async function GET() {
         generatedAt,
         entries,
         deliveries: deliveriesByResidential.get(residential.id) ?? [],
+        embedEvidenceImages: false,
       });
       const namePart = safeFileName(residential.name) || "residencial";
       const fileBase = `${namePart}-${residential.id.slice(0, 10)}`;
