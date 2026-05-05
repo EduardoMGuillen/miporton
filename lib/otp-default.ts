@@ -1,0 +1,1 @@
+export const DEFAULT_RESIDENT_OTP = process.env.RESIDENT_DEFAULT_OTP ?? "sesion1+2026";

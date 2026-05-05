@@ -68,6 +68,9 @@ model User {
   fullName                String
   email                   String                      @unique
   passwordHash            String
+  oneTimePasswordCipher   String?
+  oneTimePasswordCreatedAt DateTime?
+  oneTimePasswordCreatedById String?
   role                    Role
   isSuspended             Boolean                     @default(false)
   suspendedAt             DateTime?
@@ -87,6 +90,8 @@ model User {
   receivedAnnouncements   AdminAnnouncementRecipient[]
   createdServiceContracts ServiceContract[]           @relation("ServiceContractCreatedBy")
   residentSuggestions     ResidentSuggestion[]
+  oneTimePasswordCreatedBy User?                      @relation("ResidentialOtpCreatedBy", fields: [oneTimePasswordCreatedById], references: [id], onDelete: SetNull)
+  otpCreatedForUsers      User[]                      @relation("ResidentialOtpCreatedBy")
 }
 
 model QrCode {
