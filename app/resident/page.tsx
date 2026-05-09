@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { Card, DashboardShell } from "@/app/components/shell";
 import { CreateQrForm } from "@/app/resident/create-qr-form";
 import { CreateZoneReservationForm } from "@/app/resident/create-zone-reservation-form";
+import { EditZoneReservationForm } from "@/app/resident/edit-zone-reservation-form";
+import { ReservationViewButton } from "@/app/resident/reservation-view-button";
 import { ResidentSuggestionForm } from "@/app/resident/suggestion-form";
 import { PushSubscriptionCard } from "@/app/resident/push-subscription";
 import { deleteInviteQrAction, cancelZoneReservationAction } from "@/app/resident/actions";
@@ -96,7 +98,18 @@ export default async function ResidentPage() {
         residentId: session.userId,
         status: "APPROVED",
       },
-      include: { zone: { select: { name: true } } },
+      include: {
+        zone: {
+          select: {
+            id: true,
+            name: true,
+            maxHoursPerReservation: true,
+            oneReservationPerDay: true,
+            scheduleStartHour: true,
+            scheduleEndHour: true,
+          },
+        },
+      },
       orderBy: { startsAt: "asc" },
       take: 40,
     }),
@@ -106,6 +119,7 @@ export default async function ResidentPage() {
         status: "APPROVED",
       },
       select: {
+        id: true,
         zoneId: true,
         startsAt: true,
         endsAt: true,
@@ -161,6 +175,22 @@ export default async function ResidentPage() {
   const supportPhoneDigits = (residential?.supportPhone ?? "").replaceAll(/\D+/g, "");
   const supportWhatsappUrl = supportPhoneDigits ? `https://wa.me/${supportPhoneDigits}` : null;
 
+  const zoneOccupiedSlots = [
+    ...zoneReservations.map((item) => ({
+      zoneId: item.zoneId,
+      startsAtIso: item.startsAt.toISOString(),
+      endsAtIso: item.endsAt.toISOString(),
+      source: "reservation" as const,
+      reservationId: item.id,
+    })),
+    ...zoneBlocks.map((item) => ({
+      zoneId: item.zoneId,
+      startsAtIso: item.startsAt.toISOString(),
+      endsAtIso: item.endsAt.toISOString(),
+      source: "block" as const,
+    })),
+  ];
+
   return (
     <DashboardShell
       title="Panel de Residente"
@@ -188,20 +218,7 @@ export default async function ResidentPage() {
             scheduleStartHour: zone.scheduleStartHour,
             scheduleEndHour: zone.scheduleEndHour,
           }))}
-          occupiedSlots={[
-            ...zoneReservations.map((item) => ({
-              zoneId: item.zoneId,
-              startsAtIso: item.startsAt.toISOString(),
-              endsAtIso: item.endsAt.toISOString(),
-              source: "reservation" as const,
-            })),
-            ...zoneBlocks.map((item) => ({
-              zoneId: item.zoneId,
-              startsAtIso: item.startsAt.toISOString(),
-              endsAtIso: item.endsAt.toISOString(),
-              source: "block" as const,
-            })),
-          ]}
+          occupiedSlots={zoneOccupiedSlots}
         />
 
         <div className="mt-4 grid gap-2">
@@ -212,6 +229,30 @@ export default async function ResidentPage() {
                 {formatDateTimeTegucigalpa(reservation.startsAt)} - {formatDateTimeTegucigalpa(reservation.endsAt)}
               </p>
               {reservation.note ? <p className="text-xs text-slate-500">Nota: {reservation.note}</p> : null}
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <ReservationViewButton
+                  residentialName={residential?.name ?? undefined}
+                  zoneName={reservation.zone.name}
+                  startsAtIso={reservation.startsAt.toISOString()}
+                  endsAtIso={reservation.endsAt.toISOString()}
+                  note={reservation.note}
+                />
+              </div>
+              <EditZoneReservationForm
+                reservationId={reservation.id}
+                zoneId={reservation.zoneId}
+                zoneName={reservation.zone.name}
+                startsAtIso={reservation.startsAt.toISOString()}
+                endsAtIso={reservation.endsAt.toISOString()}
+                note={reservation.note}
+                zone={{
+                  maxHoursPerReservation: reservation.zone.maxHoursPerReservation,
+                  oneReservationPerDay: reservation.zone.oneReservationPerDay,
+                  scheduleStartHour: reservation.zone.scheduleStartHour,
+                  scheduleEndHour: reservation.zone.scheduleEndHour,
+                }}
+                occupiedSlots={zoneOccupiedSlots}
+              />
               <form action={cancelZoneReservationAction} className="mt-2">
                 <input type="hidden" name="reservationId" value={reservation.id} />
                 <button className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-700">

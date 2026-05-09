@@ -7,6 +7,15 @@ import { requireRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
 import { calculateValidityWindow } from "@/lib/qr";
 import { notifyGuardsInResidential, notifyResidentialAdminsInResidential } from "@/lib/push";
+import {
+  ZONE_ONE_RESERVATION_PER_DAY_TAKEN,
+  ZONE_RESERVATION_OCCUPIED_BY_RESIDENT,
+} from "@/lib/zone-reservation-feedback";
+import {
+  zoneReservationError,
+  zoneReservationSuccess,
+  type ZoneReservationActionState,
+} from "@/lib/zone-reservation-form-state";
 
 const createInviteSchema = z.object({
   visitorName: z.string().min(2, "Nombre de visita invalido."),
@@ -17,6 +26,13 @@ const createInviteSchema = z.object({
 
 const createZoneReservationSchema = z.object({
   zoneId: z.string().min(1, "Debes seleccionar una zona."),
+  startsAt: z.string().min(1, "Debes seleccionar fecha/hora de inicio."),
+  endsAt: z.string().min(1, "Debes seleccionar fecha/hora de fin."),
+  note: z.string().max(180, "Nota demasiado larga.").optional(),
+});
+
+const updateZoneReservationSchema = z.object({
+  reservationId: z.string().min(1, "Reserva invalida."),
   startsAt: z.string().min(1, "Debes seleccionar fecha/hora de inicio."),
   endsAt: z.string().min(1, "Debes seleccionar fecha/hora de fin."),
   note: z.string().max(180, "Nota demasiado larga.").optional(),
@@ -147,9 +163,12 @@ export async function createInviteQrAction(_prevState: string | null, formData: 
   return "QR generado correctamente.";
 }
 
-export async function createZoneReservationAction(_prevState: string | null, formData: FormData) {
+export async function createZoneReservationAction(
+  _prevState: ZoneReservationActionState | null,
+  formData: FormData,
+): Promise<ZoneReservationActionState> {
   const session = await requireRole(["RESIDENT"]);
-  if (!session.residentialId) return "Sesion invalida sin residencial asociada.";
+  if (!session.residentialId) return zoneReservationError("Sesion invalida sin residencial asociada.");
 
   const parsed = createZoneReservationSchema.safeParse({
     zoneId: formData.get("zoneId"),
@@ -157,15 +176,16 @@ export async function createZoneReservationAction(_prevState: string | null, for
     endsAt: formData.get("endsAt"),
     note: formData.get("note") || undefined,
   });
-  if (!parsed.success) return parsed.error.issues[0]?.message ?? "Datos invalidos.";
+  if (!parsed.success)
+    return zoneReservationError(parsed.error.issues[0]?.message ?? "Datos invalidos.");
 
   const startsAt = parseTegucigalpaDateTime(parsed.data.startsAt);
   const endsAt = parseTegucigalpaDateTime(parsed.data.endsAt);
   if (!startsAt || !endsAt || Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
-    return "Fecha/hora invalida.";
+    return zoneReservationError("Fecha/hora invalida.");
   }
-  if (startsAt >= endsAt) return "La hora final debe ser mayor que la hora inicial.";
-  if (startsAt < new Date()) return "No puedes reservar en el pasado.";
+  if (startsAt >= endsAt) return zoneReservationError("La hora final debe ser mayor que la hora inicial.");
+  if (startsAt < new Date()) return zoneReservationError("No puedes reservar en el pasado.");
 
   const zone = await prisma.zone.findFirst({
     where: {
@@ -182,24 +202,26 @@ export async function createZoneReservationAction(_prevState: string | null, for
       scheduleEndHour: true,
     },
   });
-  if (!zone) return "Zona no disponible.";
+  if (!zone) return zoneReservationError("Zona no disponible.");
 
   const hours = (endsAt.getTime() - startsAt.getTime()) / (1000 * 60 * 60);
   if (hours > zone.maxHoursPerReservation) {
-    return `El maximo permitido para esta zona es ${zone.maxHoursPerReservation} hora(s).`;
+    return zoneReservationError(`El maximo permitido para esta zona es ${zone.maxHoursPerReservation} hora(s).`);
   }
 
   const localStart = parseLocalDateTimeParts(parsed.data.startsAt);
   const localEnd = parseLocalDateTimeParts(parsed.data.endsAt);
-  if (!localStart || !localEnd) return "Fecha/hora invalida.";
+  if (!localStart || !localEnd) return zoneReservationError("Fecha/hora invalida.");
   if (localStart.datePart !== localEnd.datePart) {
-    return "La reserva debe iniciar y finalizar en la misma fecha.";
+    return zoneReservationError("La reserva debe iniciar y finalizar en la misma fecha.");
   }
   if (localStart.minute !== 0 || localEnd.minute !== 0) {
-    return "La reserva debe ser en bloques de hora completa.";
+    return zoneReservationError("La reserva debe ser en bloques de hora completa.");
   }
   if (localStart.hour < zone.scheduleStartHour || localEnd.hour > zone.scheduleEndHour) {
-    return `Horario no permitido. Esta zona opera de ${String(zone.scheduleStartHour).padStart(2, "0")}:00 a ${String(zone.scheduleEndHour).padStart(2, "0")}:00.`;
+    return zoneReservationError(
+      `Horario no permitido. Esta zona opera de ${String(zone.scheduleStartHour).padStart(2, "0")}:00 a ${String(zone.scheduleEndHour).padStart(2, "0")}:00.`,
+    );
   }
 
   if (zone.oneReservationPerDay) {
@@ -221,7 +243,7 @@ export async function createZoneReservationAction(_prevState: string | null, for
       select: { id: true },
     });
     if (reservationInDay) {
-      return "Esta zona permite solo 1 reserva por dia y ya existe una reserva para esa fecha.";
+      return zoneReservationError(ZONE_ONE_RESERVATION_PER_DAY_TAKEN);
     }
   }
 
@@ -242,12 +264,12 @@ export async function createZoneReservationAction(_prevState: string | null, for
   const reservationConflict = existingReservations.some((item) =>
     overlapRange(startsAt, endsAt, item.startsAt, item.endsAt),
   );
-  if (reservationConflict) return "Ese horario ya esta reservado.";
+  if (reservationConflict) return zoneReservationError(ZONE_RESERVATION_OCCUPIED_BY_RESIDENT);
 
   const blockConflict = existingBlocks.some((item) =>
     overlapRange(startsAt, endsAt, item.startsAt, item.endsAt),
   );
-  if (blockConflict) return "Ese horario esta bloqueado por administracion.";
+  if (blockConflict) return zoneReservationError("Ese horario esta bloqueado por administracion.");
 
   await prisma.zoneReservation.create({
     data: {
@@ -260,6 +282,12 @@ export async function createZoneReservationAction(_prevState: string | null, for
       status: "APPROVED",
     },
   });
+
+  const residentialRow = await prisma.residential.findUnique({
+    where: { id: session.residentialId },
+    select: { name: true },
+  });
+
   await notifyResidentialAdminsInResidential(session.residentialId, {
     title: "Nueva reserva de zona",
     body: `${session.fullName} reservo ${zone.name} para ${startsAt.toLocaleTimeString("es-HN", {
@@ -273,7 +301,174 @@ export async function createZoneReservationAction(_prevState: string | null, for
 
   revalidatePath("/resident");
   revalidatePath("/residential-admin");
-  return "Reserva creada correctamente.";
+  return zoneReservationSuccess({
+    residentialName: residentialRow?.name ?? undefined,
+    zoneName: zone.name,
+    startsAtIso: startsAt.toISOString(),
+    endsAtIso: endsAt.toISOString(),
+    note: parsed.data.note?.trim() || null,
+  });
+}
+
+export async function updateZoneReservationAction(
+  _prevState: ZoneReservationActionState | null,
+  formData: FormData,
+): Promise<ZoneReservationActionState> {
+  const session = await requireRole(["RESIDENT"]);
+  if (!session.residentialId) return zoneReservationError("Sesion invalida sin residencial asociada.");
+
+  const parsed = updateZoneReservationSchema.safeParse({
+    reservationId: formData.get("reservationId"),
+    startsAt: formData.get("startsAt"),
+    endsAt: formData.get("endsAt"),
+    note: formData.get("note") || undefined,
+  });
+  if (!parsed.success)
+    return zoneReservationError(parsed.error.issues[0]?.message ?? "Datos invalidos.");
+
+  const startsAt = parseTegucigalpaDateTime(parsed.data.startsAt);
+  const endsAt = parseTegucigalpaDateTime(parsed.data.endsAt);
+  if (!startsAt || !endsAt || Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
+    return zoneReservationError("Fecha/hora invalida.");
+  }
+  if (startsAt >= endsAt) return zoneReservationError("La hora final debe ser mayor que la hora inicial.");
+  if (startsAt < new Date()) return zoneReservationError("No puedes mover la reserva al pasado.");
+
+  const existing = await prisma.zoneReservation.findFirst({
+    where: {
+      id: parsed.data.reservationId,
+      residentId: session.userId,
+      residentialId: session.residentialId,
+      status: "APPROVED",
+    },
+    select: {
+      id: true,
+      zoneId: true,
+      zone: {
+        select: {
+          id: true,
+          name: true,
+          maxHoursPerReservation: true,
+          oneReservationPerDay: true,
+          scheduleStartHour: true,
+          scheduleEndHour: true,
+        },
+      },
+    },
+  });
+  if (!existing) return zoneReservationError("No encontramos esa reserva activa.");
+
+  const zone = existing.zone;
+  const hours = (endsAt.getTime() - startsAt.getTime()) / (1000 * 60 * 60);
+  if (hours > zone.maxHoursPerReservation) {
+    return zoneReservationError(`El maximo permitido para esta zona es ${zone.maxHoursPerReservation} hora(s).`);
+  }
+
+  const localStart = parseLocalDateTimeParts(parsed.data.startsAt);
+  const localEnd = parseLocalDateTimeParts(parsed.data.endsAt);
+  if (!localStart || !localEnd) return zoneReservationError("Fecha/hora invalida.");
+  if (localStart.datePart !== localEnd.datePart) {
+    return zoneReservationError("La reserva debe iniciar y finalizar en la misma fecha.");
+  }
+  if (localStart.minute !== 0 || localEnd.minute !== 0) {
+    return zoneReservationError("La reserva debe ser en bloques de hora completa.");
+  }
+  if (localStart.hour < zone.scheduleStartHour || localEnd.hour > zone.scheduleEndHour) {
+    return zoneReservationError(
+      `Horario no permitido. Esta zona opera de ${String(zone.scheduleStartHour).padStart(2, "0")}:00 a ${String(zone.scheduleEndHour).padStart(2, "0")}:00.`,
+    );
+  }
+
+  if (zone.oneReservationPerDay) {
+    const [yearRaw, monthRaw, dayRaw] = localStart.datePart.split("-");
+    const year = Number(yearRaw);
+    const month = Number(monthRaw);
+    const day = Number(dayRaw);
+    const dayStartUtc = new Date(Date.UTC(year, month - 1, day, 6, 0, 0, 0));
+    const dayEndUtc = new Date(Date.UTC(year, month - 1, day + 1, 6, 0, 0, 0));
+    const reservationInDay = await prisma.zoneReservation.findFirst({
+      where: {
+        zoneId: zone.id,
+        status: "APPROVED",
+        id: { not: existing.id },
+        startsAt: {
+          gte: dayStartUtc,
+          lt: dayEndUtc,
+        },
+      },
+      select: { id: true },
+    });
+    if (reservationInDay) {
+      return zoneReservationError(ZONE_ONE_RESERVATION_PER_DAY_TAKEN);
+    }
+  }
+
+  const [existingReservations, existingBlocks] = await Promise.all([
+    prisma.zoneReservation.findMany({
+      where: {
+        zoneId: zone.id,
+        status: "APPROVED",
+        id: { not: existing.id },
+      },
+      select: { startsAt: true, endsAt: true },
+    }),
+    prisma.zoneBlock.findMany({
+      where: { zoneId: zone.id },
+      select: { startsAt: true, endsAt: true },
+    }),
+  ]);
+
+  const reservationConflict = existingReservations.some((item) =>
+    overlapRange(startsAt, endsAt, item.startsAt, item.endsAt),
+  );
+  if (reservationConflict) return zoneReservationError(ZONE_RESERVATION_OCCUPIED_BY_RESIDENT);
+
+  const blockConflict = existingBlocks.some((item) =>
+    overlapRange(startsAt, endsAt, item.startsAt, item.endsAt),
+  );
+  if (blockConflict) return zoneReservationError("Ese horario esta bloqueado por administracion.");
+
+  const updated = await prisma.zoneReservation.updateMany({
+    where: {
+      id: existing.id,
+      residentId: session.userId,
+      residentialId: session.residentialId,
+      status: "APPROVED",
+    },
+    data: {
+      startsAt,
+      endsAt,
+      note: parsed.data.note?.trim() || null,
+    },
+  });
+  if (updated.count === 0) return zoneReservationError("No se pudo actualizar la reserva.");
+
+  const residentialRow = await prisma.residential.findUnique({
+    where: { id: session.residentialId },
+    select: { name: true },
+  });
+
+  await notifyResidentialAdminsInResidential(session.residentialId, {
+    title: "Reserva de zona modificada",
+    body: `${session.fullName} cambio el horario de ${zone.name} a ${startsAt.toLocaleTimeString("es-HN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+      timeZone: "America/Tegucigalpa",
+    })}.`,
+    url: "/residential-admin",
+  });
+
+  revalidatePath("/resident");
+  revalidatePath("/residential-admin");
+  revalidatePath("/guard");
+  return zoneReservationSuccess({
+    residentialName: residentialRow?.name ?? undefined,
+    zoneName: zone.name,
+    startsAtIso: startsAt.toISOString(),
+    endsAtIso: endsAt.toISOString(),
+    note: parsed.data.note?.trim() || null,
+  });
 }
 
 export async function cancelZoneReservationAction(formData: FormData) {
