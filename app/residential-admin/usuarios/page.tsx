@@ -2,6 +2,7 @@ import { Card } from "@/app/components/shell";
 import type { Prisma } from "@prisma/client";
 import { ConfirmSubmitButton } from "@/app/components/confirm-submit-button";
 import { PasswordField } from "@/app/components/password-field";
+import { CopyResidentialCredentialsButton } from "@/app/residential-admin/copy-credentials-button";
 import { CreateResidentialUserForm } from "@/app/residential-admin/create-user-form";
 import { ResidentialOneTimePasswordControls } from "@/app/residential-admin/one-time-password-controls";
 import { requireRole } from "@/lib/authorization";
@@ -145,6 +146,7 @@ export default async function ResidentialAdminUsersPage({
                   ) : null}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
+                  <CopyResidentialCredentialsButton userId={user.id} />
                   <form action={toggleResidentialUserSuspensionAction}>
                     <input type="hidden" name="userId" value={user.id} />
                     <input
