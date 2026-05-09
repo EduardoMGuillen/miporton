@@ -4,7 +4,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 /** Allow long runs on Vercel Pro+; Hobby stays capped by plan (10s). */
-export const maxDuration = 60;
+export const maxDuration = 120;
 export const runtime = "nodejs";
 
 const QR_SCAN_BATCH = 150;
@@ -70,6 +70,8 @@ export async function GET() {
       adminAnnouncementRecipients,
       serviceContracts,
       residentSuggestions,
+      passwordResetTokens,
+      siteBanner,
       qrScanTotal,
     ] = await Promise.all([
       prisma.residential.findMany({ orderBy: { createdAt: "asc" } }),
@@ -84,6 +86,8 @@ export async function GET() {
       prisma.adminAnnouncementRecipient.findMany({ orderBy: { createdAt: "asc" } }),
       prisma.serviceContract.findMany({ orderBy: { createdAt: "asc" } }),
       prisma.residentSuggestion.findMany({ orderBy: { createdAt: "asc" } }),
+      prisma.passwordResetToken.findMany({ orderBy: { createdAt: "asc" } }),
+      prisma.siteBanner.findUnique({ where: { id: "global" } }),
       prisma.qrScan.count(),
     ]);
 
@@ -156,6 +160,8 @@ export async function GET() {
     );
     zip.file("data/service-contracts.json", JSON.stringify(serviceContracts, null, 2));
     zip.file("data/resident-suggestions.json", JSON.stringify(residentSuggestions, null, 2));
+    zip.file("data/password-reset-tokens.json", JSON.stringify(passwordResetTokens, null, 2));
+    zip.file("data/site-banner.json", JSON.stringify(siteBanner ?? null, null, 2));
 
     zip.file(
       "manifest.json",
@@ -165,7 +171,7 @@ export async function GET() {
           generatedBy: session.fullName,
           generatedByUserId: session.userId,
           scope: "full-database-backup",
-          backupFormatVersion: 2,
+          backupFormatVersion: 3,
           qrScanEvidenceStorage: "zip-binary-per-scan",
           qrScanEvidenceNote:
             "Fotos ID/placa estan en carpetas evidence/<scanId>/ como archivos binarios; data/qr-scans.json referencia idPhotoFile y platePhotoFile.",
@@ -183,6 +189,8 @@ export async function GET() {
             adminAnnouncementRecipients: adminAnnouncementRecipients.length,
             serviceContracts: serviceContracts.length,
             residentSuggestions: residentSuggestions.length,
+            passwordResetTokens: passwordResetTokens.length,
+            siteBanner: siteBanner ? 1 : 0,
           },
         },
         null,

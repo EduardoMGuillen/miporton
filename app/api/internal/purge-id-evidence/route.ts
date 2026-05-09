@@ -15,10 +15,11 @@ export async function GET(request: Request) {
   }
 
   const cutoff = new Date(Date.now() - SIXTY_DAYS_IN_MS);
+  /** Anclar siempre a scannedAt (ingreso). El OR anterior fallaba si idCapturedAt existia y era reciente aunque el scan fuera viejo. */
   const purgeResult = await prisma.qrScan.updateMany({
     where: {
-      idPhotoData: { not: null },
-      OR: [{ idCapturedAt: { lt: cutoff } }, { idCapturedAt: null, scannedAt: { lt: cutoff } }],
+      OR: [{ idPhotoData: { not: null } }, { platePhotoData: { not: null } }],
+      scannedAt: { lt: cutoff },
     },
     data: {
       idPhotoData: null,

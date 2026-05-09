@@ -2,9 +2,18 @@ import { Card } from "@/app/components/shell";
 import { EntryRecordExportButton } from "@/app/components/entry-record-export-button";
 import { EntryEvidencePreview } from "@/app/components/entry-evidence-preview";
 import { MonthlyAccessReportButton } from "@/app/components/monthly-access-report-button";
+import { RegistroLogsPagination } from "@/app/components/registro-logs-pagination";
 import { requireRole } from "@/lib/authorization";
 import { formatDateTimeTegucigalpa } from "@/lib/datetime";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
+import { parseEvidenceFilterMode } from "@/lib/registro-evidence-filter";
+import {
+  REGISTRO_PAGE_SIZE,
+  buildRegistroDeliveryWhere,
+  buildRegistroQrScanWhere,
+  parseRegistroPage,
+} from "@/lib/registro-logs-query";
 
 function getSingleParam(value: string | string[] | undefined) {
   if (Array.isArray(value)) return value[0] ?? "";
@@ -33,6 +42,37 @@ function monthRange(monthValue: string) {
   };
 }
 
+const scanSelectSuper = {
+  id: true,
+  scannedAt: true,
+  exitedAt: true,
+  exitNote: true,
+  reason: true,
+  idPhotoSize: true,
+  platePhotoSize: true,
+  scanner: { select: { fullName: true } },
+  code: {
+    select: {
+      visitorName: true,
+      description: true,
+      resident: { select: { fullName: true } },
+      residential: { select: { name: true } },
+    },
+  },
+} as const;
+
+const deliverySelectSuper = {
+  id: true,
+  note: true,
+  createdAt: true,
+  resident: { select: { fullName: true } },
+  guard: { select: { fullName: true } },
+  residential: { select: { name: true } },
+} as const;
+
+type SuperAdminScanRow = Prisma.QrScanGetPayload<{ select: typeof scanSelectSuper }>;
+type SuperAdminDeliveryRow = Prisma.DeliveryAnnouncementGetPayload<{ select: typeof deliverySelectSuper }>;
+
 export default async function SuperAdminLogsPage({
   searchParams,
 }: {
@@ -47,8 +87,9 @@ export default async function SuperAdminLogsPage({
   const residentFilter = getSingleParam(params.logResidentId).trim();
   const guardFilter = getSingleParam(params.logGuardId).trim();
   const methodFilter = getSingleParam(params.logMethod).trim();
-  const evidenceFilter = getSingleParam(params.logEvidence).trim();
+  const evidenceMode = parseEvidenceFilterMode(getSingleParam(params.logEvidence));
   const sortFilter = getSingleParam(params.logSort).trim();
+  const rawPage = parseRegistroPage(getSingleParam(params.logPage));
   const { start: monthStart, end: monthEnd } = monthRange(selectedMonth);
 
   const residentials = await prisma.residential.findMany({
@@ -71,78 +112,113 @@ export default async function SuperAdminLogsPage({
       ])
     : [[], []];
 
-  const idEvidenceScans = selectedResidentialId
-    ? await prisma.qrScan.findMany({
-        where: {
-          isValid: true,
-          scannedAt: { gte: monthStart, lt: monthEnd },
-          ...(guardFilter ? { scannerId: guardFilter } : {}),
-          ...(methodFilter === "manual"
-            ? { reason: { contains: "manual", mode: "insensitive" } }
-            : methodFilter === "qr"
-              ? { NOT: { reason: { contains: "manual", mode: "insensitive" } } }
-              : {}),
-          ...(evidenceFilter === "with"
-            ? { idPhotoData: { not: null } }
-            : evidenceFilter === "without"
-              ? { idPhotoData: null }
-              : {}),
-          code: {
-            residentialId: selectedResidentialId,
-            ...(residentFilter ? { residentId: residentFilter } : {}),
-            ...(visitorFilter ? { visitorName: { contains: visitorFilter, mode: "insensitive" } } : {}),
-          },
-        },
-        orderBy: { scannedAt: sortFilter === "oldest" ? "asc" : "desc" },
-        take: 120,
-        select: {
-          id: true,
-          scannedAt: true,
-          exitedAt: true,
-          exitNote: true,
-          reason: true,
-          idPhotoSize: true,
-          platePhotoSize: true,
-          scanner: { select: { fullName: true } },
-          code: {
-            select: {
-              visitorName: true,
-              description: true,
-              resident: { select: { fullName: true } },
-              residential: { select: { name: true } },
-            },
-          },
-        },
-      })
-    : [];
+  let totalScans = 0;
+  let totalDeliveries = 0;
+  let scansForReport: SuperAdminScanRow[] = [];
+  let deliveriesForReport: SuperAdminDeliveryRow[] = [];
+  let scansPage: SuperAdminScanRow[] = [];
+  let deliveriesPage: SuperAdminDeliveryRow[] = [];
+  let pageForScans = 1;
+  let pageForDeliveries = 1;
 
-  const deliveryEntries = selectedResidentialId
-    ? await prisma.deliveryAnnouncement.findMany({
-        where: {
-          residentialId: selectedResidentialId,
-          createdAt: { gte: monthStart, lt: monthEnd },
-          ...(residentFilter ? { residentId: residentFilter } : {}),
-          ...(guardFilter ? { guardId: guardFilter } : {}),
-          ...(visitorFilter ? { note: { contains: visitorFilter, mode: "insensitive" } } : {}),
-        },
-        orderBy: { createdAt: sortFilter === "oldest" ? "asc" : "desc" },
-        select: {
-          id: true,
-          note: true,
-          createdAt: true,
-          resident: { select: { fullName: true } },
-          guard: { select: { fullName: true } },
-          residential: { select: { name: true } },
-        },
-        take: 120,
-      })
-    : [];
+  if (selectedResidentialId) {
+    const scanFilterArgs = {
+      monthStart,
+      monthEnd,
+      residentialId: selectedResidentialId,
+      visitorFilter,
+      residentFilter,
+      guardFilter,
+      methodFilter,
+      evidenceMode,
+    };
+    const deliveryFilterArgs = {
+      monthStart,
+      monthEnd,
+      residentialId: selectedResidentialId,
+      visitorFilter,
+      residentFilter,
+      guardFilter,
+    };
+
+    const scanWhere = buildRegistroQrScanWhere(scanFilterArgs);
+    const deliveryWhere = buildRegistroDeliveryWhere(deliveryFilterArgs);
+    const orderScan = { scannedAt: sortFilter === "oldest" ? ("asc" as const) : ("desc" as const) };
+    const orderDelivery = { createdAt: sortFilter === "oldest" ? ("asc" as const) : ("desc" as const) };
+
+    const [tc, td, sfr, dfr] = await Promise.all([
+      prisma.qrScan.count({ where: scanWhere }),
+      prisma.deliveryAnnouncement.count({ where: deliveryWhere }),
+      prisma.qrScan.findMany({
+        where: scanWhere,
+        orderBy: orderScan,
+        select: scanSelectSuper,
+      }),
+      prisma.deliveryAnnouncement.findMany({
+        where: deliveryWhere,
+        orderBy: orderDelivery,
+        select: deliverySelectSuper,
+      }),
+    ]);
+
+    totalScans = tc;
+    totalDeliveries = td;
+    scansForReport = sfr;
+    deliveriesForReport = dfr;
+
+    const scanTotalPages = Math.max(1, Math.ceil(totalScans / REGISTRO_PAGE_SIZE));
+    const deliveryTotalPages = Math.max(1, Math.ceil(totalDeliveries / REGISTRO_PAGE_SIZE));
+    pageForScans = methodFilter === "delivery" ? 1 : Math.min(rawPage, scanTotalPages);
+    pageForDeliveries = methodFilter === "delivery" ? Math.min(rawPage, deliveryTotalPages) : 1;
+
+    scansPage =
+      methodFilter === "delivery"
+        ? []
+        : await prisma.qrScan.findMany({
+            where: scanWhere,
+            orderBy: orderScan,
+            skip: (pageForScans - 1) * REGISTRO_PAGE_SIZE,
+            take: REGISTRO_PAGE_SIZE,
+            select: scanSelectSuper,
+          });
+
+    deliveriesPage =
+      methodFilter === "delivery"
+        ? await prisma.deliveryAnnouncement.findMany({
+            where: deliveryWhere,
+            orderBy: orderDelivery,
+            skip: (pageForDeliveries - 1) * REGISTRO_PAGE_SIZE,
+            take: REGISTRO_PAGE_SIZE,
+            select: deliverySelectSuper,
+          })
+        : [];
+  }
+
+  const paginationBaseParams: Record<string, string> = {
+    logResidentialId: selectedResidentialId,
+    logMonth: selectedMonth,
+    logVisitor: visitorFilter,
+    logResidentId: residentFilter,
+    logGuardId: guardFilter,
+    logMethod: methodFilter,
+    logEvidence: evidenceMode,
+    logSort: sortFilter || "newest",
+  };
+
+  const activeTotal = methodFilter === "delivery" ? totalDeliveries : totalScans;
+  const activePage = methodFilter === "delivery" ? pageForDeliveries : pageForScans;
+
+  const listScans = methodFilter === "delivery" ? [] : scansPage;
+  const listDeliveries = methodFilter === "delivery" ? deliveriesPage : [];
 
   return (
     <Card>
       <h2 className="text-lg font-semibold text-slate-900">Registro global y reportes</h2>
       <p className="mt-2 text-sm text-slate-600">
-        Filtra por residencial y periodo para exportar registros o generar reporte mensual.
+        Filtra por residencial y periodo para exportar registros o generar reporte mensual.{" "}
+        <span className="text-slate-500">
+          Evidencia &quot;Todas&quot; incluye manuales, con foto y evidencia purgada (sin imagen).
+        </span>
       </p>
 
       <form className="mt-4 grid gap-2 md:grid-cols-3">
@@ -183,8 +259,8 @@ export default async function SuperAdminLogsPage({
           <option value="manual">Registro manual</option>
           <option value="delivery">Delivery</option>
         </select>
-        <select name="logEvidence" defaultValue={evidenceFilter} className="field-base">
-          <option value="">Evidencia: todas</option>
+        <select name="logEvidence" defaultValue={evidenceMode} className="field-base">
+          <option value="all">Evidencia: todas</option>
           <option value="with">Con evidencia ID</option>
           <option value="without">Sin evidencia ID</option>
         </select>
@@ -196,43 +272,56 @@ export default async function SuperAdminLogsPage({
         <button className="btn-primary w-full">Aplicar filtros</button>
       </form>
 
-      <div className="mt-3 flex flex-wrap gap-2">
-        <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700">
-          Entradas registradas: {idEvidenceScans.length}
-        </div>
-        <div className="inline-flex rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
-          Delivery registrados: {deliveryEntries.length}
-        </div>
-      </div>
-
       {selectedResidentialId ? (
-        <div className="mt-3">
-          <MonthlyAccessReportButton
-            reportTitle="Reporte global mensual de accesos"
-            monthLabel={selectedMonth}
-            entries={idEvidenceScans.map((scan) => ({
-              recordId: scan.id,
-              entryDateLabel: formatDateTimeTegucigalpa(scan.scannedAt),
-              exitDateLabel: scan.exitedAt ? formatDateTimeTegucigalpa(scan.exitedAt) : "Pendiente",
-              exitStatusLabel: scan.exitedAt ? "Completada" : "Pendiente",
-              exitNote: scan.exitNote ?? undefined,
-              visitorName: scan.code.visitorName,
-              visitorDescription: scan.code.description,
-              residentName: scan.code.resident.fullName,
-              guardName: scan.scanner.fullName,
-              method: scan.reason.toLowerCase().includes("manual") ? "Manual" : "QR",
-              reason: scan.reason,
-              evidenceImageUrl: scan.idPhotoSize ? `/api/id-evidence/${scan.id}` : undefined,
-              plateImageUrl: scan.platePhotoSize ? `/api/plate-evidence/${scan.id}` : undefined,
-            }))}
-            deliveries={deliveryEntries.map((delivery) => ({
-              dateLabel: formatDateTimeTegucigalpa(delivery.createdAt),
-              residentName: delivery.resident.fullName,
-              guardName: delivery.guard.fullName,
-              note: delivery.note,
-            }))}
-          />
-        </div>
+        <>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700">
+              Entradas (QR/manual): {totalScans} total
+              {methodFilter !== "delivery" && totalScans > 0 ? (
+                <span className="ml-1 font-normal text-slate-500">
+                  · lista: {REGISTRO_PAGE_SIZE} por pagina
+                </span>
+              ) : null}
+            </div>
+            <div className="inline-flex rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
+              Delivery: {totalDeliveries} total
+              {methodFilter === "delivery" && totalDeliveries > 0 ? (
+                <span className="ml-1 font-normal text-amber-700">
+                  · lista: {REGISTRO_PAGE_SIZE} por pagina
+                </span>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="mt-3">
+            <MonthlyAccessReportButton
+              reportTitle="Reporte global mensual de accesos"
+              monthLabel={selectedMonth}
+              entries={scansForReport.map((scan) => ({
+                recordId: scan.id,
+                entryDateLabel: formatDateTimeTegucigalpa(scan.scannedAt),
+                exitDateLabel: scan.exitedAt ? formatDateTimeTegucigalpa(scan.exitedAt) : "Pendiente",
+                exitStatusLabel: scan.exitedAt ? "Completada" : "Pendiente",
+                exitNote: scan.exitNote ?? undefined,
+                visitorName: scan.code.visitorName,
+                visitorDescription: scan.code.description,
+                residentName: scan.code.resident.fullName,
+                guardName: scan.scanner.fullName,
+                method: scan.reason.toLowerCase().includes("manual") ? "Manual" : "QR",
+                reason: scan.reason,
+                evidenceImageUrl: scan.idPhotoSize ? `/api/id-evidence/${scan.id}` : undefined,
+                plateImageUrl: scan.platePhotoSize ? `/api/plate-evidence/${scan.id}` : undefined,
+              }))}
+              deliveries={deliveriesForReport.map((delivery) => ({
+                dateLabel: formatDateTimeTegucigalpa(delivery.createdAt),
+                residentName: delivery.resident.fullName,
+                guardName: delivery.guard.fullName,
+                note: delivery.note,
+              }))}
+            />
+          </div>
+
+        </>
       ) : null}
 
       {!selectedResidentialId ? (
@@ -241,7 +330,7 @@ export default async function SuperAdminLogsPage({
         </p>
       ) : (
         <div className="mt-4 grid gap-3 md:grid-cols-2">
-          {(methodFilter === "delivery" ? [] : idEvidenceScans).map((scan) => (
+          {listScans.map((scan) => (
             <article key={scan.id} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
               {scan.idPhotoSize ? (
                 <EntryEvidencePreview imageUrl={`/api/id-evidence/${scan.id}`} alt={`ID de ${scan.code.visitorName}`} />
@@ -300,7 +389,7 @@ export default async function SuperAdminLogsPage({
             </article>
           ))}
 
-          {(methodFilter === "delivery" ? deliveryEntries : []).map((delivery) => (
+          {listDeliveries.map((delivery) => (
             <article key={delivery.id} className="rounded-xl border border-slate-200 bg-amber-50/70 p-4">
               <div className="h-44 w-full rounded-lg border border-dashed border-amber-300 bg-white/60 p-4 text-xs text-slate-500">
                 Registro de delivery (sin imagen).
@@ -313,11 +402,21 @@ export default async function SuperAdminLogsPage({
               <p className="mt-2 text-xs text-slate-500">{delivery.note}</p>
             </article>
           ))}
-          {idEvidenceScans.length === 0 && deliveryEntries.length === 0 ? (
+          {listScans.length === 0 && listDeliveries.length === 0 ? (
             <p className="text-sm text-slate-600">No hay entradas para los filtros seleccionados.</p>
           ) : null}
         </div>
       )}
+
+      {selectedResidentialId ? (
+        <RegistroLogsPagination
+          basePath="/super-admin/registros"
+          params={paginationBaseParams}
+          page={activePage}
+          totalItems={activeTotal}
+          pageSize={REGISTRO_PAGE_SIZE}
+        />
+      ) : null}
     </Card>
   );
 }
