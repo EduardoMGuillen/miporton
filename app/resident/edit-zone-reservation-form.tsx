@@ -187,35 +187,40 @@ export function EditZoneReservationForm({
   const endsAtHidden = `${dateOnly(endsAtDate)}T${pad2(endsAtDate.getHours())}:00`;
 
   return (
-    <details className="mt-2 rounded-lg border border-slate-200 bg-white">
-      <summary className="cursor-pointer list-none px-3 py-2 text-xs font-medium text-blue-700 hover:bg-slate-50">
-        Cambiar horario
-      </summary>
-      <>
-        <ReservationScheduleConflictDialog state={state} isPending={isPending} />
-        <ReservationSuccessDetailDialog
-          state={state}
-          isPending={isPending}
-          title="Horario actualizado"
-        />
-        <form action={formAction} className="grid gap-3 border-t border-slate-200 p-3 md:grid-cols-2">
+    <>
+      <ReservationScheduleConflictDialog state={state} isPending={isPending} />
+      <ReservationSuccessDetailDialog
+        state={state}
+        isPending={isPending}
+        title="Horario actualizado"
+      />
+      <form
+        action={formAction}
+        className="grid min-w-0 max-w-full grid-cols-1 gap-3 overflow-x-hidden md:grid-cols-2"
+      >
         <input type="hidden" name="reservationId" value={reservationId} />
         <p className="text-xs text-slate-600 md:col-span-2">
           Zona: <span className="font-semibold text-slate-800">{zoneName}</span>
         </p>
-        <input
-          name="reservationDate"
-          type="date"
-          value={reservationDate}
-          onChange={(event) => setReservationDate(event.target.value)}
-          className="field-base min-w-0 w-full max-w-full text-sm"
-          required
-        />
+        <div className="min-w-0 max-w-full overflow-hidden md:col-span-2">
+          <label htmlFor={`reservation-date-${reservationId}`} className="mb-1 block text-xs font-medium text-slate-600">
+            Fecha
+          </label>
+          <input
+            id={`reservation-date-${reservationId}`}
+            name="reservationDate"
+            type="date"
+            value={reservationDate}
+            onChange={(event) => setReservationDate(event.target.value)}
+            className="field-base box-border min-h-[2.5rem] w-full min-w-0 max-w-full text-sm"
+            required
+          />
+        </div>
         <select
           name="startHour"
           value={availableStartHours.length === 0 ? "" : effectiveStartHour}
           onChange={(event) => setStartHour(event.target.value)}
-          className="field-base min-w-0"
+          className="field-base min-w-0 w-full max-w-full"
           required
           disabled={availableStartHours.length === 0}
         >
@@ -232,7 +237,7 @@ export function EditZoneReservationForm({
           name="durationHours"
           value={effectiveDurationText}
           onChange={(event) => setDurationHours(event.target.value)}
-          className="field-base min-w-0"
+          className="field-base min-w-0 w-full max-w-full"
           required
         >
           {durationOptions.map((hours) => (
@@ -246,7 +251,7 @@ export function EditZoneReservationForm({
         <input
           name="note"
           defaultValue={note ?? ""}
-          className="field-base min-w-0 md:col-span-2"
+          className="field-base min-w-0 w-full max-w-full md:col-span-2"
           placeholder="Nota de reserva (opcional)"
           maxLength={180}
         />
@@ -292,7 +297,6 @@ export function EditZoneReservationForm({
           <p className="text-sm text-slate-700 md:col-span-2">{state.message}</p>
         ) : null}
       </form>
-      </>
-    </details>
+    </>
   );
 }

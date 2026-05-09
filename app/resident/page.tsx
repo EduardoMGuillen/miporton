@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { Card, DashboardShell } from "@/app/components/shell";
 import { CreateQrForm } from "@/app/resident/create-qr-form";
 import { CreateZoneReservationForm } from "@/app/resident/create-zone-reservation-form";
-import { EditZoneReservationForm } from "@/app/resident/edit-zone-reservation-form";
+import { EditZoneReservationModal } from "@/app/resident/edit-zone-reservation-modal";
 import { ReservationViewButton } from "@/app/resident/reservation-view-button";
 import { ResidentSuggestionForm } from "@/app/resident/suggestion-form";
 import { PushSubscriptionCard } from "@/app/resident/push-subscription";
@@ -223,13 +223,13 @@ export default async function ResidentPage() {
 
         <div className="mt-4 grid gap-2">
           {reservations.map((reservation) => (
-            <div key={reservation.id} className="rounded-lg border border-slate-200 bg-slate-50/70 p-3">
+            <div key={reservation.id} className="min-w-0 rounded-lg border border-slate-200 bg-slate-50/70 p-3">
               <p className="text-sm font-semibold text-slate-900">{reservation.zone.name}</p>
               <p className="text-xs text-slate-600">
                 {formatDateTimeTegucigalpa(reservation.startsAt)} - {formatDateTimeTegucigalpa(reservation.endsAt)}
               </p>
               {reservation.note ? <p className="text-xs text-slate-500">Nota: {reservation.note}</p> : null}
-              <div className="mt-2 flex flex-wrap items-center gap-2">
+              <div className="mt-3 flex flex-wrap items-center gap-2">
                 <ReservationViewButton
                   residentialName={residential?.name ?? undefined}
                   zoneName={reservation.zone.name}
@@ -237,28 +237,31 @@ export default async function ResidentPage() {
                   endsAtIso={reservation.endsAt.toISOString()}
                   note={reservation.note}
                 />
+                <EditZoneReservationModal
+                  reservationId={reservation.id}
+                  zoneId={reservation.zoneId}
+                  zoneName={reservation.zone.name}
+                  startsAtIso={reservation.startsAt.toISOString()}
+                  endsAtIso={reservation.endsAt.toISOString()}
+                  note={reservation.note}
+                  zone={{
+                    maxHoursPerReservation: reservation.zone.maxHoursPerReservation,
+                    oneReservationPerDay: reservation.zone.oneReservationPerDay,
+                    scheduleStartHour: reservation.zone.scheduleStartHour,
+                    scheduleEndHour: reservation.zone.scheduleEndHour,
+                  }}
+                  occupiedSlots={zoneOccupiedSlots}
+                />
+                <form action={cancelZoneReservationAction} className="inline">
+                  <input type="hidden" name="reservationId" value={reservation.id} />
+                  <button
+                    type="submit"
+                    className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-700 transition hover:bg-red-100"
+                  >
+                    Cancelar reserva
+                  </button>
+                </form>
               </div>
-              <EditZoneReservationForm
-                reservationId={reservation.id}
-                zoneId={reservation.zoneId}
-                zoneName={reservation.zone.name}
-                startsAtIso={reservation.startsAt.toISOString()}
-                endsAtIso={reservation.endsAt.toISOString()}
-                note={reservation.note}
-                zone={{
-                  maxHoursPerReservation: reservation.zone.maxHoursPerReservation,
-                  oneReservationPerDay: reservation.zone.oneReservationPerDay,
-                  scheduleStartHour: reservation.zone.scheduleStartHour,
-                  scheduleEndHour: reservation.zone.scheduleEndHour,
-                }}
-                occupiedSlots={zoneOccupiedSlots}
-              />
-              <form action={cancelZoneReservationAction} className="mt-2">
-                <input type="hidden" name="reservationId" value={reservation.id} />
-                <button className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-700">
-                  Cancelar reserva
-                </button>
-              </form>
             </div>
           ))}
           {reservations.length === 0 ? (
