@@ -4,11 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { Card, DashboardShell } from "@/app/components/shell";
 import { CreateQrForm } from "@/app/resident/create-qr-form";
 import { CreateZoneReservationForm } from "@/app/resident/create-zone-reservation-form";
-import { EditZoneReservationModal } from "@/app/resident/edit-zone-reservation-modal";
-import { ReservationViewButton } from "@/app/resident/reservation-view-button";
+import { ReservationRowActions } from "@/app/resident/reservation-row-actions";
 import { ResidentSuggestionForm } from "@/app/resident/suggestion-form";
 import { PushSubscriptionCard } from "@/app/resident/push-subscription";
-import { deleteInviteQrAction, cancelZoneReservationAction } from "@/app/resident/actions";
+import { deleteInviteQrAction } from "@/app/resident/actions";
 import { QrShareActions } from "@/app/resident/qr-share-actions";
 import { formatDateTimeTegucigalpa } from "@/lib/datetime";
 
@@ -229,15 +228,8 @@ export default async function ResidentPage() {
                 {formatDateTimeTegucigalpa(reservation.startsAt)} - {formatDateTimeTegucigalpa(reservation.endsAt)}
               </p>
               {reservation.note ? <p className="text-xs text-slate-500">Nota: {reservation.note}</p> : null}
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <ReservationViewButton
+              <ReservationRowActions
                   residentialName={residential?.name ?? undefined}
-                  zoneName={reservation.zone.name}
-                  startsAtIso={reservation.startsAt.toISOString()}
-                  endsAtIso={reservation.endsAt.toISOString()}
-                  note={reservation.note}
-                />
-                <EditZoneReservationModal
                   reservationId={reservation.id}
                   zoneId={reservation.zoneId}
                   zoneName={reservation.zone.name}
@@ -250,18 +242,8 @@ export default async function ResidentPage() {
                     scheduleStartHour: reservation.zone.scheduleStartHour,
                     scheduleEndHour: reservation.zone.scheduleEndHour,
                   }}
-                  occupiedSlots={zoneOccupiedSlots}
-                />
-                <form action={cancelZoneReservationAction} className="inline">
-                  <input type="hidden" name="reservationId" value={reservation.id} />
-                  <button
-                    type="submit"
-                    className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-700 transition hover:bg-red-100"
-                  >
-                    Cancelar reserva
-                  </button>
-                </form>
-              </div>
+                occupiedSlots={zoneOccupiedSlots}
+              />
             </div>
           ))}
           {reservations.length === 0 ? (

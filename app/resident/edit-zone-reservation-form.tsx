@@ -1,11 +1,15 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { useActionState, useMemo, useState } from "react";
 import { updateZoneReservationAction } from "@/app/resident/actions";
 import { ReservationSuccessDetailDialog } from "@/app/resident/reservation-details-dialog";
 import { ReservationScheduleConflictDialog } from "@/app/resident/reservation-schedule-conflict-dialog";
 import { isZoneReservationTakenByResidentState } from "@/lib/zone-reservation-feedback";
-import type { ZoneReservationActionState } from "@/lib/zone-reservation-form-state";
+import type {
+  ZoneReservationActionState,
+  ZoneReservationDetailPayload,
+} from "@/lib/zone-reservation-form-state";
 import { formatTimeTegucigalpa } from "@/lib/datetime";
 
 const initialState: ZoneReservationActionState | null = null;
@@ -69,6 +73,7 @@ export function EditZoneReservationForm({
   note,
   zone,
   occupiedSlots,
+  onSuccessfulSave,
 }: {
   reservationId: string;
   zoneId: string;
@@ -89,6 +94,8 @@ export function EditZoneReservationForm({
     source: "reservation" | "block";
     reservationId?: string;
   }>;
+  /** Si se define, no se muestra el popup de éxito aquí; se notifica el detalle guardado. */
+  onSuccessfulSave?: (detail: ZoneReservationDetailPayload) => void;
 }) {
   const startParts = useMemo(() => tegucigalpaWallParts(startsAtIso), [startsAtIso]);
   const initialDuration = Math.max(
@@ -99,6 +106,16 @@ export function EditZoneReservationForm({
   );
 
   const [state, formAction, isPending] = useActionState(updateZoneReservationAction, initialState);
+  const prevPendingRef = useRef(false);
+
+  useEffect(() => {
+    const finished = prevPendingRef.current && !isPending;
+    prevPendingRef.current = isPending;
+    if (finished && state?.ok === true && onSuccessfulSave) {
+      onSuccessfulSave(state.detail);
+    }
+  }, [isPending, state, onSuccessfulSave]);
+
   const [reservationDate, setReservationDate] = useState(startParts.datePart);
   const [startHour, setStartHour] = useState(pad2(startParts.hour));
   const [durationHours, setDurationHours] = useState(String(initialDuration));
@@ -189,11 +206,13 @@ export function EditZoneReservationForm({
   return (
     <>
       <ReservationScheduleConflictDialog state={state} isPending={isPending} />
-      <ReservationSuccessDetailDialog
-        state={state}
-        isPending={isPending}
-        title="Horario actualizado"
-      />
+      {!onSuccessfulSave ? (
+        <ReservationSuccessDetailDialog
+          state={state}
+          isPending={isPending}
+          title="Horario actualizado"
+        />
+      ) : null}
       <form
         action={formAction}
         className="grid min-w-0 max-w-full grid-cols-1 gap-3 overflow-x-hidden md:grid-cols-2"
