@@ -26,7 +26,7 @@ export function ForgotPasswordForm({ supportWhatsappUrl }: ForgotPasswordFormPro
           required
           autoComplete="username"
           className="field-base"
-          placeholder="El mismo que usas para iniciar sesion"
+          placeholder="El mismo que usas para iniciar sesión"
         />
         <p className="mt-1 text-xs text-slate-500">
           Si tu cuenta tiene correo de contacto guardado, te enviaremos el enlace alli.
@@ -53,7 +53,7 @@ export function ForgotPasswordForm({ supportWhatsappUrl }: ForgotPasswordFormPro
       ) : null}
       <p className="text-center text-sm">
         <Link href="/login" className="font-medium text-blue-700 hover:underline">
-          Volver al inicio de sesion
+          Volver al inicio de sesión
         </Link>
       </p>
     </form>

@@ -18,7 +18,7 @@ export function LoginForm({ resetSuccess = false }: LoginFormProps) {
     <form action={formAction} className="space-y-4">
       {resetSuccess ? (
         <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
-          Contrasena actualizada. Ya puedes iniciar sesion con tu nueva contrasena.
+          Contraseña actualizada. Ya puedes iniciar sesión con tu nueva contraseña.
         </p>
       ) : null}
       <div>
@@ -42,7 +42,7 @@ export function LoginForm({ resetSuccess = false }: LoginFormProps) {
         <PasswordField id="password" name="password" required placeholder="******" autoComplete="current-password" />
         <p className="mt-1 text-right text-sm">
           <Link href="/forgot-password" className="font-medium text-blue-700 hover:underline">
-            Olvidaste tu contrasena?
+            ¿Olvidaste tu contraseña?
           </Link>
         </p>
       </div>

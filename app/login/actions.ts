@@ -12,7 +12,7 @@ import { DEFAULT_RESIDENT_OTP } from "@/lib/otp-default";
 import { generateResidentOneTimePassword } from "@/lib/otp-generator";
 
 const loginSchema = z.object({
-  email: z.string().email("Ingresa un usuario valido (formato de correo)."),
+  email: z.string().email("Ingresa un usuario válido (formato de correo)."),
   password: z.string().min(1, "Password requerido."),
 });
 
@@ -30,7 +30,7 @@ export async function loginAction(_prevState: string | null, formData: FormData)
   });
 
   if (!parsed.success) {
-    return parsed.error.issues[0]?.message ?? "Credenciales invalidas.";
+    return parsed.error.issues[0]?.message ?? "Credenciales inválidas.";
   }
 
   const email = parsed.data.email.toLowerCase();
@@ -43,11 +43,11 @@ export async function loginAction(_prevState: string | null, formData: FormData)
     },
   });
 
-  if (!user) return "Usuario o contrasena incorrectos.";
+  if (!user) return "Usuario o contraseña incorrectos.";
 
   const isPasswordValid = await bcrypt.compare(parsed.data.password, user.passwordHash);
   if (!isPasswordValid) {
-    if (user.role !== "RESIDENT") return "Usuario o contrasena incorrectos.";
+    if (user.role !== "RESIDENT") return "Usuario o contraseña incorrectos.";
 
     const currentOtpCipher = user.oneTimePasswordCipher;
     let expectedOtp = DEFAULT_RESIDENT_OTP;
@@ -55,12 +55,12 @@ export async function loginAction(_prevState: string | null, formData: FormData)
       try {
         expectedOtp = decryptOtp(currentOtpCipher);
       } catch {
-        return "Usuario o contrasena incorrectos.";
+        return "Usuario o contraseña incorrectos.";
       }
     }
 
     if (!safeEqualText(parsed.data.password, expectedOtp)) {
-      return "Usuario o contrasena incorrectos.";
+      return "Usuario o contraseña incorrectos.";
     }
 
     const nextOtpCipher = encryptOtp(generateResidentOneTimePassword());
@@ -77,7 +77,7 @@ export async function loginAction(_prevState: string | null, formData: FormData)
       },
     });
     if (rotated.count !== 1) {
-      return "Usuario o contrasena incorrectos.";
+      return "Usuario o contraseña incorrectos.";
     }
   }
 

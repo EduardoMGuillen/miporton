@@ -71,7 +71,7 @@ export function ResidentialOneTimePasswordControls({ userId, hasPersonalOtp, otp
       {showMessage ? <p className="mt-2 text-xs font-semibold text-slate-800">{showMessage}</p> : null}
       {rotateMessage ? <p className="mt-1 text-xs font-semibold text-slate-800">{rotateMessage}</p> : null}
       <p className="mt-2 text-[11px] text-slate-500">
-        La contrasena normal del residente no cambia. Si entra con OTP, el sistema rota a una nueva OTP automaticamente.
+        La contraseña normal del residente no cambia. Si entra con OTP, el sistema rota a una nueva OTP automáticamente.
       </p>
     </div>
   );

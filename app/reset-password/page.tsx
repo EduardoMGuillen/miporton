@@ -26,11 +26,11 @@ export default async function ResetPasswordPage({
           </Link>
           <div>
             <p className="text-sm font-semibold text-slate-900">MiVisita</p>
-            <p className="text-xs text-slate-500">Nueva contrasena</p>
+            <p className="text-xs text-slate-500">Nueva contraseña</p>
           </div>
         </div>
-        <h1 className="text-2xl font-bold text-slate-900">Restablecer contrasena</h1>
-        <p className="mt-2 text-sm text-slate-600">Elige una contrasena nueva para tu cuenta.</p>
+        <h1 className="text-2xl font-bold text-slate-900">Restablecer contraseña</h1>
+        <p className="mt-2 text-sm text-slate-600">Elige una contraseña nueva para tu cuenta.</p>
         <div className="mt-6">
           <ResetPasswordForm token={token} />
         </div>

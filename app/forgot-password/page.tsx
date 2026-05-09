@@ -17,12 +17,12 @@ export default function ForgotPasswordPage() {
           </Link>
           <div>
             <p className="text-sm font-semibold text-slate-900">MiVisita</p>
-            <p className="text-xs text-slate-500">Recuperar contrasena</p>
+            <p className="text-xs text-slate-500">Recuperar contraseña</p>
           </div>
         </div>
-        <h1 className="text-2xl font-bold text-slate-900">Olvidaste tu contrasena</h1>
+        <h1 className="text-2xl font-bold text-slate-900">¿Olvidaste tu contraseña?</h1>
         <p className="mt-2 text-sm text-slate-600">
-          Ingresa tu usuario (el mismo de inicio de sesion). Te enviaremos el enlace al correo de contacto que
+          Ingresa tu usuario (el mismo de inicio de sesión). Te enviaremos el enlace al correo de contacto que
           tengas registrado en MiVisita.
         </p>
         <div className="mt-6">

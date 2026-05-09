@@ -9,7 +9,7 @@ import { getAppBaseUrlForEmail, sendPasswordResetEmail } from "@/lib/email/resen
 import { hashPasswordResetToken } from "@/lib/password-reset-token";
 
 const GENERIC_REQUEST_MESSAGE =
-  "Si el usuario es correcto y tu cuenta tiene correo de contacto, recibiras un enlace en ese correo para restablecer la contrasena.";
+  "Si el usuario es correcto y tu cuenta tiene correo de contacto, recibirás un enlace en ese correo para restablecer la contraseña.";
 
 const NO_CONTACT_MESSAGE =
   "No tienes correo de contacto asignado en MiVisita. Comunícate con soporte para que puedan registrar tu correo y ayudarte a recuperar el acceso.";
@@ -23,13 +23,13 @@ export type PasswordResetRequestState =
   | { kind: "no_contact"; message: string };
 
 const requestSchema = z.object({
-  email: z.string().email("Ingresa un usuario valido (formato de correo)."),
+  email: z.string().email("Ingresa un usuario válido (formato de correo)."),
 });
 
 const resetSchema = z.object({
-  token: z.string().min(1, "Enlace invalido."),
-  password: z.string().min(6, "La contrasena debe tener minimo 6 caracteres."),
-  confirmPassword: z.string().min(1, "Confirma la contrasena."),
+  token: z.string().min(1, "Enlace inválido."),
+  password: z.string().min(6, "La contraseña debe tener mínimo 6 caracteres."),
+  confirmPassword: z.string().min(1, "Confirma la contraseña."),
 });
 
 export async function requestPasswordResetAction(
@@ -40,7 +40,7 @@ export async function requestPasswordResetAction(
     email: formData.get("email"),
   });
   if (!parsed.success) {
-    return { kind: "generic", message: parsed.error.issues[0]?.message ?? "Datos invalidos." };
+    return { kind: "generic", message: parsed.error.issues[0]?.message ?? "Datos inválidos." };
   }
 
   const email = parsed.data.email.toLowerCase();
@@ -119,11 +119,11 @@ export async function resetPasswordAction(_prevState: string | null, formData: F
     confirmPassword: formData.get("confirmPassword"),
   });
   if (!parsed.success) {
-    return parsed.error.issues[0]?.message ?? "Datos invalidos.";
+    return parsed.error.issues[0]?.message ?? "Datos inválidos.";
   }
 
   if (parsed.data.password !== parsed.data.confirmPassword) {
-    return "Las contrasenas no coinciden.";
+    return "Las contraseñas no coinciden.";
   }
 
   const tokenHash = hashPasswordResetToken(parsed.data.token);
@@ -143,15 +143,15 @@ export async function resetPasswordAction(_prevState: string | null, formData: F
   });
 
   if (!row) {
-    return "El enlace no es valido o ya expiro. Solicita uno nuevo desde la pantalla de inicio de sesion.";
+    return "El enlace no es válido o ya expiró. Solicita uno nuevo desde la pantalla de inicio de sesión.";
   }
 
   const { user } = row;
   if (user.isSuspended) {
-    return "No se puede restablecer la contrasena para esta cuenta. Contacta a tu administrador.";
+    return "No se puede restablecer la contraseña para esta cuenta. Contacta a tu administrador.";
   }
   if (user.residentialId && user.residential?.isSuspended) {
-    return "No se puede restablecer la contrasena para esta cuenta. Contacta a tu administrador.";
+    return "No se puede restablecer la contraseña para esta cuenta. Contacta a tu administrador.";
   }
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 10);

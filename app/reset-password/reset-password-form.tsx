@@ -13,9 +13,9 @@ export function ResetPasswordForm({ token }: { token: string }) {
   if (!token) {
     return (
       <p className="text-sm text-red-600">
-        Falta el enlace de recuperacion. Solicita uno nuevo desde{" "}
+        Falta el enlace de recuperación. Solicita uno nuevo desde{" "}
         <Link href="/forgot-password" className="font-medium underline">
-          olvide mi contrasena
+          Olvidé mi contraseña
         </Link>
         .
       </p>
@@ -27,35 +27,35 @@ export function ResetPasswordForm({ token }: { token: string }) {
       <input type="hidden" name="token" value={token} />
       <div>
         <label htmlFor="password" className="mb-1 block text-sm font-medium text-slate-700">
-          Nueva contrasena
+          Nueva contraseña
         </label>
         <PasswordField
           id="password"
           name="password"
           required
-          placeholder="Minimo 6 caracteres"
+          placeholder="Mínimo 6 caracteres"
           autoComplete="new-password"
         />
       </div>
       <div>
         <label htmlFor="confirmPassword" className="mb-1 block text-sm font-medium text-slate-700">
-          Confirmar contrasena
+          Confirmar contraseña
         </label>
         <PasswordField
           id="confirmPassword"
           name="confirmPassword"
           required
-          placeholder="Repite la contrasena"
+          placeholder="Repite la contraseña"
           autoComplete="new-password"
         />
       </div>
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
       <button type="submit" disabled={isPending} className="btn-primary w-full disabled:opacity-50">
-        {isPending ? "Guardando..." : "Guardar nueva contrasena"}
+        {isPending ? "Guardando..." : "Guardar nueva contraseña"}
       </button>
       <p className="text-center text-sm">
         <Link href="/login" className="font-medium text-blue-700 hover:underline">
-          Volver al inicio de sesion
+          Volver al inicio de sesión
         </Link>
       </p>
     </form>
