@@ -10,7 +10,9 @@
     "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
-    "build:vercel": "prisma generate && prisma db push && next build"
+    "build:vercel": "prisma generate && prisma db push && next build",
+    "backup:db": "tsx scripts/database-backup.ts",
+    "backup:db:metadata": "tsx scripts/database-backup.ts --skip-evidence"
   },
   "dependencies": {
     "@prisma/client": "^6.19.2",
@@ -40,6 +42,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }
