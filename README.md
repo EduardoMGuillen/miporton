@@ -127,6 +127,12 @@ VAPID_PRIVATE_KEY=
 VAPID_CONTACT_EMAIL=
 
 CRON_SECRET=
+
+# Recuperacion de contrasena (Resend)
+RESEND_API_KEY=
+EMAIL_FROM=
+# Opcional: enlace WhatsApp para plantilla de correo (ej. https://wa.me/504XXXXXXXX)
+NEXT_PUBLIC_WHATSAPP_URL=
 ```
 
 ## Migraciones

@@ -12,7 +12,7 @@ import { DEFAULT_RESIDENT_OTP } from "@/lib/otp-default";
 import { generateResidentOneTimePassword } from "@/lib/otp-generator";
 
 const loginSchema = z.object({
-  email: z.string().email("Correo invalido."),
+  email: z.string().email("Ingresa un usuario valido (formato de correo)."),
   password: z.string().min(1, "Password requerido."),
 });
 
@@ -43,11 +43,11 @@ export async function loginAction(_prevState: string | null, formData: FormData)
     },
   });
 
-  if (!user) return "Correo o password incorrectos.";
+  if (!user) return "Usuario o contrasena incorrectos.";
 
   const isPasswordValid = await bcrypt.compare(parsed.data.password, user.passwordHash);
   if (!isPasswordValid) {
-    if (user.role !== "RESIDENT") return "Correo o password incorrectos.";
+    if (user.role !== "RESIDENT") return "Usuario o contrasena incorrectos.";
 
     const currentOtpCipher = user.oneTimePasswordCipher;
     let expectedOtp = DEFAULT_RESIDENT_OTP;
@@ -55,12 +55,12 @@ export async function loginAction(_prevState: string | null, formData: FormData)
       try {
         expectedOtp = decryptOtp(currentOtpCipher);
       } catch {
-        return "Correo o password incorrectos.";
+        return "Usuario o contrasena incorrectos.";
       }
     }
 
     if (!safeEqualText(parsed.data.password, expectedOtp)) {
-      return "Correo o password incorrectos.";
+      return "Usuario o contrasena incorrectos.";
     }
 
     const nextOtpCipher = encryptOtp(generateResidentOneTimePassword());
@@ -77,7 +77,7 @@ export async function loginAction(_prevState: string | null, formData: FormData)
       },
     });
     if (rotated.count !== 1) {
-      return "Correo o password incorrectos.";
+      return "Usuario o contrasena incorrectos.";
     }
   }
 

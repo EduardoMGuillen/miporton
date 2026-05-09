@@ -20,6 +20,7 @@ export default async function LoginPage({
 }) {
   const params = await searchParams;
   const shouldOpenInstall = getSingleParam(params.install) === "1";
+  const resetSuccess = getSingleParam(params.reset) === "ok";
 
   await ensureSuperAdminExists();
   const dbConfigured =
@@ -96,7 +97,7 @@ export default async function LoginPage({
           <div className="mb-4">
             <InstallAppGuide initialOpen={shouldOpenInstall} />
           </div>
-          <LoginForm />
+          <LoginForm resetSuccess={resetSuccess} />
         </article>
       </section>
     </main>
