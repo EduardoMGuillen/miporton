@@ -22,7 +22,7 @@ export default async function SuperAdminBackupsPage() {
           </li>
           <li>
             En evidencia, elige <strong className="text-slate-800">escaneos por parte</strong> (30 si alguna parte
-            falla por tiempo; 40 o 60 si va bien).
+            falla por tiempo; puedes subir hasta 250 si el hosting lo aguanta y las fotos no son enormes).
           </li>
           <li>
             Pulsa <strong className="text-slate-800">Cargar partes</strong>. Verás cuántas partes hay según cuántos

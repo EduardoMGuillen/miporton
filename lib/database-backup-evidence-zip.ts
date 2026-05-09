@@ -6,7 +6,8 @@ import { bufferFromScanPhoto, mimeToExt } from "@/lib/database-backup-zip";
 
 /** Escaneos con al menos una foto; cada parte limita cuántos escaneos se leen por request (Vercel). */
 export const DEFAULT_EVIDENCE_BACKUP_PAGE_SIZE = 40;
-export const MAX_EVIDENCE_BACKUP_PAGE_SIZE = 120;
+/** Tope por request; fotos grandes pueden agotar tiempo — baja el valor en el selector si falla. */
+export const MAX_EVIDENCE_BACKUP_PAGE_SIZE = 250;
 
 const evidenceWhere: Prisma.QrScanWhereInput = {
   OR: [{ idPhotoData: { not: null } }, { platePhotoData: { not: null } }],

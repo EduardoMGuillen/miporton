@@ -211,6 +211,12 @@ export function DatabaseBackupButton() {
                 <option value={30}>30 (mas estable)</option>
                 <option value={40}>40</option>
                 <option value={60}>60</option>
+                <option value={80}>80</option>
+                <option value={100}>100</option>
+                <option value={120}>120</option>
+                <option value={150}>150</option>
+                <option value={200}>200</option>
+                <option value={250}>250 (max.)</option>
               </select>
             </label>
             <button

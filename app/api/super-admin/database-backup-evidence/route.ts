@@ -8,7 +8,7 @@ import {
   MAX_EVIDENCE_BACKUP_PAGE_SIZE,
 } from "@/lib/database-backup-evidence-zip";
 
-export const maxDuration = 60;
+export const maxDuration = 120;
 export const runtime = "nodejs";
 
 function parsePageSize(raw: string | null): number {
