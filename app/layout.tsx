@@ -5,7 +5,7 @@ import "./globals.css";
 import { PwaBootstrap } from "@/app/components/pwa-bootstrap";
 import { GoogleAnalytics } from "@/app/components/google-analytics";
 import { GlobalSiteBanner } from "@/app/components/global-site-banner";
-import { getActiveSiteBannerMessage } from "@/lib/site-banner";
+import { getActiveSiteBanner } from "@/lib/site-banner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -55,7 +55,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const siteBannerMessage = await getActiveSiteBannerMessage();
+  const siteBanner = await getActiveSiteBanner();
 
   return (
     <html lang="es">
@@ -65,7 +65,9 @@ export default async function RootLayout({
         <GoogleAnalytics />
         <PwaBootstrap />
         <div className="flex min-h-screen flex-col">
-          {siteBannerMessage ? <GlobalSiteBanner message={siteBannerMessage} /> : null}
+          {siteBanner ? (
+            <GlobalSiteBanner message={siteBanner.message} variant={siteBanner.variant} />
+          ) : null}
           <div className="flex-1">{children}</div>
           <footer className="border-t border-white/60 bg-white/70 px-4 py-5 text-center text-sm text-slate-600 backdrop-blur">
             <p>

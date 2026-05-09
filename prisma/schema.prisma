@@ -41,6 +41,14 @@ enum ZoneReservationStatus {
   CANCELLED
 }
 
+enum SiteBannerVariant {
+  INFO
+  SUCCESS
+  WARNING
+  ALERT
+  NEUTRAL
+}
+
 model Residential {
   id            String               @id @default(cuid())
   name          String
@@ -284,8 +292,9 @@ model ResidentSuggestion {
 }
 
 model SiteBanner {
-  id        String   @id @default("global")
-  enabled   Boolean  @default(false)
-  message   String   @default("")
-  updatedAt DateTime @updatedAt
+  id        String             @id @default("global")
+  enabled   Boolean            @default(false)
+  message   String             @default("")
+  variant   SiteBannerVariant  @default(INFO)
+  updatedAt DateTime           @updatedAt
 }

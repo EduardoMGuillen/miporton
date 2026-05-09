@@ -3,6 +3,7 @@
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { SiteBannerVariant } from "@prisma/client";
 import { requireRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
 import { SITE_BANNER_ID } from "@/lib/site-banner";
@@ -207,6 +208,7 @@ export async function toggleResidentialSuspensionAction(formData: FormData) {
 
 const updateSiteBannerSchema = z.object({
   message: z.string().max(500, "El mensaje es demasiado largo (max 500 caracteres)."),
+  variant: z.nativeEnum(SiteBannerVariant),
 });
 
 export async function updateSiteBannerAction(_prevState: string | null, formData: FormData) {
@@ -214,7 +216,8 @@ export async function updateSiteBannerAction(_prevState: string | null, formData
 
   const enabled = formData.get("bannerEnabled") === "on";
   const messageRaw = String(formData.get("message") ?? "");
-  const parsed = updateSiteBannerSchema.safeParse({ message: messageRaw });
+  const variantRaw = String(formData.get("variant") ?? "INFO");
+  const parsed = updateSiteBannerSchema.safeParse({ message: messageRaw, variant: variantRaw });
   if (!parsed.success) {
     return parsed.error.issues[0]?.message ?? "Datos invalidos.";
   }
@@ -224,16 +227,20 @@ export async function updateSiteBannerAction(_prevState: string | null, formData
     return "Con el banner activado debes escribir un mensaje.";
   }
 
+  const variant = parsed.data.variant;
+
   await prisma.siteBanner.upsert({
     where: { id: SITE_BANNER_ID },
     create: {
       id: SITE_BANNER_ID,
       enabled,
       message: enabled ? message : "",
+      variant,
     },
     update: {
       enabled,
       message: enabled ? message : "",
+      variant,
     },
   });
 
