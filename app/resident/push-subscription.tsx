@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useState } from "react";
+import { updateResidentContactAction } from "@/app/resident/actions";
 
 function base64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -14,9 +15,24 @@ function base64ToUint8Array(base64String: string) {
   return output;
 }
 
-export function PushSubscriptionCard() {
+const initialContactState: string | null = null;
+
+type PushSubscriptionCardProps = {
+  initialPersonalEmail: string;
+  initialPhoneNumber: string;
+};
+
+export function PushSubscriptionCard({
+  initialPersonalEmail,
+  initialPhoneNumber,
+}: PushSubscriptionCardProps) {
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [showContactForm, setShowContactForm] = useState(false);
+  const [contactMessage, contactFormAction, isSavingContact] = useActionState(
+    updateResidentContactAction,
+    initialContactState,
+  );
 
   async function enablePush() {
     setPending(true);
@@ -67,17 +83,49 @@ export function PushSubscriptionCard() {
   return (
     <div className="surface-card p-5 md:p-6">
       <h2 className="text-lg font-semibold text-slate-900">Notificaciones push</h2>
-      <p className="mt-1 text-sm text-slate-600">
-        Activalas para recibir aviso cuando el guardia marque llegada de una visita.
-      </p>
-      <button
-        onClick={enablePush}
-        disabled={pending}
-        className="btn-primary mt-3 disabled:opacity-60"
-      >
-        {pending ? "Activando..." : "Activar notificaciones"}
-      </button>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={enablePush}
+          disabled={pending}
+          className="btn-primary disabled:opacity-60"
+        >
+          {pending ? "Activando..." : "Activar notificaciones"}
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowContactForm((value) => !value)}
+          className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100"
+        >
+          Datos de Contacto
+        </button>
+      </div>
       {message ? <p className="mt-2 text-sm text-slate-700">{message}</p> : null}
+      {showContactForm ? (
+        <form action={contactFormAction} className="mt-3 grid gap-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <input
+            name="personalEmail"
+            type="email"
+            defaultValue={initialPersonalEmail}
+            className="field-base"
+            placeholder="Correo personal (opcional)"
+          />
+          <input
+            name="phoneNumber"
+            defaultValue={initialPhoneNumber}
+            className="field-base"
+            placeholder="Telefono personal (opcional)"
+          />
+          <button
+            type="submit"
+            disabled={isSavingContact}
+            className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:opacity-60"
+          >
+            {isSavingContact ? "Guardando..." : "Guardar datos de contacto"}
+          </button>
+          {contactMessage ? <p className="text-sm text-slate-700">{contactMessage}</p> : null}
+        </form>
+      ) : null}
     </div>
   );
 }

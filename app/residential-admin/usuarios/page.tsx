@@ -61,6 +61,8 @@ export default async function ResidentialAdminUsersPage({
       id: true,
       fullName: true,
       email: true,
+      personalEmail: true,
+      phoneNumber: true,
       role: true,
       isSuspended: true,
       residentCategory: true,
@@ -128,6 +130,12 @@ export default async function ResidentialAdminUsersPage({
                     </p>
                   ) : null}
                   <p className="text-xs text-slate-500">Vivienda: {user.houseNumber || "Sin definir"}</p>
+                  <p className="text-xs text-slate-500">
+                    Correo personal: {user.personalEmail || "Sin definir"}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Telefono personal: {user.phoneNumber || "Sin definir"}
+                  </p>
                   {user.role === "RESIDENT" ? (
                     <ResidentialOneTimePasswordControls
                       userId={user.id}
@@ -179,6 +187,19 @@ export default async function ResidentialAdminUsersPage({
                         className="field-base"
                         placeholder="Correo"
                         required
+                      />
+                      <input
+                        name="personalEmail"
+                        type="email"
+                        defaultValue={user.personalEmail ?? ""}
+                        className="field-base"
+                        placeholder="Correo personal (opcional)"
+                      />
+                      <input
+                        name="phoneNumber"
+                        defaultValue={user.phoneNumber ?? ""}
+                        className="field-base"
+                        placeholder="Telefono personal (opcional)"
                       />
                       <PasswordField
                         name="password"

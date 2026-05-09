@@ -28,6 +28,8 @@ const updateUserSchema = z.object({
   password: z.string().optional(),
   residentCategory: z.enum(["OWNER", "TENANT"]).optional(),
   houseNumber: z.string().max(30, "Numero de vivienda demasiado largo.").optional(),
+  personalEmail: z.string().max(120, "Correo personal demasiado largo.").optional(),
+  phoneNumber: z.string().max(30, "Telefono demasiado largo.").optional(),
 });
 
 const toggleUserSuspensionSchema = z.object({
@@ -167,6 +169,8 @@ export async function updateResidentialUserAction(formData: FormData) {
     password: formData.get("password") || undefined,
     residentCategory: formData.get("residentCategory") || undefined,
     houseNumber: formData.get("houseNumber") || undefined,
+    personalEmail: formData.get("personalEmail") || undefined,
+    phoneNumber: formData.get("phoneNumber") || undefined,
   });
   if (!parsed.success) return;
 
@@ -194,13 +198,21 @@ export async function updateResidentialUserAction(formData: FormData) {
     fullName: string;
     email: string;
     houseNumber: string | null;
+    personalEmail: string | null;
+    phoneNumber: string | null;
     residentCategory?: "OWNER" | "TENANT";
     passwordHash?: string;
   } = {
     fullName: parsed.data.fullName.trim(),
     email,
     houseNumber: parsed.data.houseNumber?.trim() || null,
+    personalEmail: parsed.data.personalEmail?.trim().toLowerCase() || null,
+    phoneNumber: parsed.data.phoneNumber?.trim() || null,
   };
+  if (updateData.personalEmail) {
+    const emailValidation = z.string().email().safeParse(updateData.personalEmail);
+    if (!emailValidation.success) return;
+  }
   if (parsed.data.residentCategory) {
     updateData.residentCategory = parsed.data.residentCategory;
   }

@@ -30,6 +30,21 @@ const createSuggestionSchema = z.object({
     .max(500, "La sugerencia es demasiado larga."),
 });
 
+const updateContactSchema = z.object({
+  personalEmail: z
+    .string()
+    .trim()
+    .max(120, "Correo personal demasiado largo.")
+    .optional()
+    .transform((value) => value ?? ""),
+  phoneNumber: z
+    .string()
+    .trim()
+    .max(30, "Numero de telefono demasiado largo.")
+    .optional()
+    .transform((value) => value ?? ""),
+});
+
 function overlapRange(
   startsAt: Date,
   endsAt: Date,
@@ -317,4 +332,35 @@ export async function createResidentSuggestionAction(_prevState: string | null, 
   revalidatePath("/resident");
   revalidatePath("/residential-admin/sugerencias");
   return "Sugerencia enviada correctamente.";
+}
+
+export async function updateResidentContactAction(_prevState: string | null, formData: FormData) {
+  const session = await requireRole(["RESIDENT"]);
+
+  const parsed = updateContactSchema.safeParse({
+    personalEmail: formData.get("personalEmail") || "",
+    phoneNumber: formData.get("phoneNumber") || "",
+  });
+  if (!parsed.success) return parsed.error.issues[0]?.message ?? "Datos invalidos.";
+
+  const personalEmailRaw = parsed.data.personalEmail;
+  const phoneNumberRaw = parsed.data.phoneNumber;
+  const personalEmail = personalEmailRaw ? personalEmailRaw.toLowerCase() : null;
+  const phoneNumber = phoneNumberRaw || null;
+
+  if (personalEmail) {
+    const isEmailValid = z.string().email().safeParse(personalEmail).success;
+    if (!isEmailValid) return "Ingresa un correo personal valido.";
+  }
+
+  await prisma.user.update({
+    where: { id: session.userId },
+    data: {
+      personalEmail,
+      phoneNumber,
+    },
+  });
+
+  revalidatePath("/resident");
+  return "Datos de contacto guardados correctamente.";
 }

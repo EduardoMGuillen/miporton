@@ -67,6 +67,8 @@ model User {
   id                      String                      @id @default(cuid())
   fullName                String
   email                   String                      @unique
+  personalEmail           String?
+  phoneNumber             String?
   passwordHash            String
   oneTimePasswordCipher   String?
   oneTimePasswordCreatedAt DateTime?
@@ -77,6 +79,7 @@ model User {
   residentCategory        ResidentCategory        @default(OWNER)
   houseNumber             String?
   createdAt               DateTime                    @default(now())
+  lastLoginAt             DateTime?
   residentialId           String?
   residential             Residential?                @relation(fields: [residentialId], references: [id], onDelete: Cascade)
   createdCodes            QrCode[]                    @relation("CreatedByResident")
@@ -92,6 +95,8 @@ model User {
   residentSuggestions     ResidentSuggestion[]
   oneTimePasswordCreatedBy User?                      @relation("ResidentialOtpCreatedBy", fields: [oneTimePasswordCreatedById], references: [id], onDelete: SetNull)
   otpCreatedForUsers      User[]                      @relation("ResidentialOtpCreatedBy")
+
+  @@index([residentialId, lastLoginAt])
 }
 
 model QrCode {

@@ -93,6 +93,11 @@ export async function loginAction(_prevState: string | null, formData: FormData)
     }
   }
 
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { lastLoginAt: new Date() },
+  });
+
   await setSessionCookie({
     userId: user.id,
     fullName: user.fullName,

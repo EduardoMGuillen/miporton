@@ -19,6 +19,12 @@ type TrendItem = {
   qrCreated: number;
 };
 
+type ActiveUsersByResidential = {
+  residentialId: string;
+  residentialName: string;
+  activeUsers7d: number;
+};
+
 function monthKey(value: Date) {
   const month = String(value.getMonth() + 1).padStart(2, "0");
   return `${value.getFullYear()}-${month}`;
@@ -48,6 +54,7 @@ export default async function SuperAdminStatsPage() {
   const currentMonthStart = monthStart(now);
   const nextMonthStart = addMonths(currentMonthStart, 1);
   const sixMonthsStart = addMonths(currentMonthStart, -5);
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
   const [
     residentials,
@@ -55,13 +62,14 @@ export default async function SuperAdminStatsPage() {
     deliveriesMonth,
     qrCreatedMonth,
     idEvidenceMonth,
-    pendingExitMonth,
     scansForConsumption,
     deliveriesForConsumption,
     qrsForConsumption,
     scansForTrend,
     deliveriesForTrend,
     qrsForTrend,
+    totalActiveUsers7d,
+    activeUsersByResidential7d,
   ] = await Promise.all([
     prisma.residential.findMany({
       select: { id: true, name: true, isSuspended: true },
@@ -88,13 +96,6 @@ export default async function SuperAdminStatsPage() {
         isValid: true,
         scannedAt: { gte: currentMonthStart, lt: nextMonthStart },
         idPhotoData: { not: null },
-      },
-    }),
-    prisma.qrScan.count({
-      where: {
-        isValid: true,
-        scannedAt: { gte: currentMonthStart, lt: nextMonthStart },
-        exitedAt: null,
       },
     }),
     prisma.qrScan.findMany({
@@ -147,6 +148,20 @@ export default async function SuperAdminStatsPage() {
         createdAt: { gte: sixMonthsStart, lt: nextMonthStart },
       },
       select: { createdAt: true },
+    }),
+    prisma.user.count({
+      where: {
+        residentialId: { not: null },
+        lastLoginAt: { gte: sevenDaysAgo },
+      },
+    }),
+    prisma.user.groupBy({
+      by: ["residentialId"],
+      where: {
+        residentialId: { not: null },
+        lastLoginAt: { gte: sevenDaysAgo },
+      },
+      _count: { _all: true },
     }),
   ]);
 
@@ -228,6 +243,19 @@ export default async function SuperAdminStatsPage() {
     1,
   );
 
+  const activeUsers7dByResidential: ActiveUsersByResidential[] = activeUsersByResidential7d
+    .filter((item) => item.residentialId)
+    .map((item) => {
+      const residentialId = item.residentialId as string;
+      return {
+        residentialId,
+        residentialName: residentialNameMap.get(residentialId) ?? "Residencial",
+        activeUsers7d: item._count._all,
+      };
+    })
+    .sort((a, b) => b.activeUsers7d - a.activeUsers7d);
+  const maxActiveUsers7d = Math.max(...activeUsers7dByResidential.map((item) => item.activeUsers7d), 1);
+
   const activeResidentials = residentials.filter((item) => !item.isSuspended).length;
   const suspendedResidentials = residentials.length - activeResidentials;
 
@@ -238,7 +266,7 @@ export default async function SuperAdminStatsPage() {
         <p className="mt-2 text-sm text-slate-600">
           Resumen operativo de consumo por residenciales sin modificar estructura de base de datos.
         </p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Residenciales</p>
             <p className="mt-1 text-2xl font-bold text-slate-900">{residentials.length}</p>
@@ -254,13 +282,44 @@ export default async function SuperAdminStatsPage() {
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Deliveries</p>
             <p className="mt-1 text-2xl font-bold text-slate-900">{deliveriesMonth}</p>
-            <p className="mt-1 text-xs text-slate-600">Pendientes de salida: {pendingExitMonth}</p>
+            <p className="mt-1 text-xs text-slate-600">Actividad de entregas del mes actual</p>
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">QRs creados</p>
             <p className="mt-1 text-2xl font-bold text-slate-900">{qrCreatedMonth}</p>
             <p className="mt-1 text-xs text-slate-600">Tasa de uso: {usageRate}%</p>
           </div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Usuarios activos 7d</p>
+            <p className="mt-1 text-2xl font-bold text-slate-900">{totalActiveUsers7d}</p>
+            <p className="mt-1 text-xs text-slate-600">Cuentas con login en ultimos 7 dias</p>
+          </div>
+        </div>
+      </Card>
+
+      <Card>
+        <h2 className="text-lg font-semibold text-slate-900">Usuarios activos por residencial (ultimos 7 dias)</h2>
+        <p className="mt-2 text-sm text-slate-600">
+          Conteo de cuentas unicas que iniciaron sesion al menos una vez en la ultima semana.
+        </p>
+        <div className="mt-4 space-y-3">
+          {activeUsers7dByResidential.map((item) => (
+            <div key={item.residentialId} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-slate-900">{item.residentialName}</p>
+                <p className="text-xs text-slate-600">Activos 7d: {item.activeUsers7d}</p>
+              </div>
+              <div className="mt-2 h-2 w-full rounded-full bg-slate-200">
+                <div
+                  className="h-2 rounded-full bg-indigo-600"
+                  style={{ width: `${percent(item.activeUsers7d, maxActiveUsers7d)}%` }}
+                />
+              </div>
+            </div>
+          ))}
+          {activeUsers7dByResidential.length === 0 ? (
+            <p className="text-sm text-slate-600">Aun no hay usuarios con inicio de sesion en los ultimos 7 dias.</p>
+          ) : null}
         </div>
       </Card>
 

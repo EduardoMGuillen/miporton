@@ -45,6 +45,13 @@ export default async function ResidentPage() {
         },
       })
     : null;
+  const residentContact = await prisma.user.findUnique({
+    where: { id: session.userId },
+    select: {
+      personalEmail: true,
+      phoneNumber: true,
+    },
+  });
   const allowedValidityTypes: Array<"SINGLE_USE" | "ONE_DAY" | "THREE_DAYS" | "INFINITE"> = [];
   if (residential?.allowResidentQrSingleUse ?? true) allowedValidityTypes.push("SINGLE_USE");
   if (residential?.allowResidentQrOneDay ?? true) allowedValidityTypes.push("ONE_DAY");
@@ -160,7 +167,10 @@ export default async function ResidentPage() {
       subtitle="Anuncia tus visitas y comparte su QR."
       user={session.fullName}
     >
-      <PushSubscriptionCard />
+      <PushSubscriptionCard
+        initialPersonalEmail={residentContact?.personalEmail ?? ""}
+        initialPhoneNumber={residentContact?.phoneNumber ?? ""}
+      />
 
       <Card>
         <h2 className="mb-4 text-lg font-semibold text-slate-900">Crear anuncio de visita</h2>
