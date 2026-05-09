@@ -5,19 +5,33 @@ import { useState } from "react";
 export function DatabaseBackupButton() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [includeEvidence, setIncludeEvidence] = useState(true);
 
   async function handleDownload() {
     setIsDownloading(true);
     setError(null);
     try {
-      const response = await fetch("/api/super-admin/database-backup", {
-        method: "GET",
-      });
+      const params = new URLSearchParams();
+      if (!includeEvidence) {
+        params.set("skipEvidence", "true");
+      }
+      const qs = params.toString();
+      const response = await fetch(
+        `/api/super-admin/database-backup${qs ? `?${qs}` : ""}`,
+        {
+          method: "GET",
+        },
+      );
       if (!response.ok) {
         const contentType = response.headers.get("content-type") ?? "";
         if (contentType.includes("application/json")) {
-          const payload = (await response.json().catch(() => null)) as { error?: string } | null;
-          throw new Error(payload?.error || "No se pudo generar el backup de base de datos.");
+          const payload = (await response.json().catch(() => null)) as {
+            error?: string;
+            detail?: string;
+          } | null;
+          const base = payload?.error || "No se pudo generar el backup de base de datos.";
+          const detail = payload?.detail?.trim();
+          throw new Error(detail ? `${base} (${detail})` : base);
         }
         if (response.status === 413) {
           throw new Error(
@@ -52,6 +66,21 @@ export function DatabaseBackupButton() {
 
   return (
     <div className="grid gap-2">
+      <label className="flex cursor-pointer items-start gap-2 text-sm text-slate-700">
+        <input
+          type="checkbox"
+          checked={includeEvidence}
+          onChange={(e) => {
+            setIncludeEvidence(e.target.checked);
+          }}
+          className="mt-1 rounded border-slate-300"
+        />
+        <span>
+          Incluir fotos de evidencia en el ZIP (archivos en{" "}
+          <code className="text-xs">evidence/</code>). En planes con poco tiempo de ejecución puede
+          fallar; desmárcalo para un backup rápido con tablas y metadatos de escaneos sin imágenes.
+        </span>
+      </label>
       <button
         type="button"
         onClick={() => {
@@ -64,7 +93,7 @@ export function DatabaseBackupButton() {
       </button>
       {error ? <p className="text-xs text-red-600">{error}</p> : null}
       <p className="text-xs text-slate-500">
-        Incluye tablas en JSON y fotos de evidencia como archivos dentro de evidence/ (ZIP mas eficiente que base64).
+        Incluye tablas en JSON; con evidencia, las fotos van en el ZIP (sin base64 en JSON).
       </p>
     </div>
   );

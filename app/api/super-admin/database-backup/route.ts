@@ -47,11 +47,32 @@ type QrScanExportRow = {
   platePhotoFile: string | null;
 };
 
-export async function GET() {
+const qrScanMetadataSelect = {
+  id: true,
+  scannedAt: true,
+  exitedAt: true,
+  exitNote: true,
+  isValid: true,
+  reason: true,
+  idPhotoMimeType: true,
+  idPhotoSize: true,
+  idCapturedAt: true,
+  platePhotoMimeType: true,
+  platePhotoSize: true,
+  codeId: true,
+  scannerId: true,
+} as const;
+
+export async function GET(request: Request) {
   const session = await getSession();
   if (!session || session.role !== "SUPER_ADMIN") {
     return NextResponse.json({ error: "No autorizado." }, { status: 401 });
   }
+
+  const { searchParams } = new URL(request.url);
+  const skipEvidence =
+    searchParams.get("skipEvidence") === "1" ||
+    searchParams.get("skipEvidence") === "true";
 
   try {
     const generatedAt = new Date();
@@ -94,54 +115,83 @@ export async function GET() {
     const serializedQrScans: QrScanExportRow[] = [];
     let skip = 0;
 
-    while (skip < qrScanTotal) {
-      const batch = await prisma.qrScan.findMany({
-        orderBy: { scannedAt: "asc" },
-        skip,
-        take: QR_SCAN_BATCH,
-      });
-
-      if (batch.length === 0) break;
-
-      for (const scan of batch) {
-        const idBuf = bufferFromScanPhoto(scan.idPhotoData as unknown);
-        const plateBuf = bufferFromScanPhoto(scan.platePhotoData as unknown);
-        const idExt = mimeToExt(scan.idPhotoMimeType);
-        const plateExt = mimeToExt(scan.platePhotoMimeType);
-        const idPhotoFile = idBuf
-          ? `evidence/${scan.id}/id${idExt}`
-          : null;
-        const platePhotoFile = plateBuf
-          ? `evidence/${scan.id}/plate${plateExt}`
-          : null;
-
-        serializedQrScans.push({
-          id: scan.id,
-          scannedAt: scan.scannedAt.toISOString(),
-          exitedAt: toIsoOrNull(scan.exitedAt),
-          exitNote: scan.exitNote,
-          isValid: scan.isValid,
-          reason: scan.reason,
-          idPhotoMimeType: scan.idPhotoMimeType,
-          idPhotoSize: scan.idPhotoSize,
-          idCapturedAt: toIsoOrNull(scan.idCapturedAt),
-          platePhotoMimeType: scan.platePhotoMimeType,
-          platePhotoSize: scan.platePhotoSize,
-          codeId: scan.codeId,
-          scannerId: scan.scannerId,
-          idPhotoFile,
-          platePhotoFile,
+    if (skipEvidence) {
+      while (skip < qrScanTotal) {
+        const batch = await prisma.qrScan.findMany({
+          orderBy: { scannedAt: "asc" },
+          skip,
+          take: QR_SCAN_BATCH,
+          select: qrScanMetadataSelect,
         });
-
-        if (idBuf && idPhotoFile) {
-          zip.file(idPhotoFile, idBuf, { compression: "STORE" });
+        if (batch.length === 0) break;
+        for (const scan of batch) {
+          serializedQrScans.push({
+            id: scan.id,
+            scannedAt: scan.scannedAt.toISOString(),
+            exitedAt: toIsoOrNull(scan.exitedAt),
+            exitNote: scan.exitNote,
+            isValid: scan.isValid,
+            reason: scan.reason,
+            idPhotoMimeType: scan.idPhotoMimeType,
+            idPhotoSize: scan.idPhotoSize,
+            idCapturedAt: toIsoOrNull(scan.idCapturedAt),
+            platePhotoMimeType: scan.platePhotoMimeType,
+            platePhotoSize: scan.platePhotoSize,
+            codeId: scan.codeId,
+            scannerId: scan.scannerId,
+            idPhotoFile: null,
+            platePhotoFile: null,
+          });
         }
-        if (plateBuf && platePhotoFile) {
-          zip.file(platePhotoFile, plateBuf, { compression: "STORE" });
-        }
+        skip += batch.length;
       }
+    } else {
+      while (skip < qrScanTotal) {
+        const batch = await prisma.qrScan.findMany({
+          orderBy: { scannedAt: "asc" },
+          skip,
+          take: QR_SCAN_BATCH,
+        });
+        if (batch.length === 0) break;
+        for (const scan of batch) {
+          const idBuf = bufferFromScanPhoto(scan.idPhotoData as unknown);
+          const plateBuf = bufferFromScanPhoto(scan.platePhotoData as unknown);
+          const idExt = mimeToExt(scan.idPhotoMimeType);
+          const plateExt = mimeToExt(scan.platePhotoMimeType);
+          const idPhotoFile = idBuf
+            ? `evidence/${scan.id}/id${idExt}`
+            : null;
+          const platePhotoFile = plateBuf
+            ? `evidence/${scan.id}/plate${plateExt}`
+            : null;
 
-      skip += batch.length;
+          serializedQrScans.push({
+            id: scan.id,
+            scannedAt: scan.scannedAt.toISOString(),
+            exitedAt: toIsoOrNull(scan.exitedAt),
+            exitNote: scan.exitNote,
+            isValid: scan.isValid,
+            reason: scan.reason,
+            idPhotoMimeType: scan.idPhotoMimeType,
+            idPhotoSize: scan.idPhotoSize,
+            idCapturedAt: toIsoOrNull(scan.idCapturedAt),
+            platePhotoMimeType: scan.platePhotoMimeType,
+            platePhotoSize: scan.platePhotoSize,
+            codeId: scan.codeId,
+            scannerId: scan.scannerId,
+            idPhotoFile,
+            platePhotoFile,
+          });
+
+          if (idBuf && idPhotoFile) {
+            zip.file(idPhotoFile, idBuf, { compression: "STORE" });
+          }
+          if (plateBuf && platePhotoFile) {
+            zip.file(platePhotoFile, plateBuf, { compression: "STORE" });
+          }
+        }
+        skip += batch.length;
+      }
     }
 
     zip.file("data/residentials.json", JSON.stringify(residentials, null, 2));
@@ -172,9 +222,13 @@ export async function GET() {
           generatedByUserId: session.userId,
           scope: "full-database-backup",
           backupFormatVersion: 3,
-          qrScanEvidenceStorage: "zip-binary-per-scan",
-          qrScanEvidenceNote:
-            "Fotos ID/placa estan en carpetas evidence/<scanId>/ como archivos binarios; data/qr-scans.json referencia idPhotoFile y platePhotoFile.",
+          evidenceIncluded: !skipEvidence,
+          qrScanEvidenceStorage: skipEvidence
+            ? "omitted"
+            : "zip-binary-per-scan",
+          qrScanEvidenceNote: skipEvidence
+            ? "Este backup omite bytes de fotos (skipEvidence). Metadatos de mime/size en qr-scans.json sin idPhotoFile/platePhotoFile."
+            : "Fotos ID/placa estan en carpetas evidence/<scanId>/ como archivos binarios; data/qr-scans.json referencia idPhotoFile y platePhotoFile.",
           counts: {
             residentials: residentials.length,
             users: users.length,
@@ -216,10 +270,12 @@ export async function GET() {
     });
   } catch (error) {
     console.error("[database-backup]", error);
+    const detail = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
       {
         error:
-          "No se pudo generar el backup de base de datos. Reintenta en unos minutos. Si persiste, puede ser por volumen de datos o limite de tiempo del plan de hosting; el backup PDF suele ser mas liviano.",
+          "No se pudo generar el backup de base de datos. Reintenta en unos minutos. Si persiste, puede ser por volumen de datos o limite de tiempo del plan de hosting; prueba el backup sin evidencia o el backup PDF.",
+        detail,
       },
       { status: 500 },
     );
