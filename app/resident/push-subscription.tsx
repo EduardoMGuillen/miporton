@@ -82,7 +82,7 @@ export function PushSubscriptionCard({
 
   return (
     <div className="surface-card p-5 md:p-6">
-      <h2 className="text-lg font-semibold text-slate-900">Notificaciones push</h2>
+      <h2 className="text-lg font-semibold text-slate-900">Configuracion de cuenta</h2>
       <div className="mt-3 flex flex-wrap gap-2">
         <button
           type="button"

@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { href: "/super-admin/respaldos", label: "Respaldos" },
   { href: "/super-admin/registros", label: "Registro y reportes" },
   { href: "/super-admin/estadisticas", label: "Estadisticas" },
+  { href: "/super-admin/banner", label: "Banner de mensaje" },
 ];
 
 export function SuperAdminNav() {

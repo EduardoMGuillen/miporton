@@ -282,3 +282,10 @@ model ResidentSuggestion {
   @@index([residentialId, createdAt])
   @@index([residentId, createdAt])
 }
+
+model SiteBanner {
+  id        String   @id @default("global")
+  enabled   Boolean  @default(false)
+  message   String   @default("")
+  updatedAt DateTime @updatedAt
+}
