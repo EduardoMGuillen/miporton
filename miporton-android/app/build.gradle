@@ -11,6 +11,12 @@ plugins {
 import groovy.xml.MarkupBuilder
 import groovy.util.IndentPrinter
 
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
+}
+
 def twaManifest = [
     applicationId       : 'com.mivisita.app',
     hostName            : 'mivisita.app',
@@ -32,8 +38,8 @@ android {
         applicationId twaManifest.applicationId
         minSdk 23
         targetSdk 35
-        versionCode 1
-        versionName "1.0.0"
+        versionCode 4
+        versionName "1.0.3"
 
         resValue "string", "appName", twaManifest.name
 
@@ -65,10 +71,24 @@ android {
         resValue "integer", "splashScreenFadeOutDuration", twaManifest.splashScreenFadeOutDuration.toString()
     }
 
+    signingConfigs {
+        release {
+            if (keystorePropertiesFile.exists()) {
+                keyAlias keystoreProperties["keyAlias"]
+                keyPassword keystoreProperties["keyPassword"]
+                storeFile file(keystoreProperties["storeFile"])
+                storePassword keystoreProperties["storePassword"]
+            }
+        }
+    }
+
     buildTypes {
         release {
             // R8 puede romper reflección en algunas libs; desactivado para primera publicación estable.
             minifyEnabled false
+            if (keystorePropertiesFile.exists()) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 

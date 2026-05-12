@@ -7,7 +7,8 @@
       "namespace": "android_app",
       "package_name": "com.mivisita.app",
       "sha256_cert_fingerprints": [
-        "BC:6D:00:D4:25:A3:4C:C9:29:EC:F7:AC:FF:81:08:E0:5D:9E:6C:78:99:48:38:40:13:FA:C8:4D:FA:FA:C1:A9"
+        "BC:6D:00:D4:25:A3:4C:C9:29:EC:F7:AC:FF:81:08:E0:5D:9E:6C:78:99:48:38:40:13:FA:C8:4D:FA:FA:C1:A9",
+        "BD:A6:D2:B4:FA:1A:F9:17:34:CE:0B:35:28:E8:36:58:DA:03:E3:4F:AA:85:04:02:62:C9:2E:E8:C4:B0:1D:35"
       ]
     }
   }

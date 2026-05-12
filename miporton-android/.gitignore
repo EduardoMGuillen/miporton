@@ -11,4 +11,5 @@
 .externalNativeBuild
 *.apk
 *.aab
+keystore.properties
 /.idea
