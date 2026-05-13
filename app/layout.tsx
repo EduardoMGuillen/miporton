@@ -21,7 +21,8 @@ export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://mivisita.app"),
   title: "MiVisita",
   applicationName: "MiVisita",
-  description: "Webapp de control de visitas con QR para residenciales.",
+  description:
+    "MiVisita: administración y seguridad residencial en Honduras — control de visitas con QR, portería digital, reservas y reportes (PWA).",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
