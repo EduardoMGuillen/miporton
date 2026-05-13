@@ -44,6 +44,7 @@ export function ResidentShell({
       subtitle={t(keys.subtitleKey)}
       user={userFullName}
       showActiveSession={false}
+      compactHeaderActions
       headerRight={<ResidentMenu userFullName={userFullName} residentialName={residentialName} />}
     >
       {children}

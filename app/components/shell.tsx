@@ -9,6 +9,8 @@ export function DashboardShell({
   user,
   headerRight,
   showActiveSession = true,
+  /** Rejilla titulo + acciones: evita que el menu residente baje de linea en Android (pantallas estrechas). */
+  compactHeaderActions = false,
   children,
 }: {
   title: string;
@@ -16,12 +18,20 @@ export function DashboardShell({
   user: string;
   headerRight?: ReactNode;
   showActiveSession?: boolean;
+  compactHeaderActions?: boolean;
   children: ReactNode;
 }) {
+  const headerClass = compactHeaderActions
+    ? "surface-card relative z-50 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 p-5 sm:gap-4 md:p-6"
+    : "surface-card relative z-50 flex flex-nowrap items-center justify-between gap-3 p-5 sm:gap-4 md:p-6";
+  const titleBlockClass = compactHeaderActions
+    ? "min-w-0 space-y-1 pr-2"
+    : "min-w-0 flex-1 space-y-1 pr-2";
+
   return (
     <main className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 md:py-8">
-      <header className="surface-card relative z-50 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 p-5 sm:gap-4 md:p-6">
-        <div className="min-w-0 space-y-1 pr-2">
+      <header className={headerClass}>
+        <div className={titleBlockClass}>
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-blue-700">MiVisita</p>
           <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">{title}</h1>
           <p className="text-sm text-slate-600">{subtitle}</p>
