@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 import { logoutAction } from "@/app/login/actions";
 import { RefreshButton } from "@/app/components/refresh-button";
 import { LogoutSubmitButton } from "@/app/components/logout-submit-button";
+import { setResidentLocaleAction } from "@/app/resident/actions";
+import { useResidentT } from "@/app/resident/resident-i18n-context";
 
 function normalizePath(pathname: string) {
   if (pathname.length > 1 && pathname.endsWith("/")) {
@@ -21,9 +23,9 @@ function isActivePath(pathname: string, href: string) {
   return p === h;
 }
 
-type MenuItem = {
+type MenuLink = {
   href: string;
-  label: string;
+  labelKey: string;
   icon: ReactNode;
 };
 
@@ -112,12 +114,12 @@ function IconMenu() {
   );
 }
 
-const MENU_ITEMS: MenuItem[] = [
-  { href: "/resident", label: "Inicio", icon: <IconHome /> },
-  { href: "/resident/perfil", label: "Mi perfil", icon: <IconUser /> },
-  { href: "/resident/soporte", label: "Soporte", icon: <IconHelp /> },
-  { href: "/resident/sugerencias", label: "Sugerencias", icon: <IconMessage /> },
-  { href: "/resident/ajustes", label: "Ajustes", icon: <IconSettings /> },
+const MENU_LINKS: MenuLink[] = [
+  { href: "/resident", labelKey: "menu.inicio", icon: <IconHome /> },
+  { href: "/resident/perfil", labelKey: "menu.perfil", icon: <IconUser /> },
+  { href: "/resident/soporte", labelKey: "menu.soporte", icon: <IconHelp /> },
+  { href: "/resident/sugerencias", labelKey: "menu.sugerencias", icon: <IconMessage /> },
+  { href: "/resident/ajustes", labelKey: "menu.ajustes", icon: <IconSettings /> },
 ];
 
 export function ResidentMenu({
@@ -127,6 +129,7 @@ export function ResidentMenu({
   userFullName: string;
   residentialName: string;
 }) {
+  const { t, locale } = useResidentT();
   const pathname = usePathname() ?? "/resident";
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -159,7 +162,7 @@ export function ResidentMenu({
         className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-50"
         aria-expanded={open}
         aria-haspopup="menu"
-        aria-label="Abrir menu de cuenta"
+        aria-label={t("menu.openAria")}
         onClick={() => setOpen((v) => !v)}
       >
         <IconMenu />
@@ -183,7 +186,7 @@ export function ResidentMenu({
           </div>
 
           <nav className="py-2">
-            {MENU_ITEMS.map((item) => {
+            {MENU_LINKS.map((item) => {
               const active = isActivePath(pathname, item.href);
               return (
                 <Link
@@ -196,19 +199,63 @@ export function ResidentMenu({
                   onClick={() => setOpen(false)}
                 >
                   <span className="shrink-0">{item.icon}</span>
-                  <span className="min-w-0 truncate">{item.label}</span>
+                  <span className="min-w-0 truncate">{t(item.labelKey)}</span>
                 </Link>
               );
             })}
           </nav>
 
+          <div className="border-t border-slate-100 px-3 py-2">
+            <p className="px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              {t("menu.language")}
+            </p>
+            <div className="grid gap-1">
+              <form action={setResidentLocaleAction}>
+                <input type="hidden" name="locale" value="es" />
+                <button
+                  type="submit"
+                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-800 transition hover:bg-slate-50"
+                >
+                  <span>{t("menu.langEs")}</span>
+                  {locale === "es" ? (
+                    <span className="text-xs font-normal text-slate-500">{t("menu.current")}</span>
+                  ) : null}
+                </button>
+              </form>
+              <form action={setResidentLocaleAction}>
+                <input type="hidden" name="locale" value="en" />
+                <button
+                  type="submit"
+                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-800 transition hover:bg-slate-50"
+                >
+                  <span>{t("menu.langEn")}</span>
+                  {locale === "en" ? (
+                    <span className="text-xs font-normal text-slate-500">{t("menu.current")}</span>
+                  ) : null}
+                </button>
+              </form>
+            </div>
+          </div>
+
           <div className="border-t border-slate-100 px-3 py-3">
-            <RefreshButton className="flex w-full items-center justify-center px-3 py-2.5 text-sm font-semibold" />
+            <RefreshButton
+              className="flex w-full items-center justify-center px-3 py-2.5 text-sm font-semibold"
+              idleLabel={t("refresh.idle")}
+              pendingLabel={t("refresh.pending")}
+              title={t("refresh.aria")}
+              ariaLabel={t("refresh.aria")}
+            />
           </div>
 
           <div className="border-t border-slate-100 px-3 pb-3">
             <form action={logoutAction} className="px-1">
-              <LogoutSubmitButton className="flex w-full items-center justify-center gap-2 border-red-200 bg-red-50 px-3 py-2.5 text-sm font-semibold text-red-800 hover:bg-red-100" />
+              <LogoutSubmitButton
+                className="flex w-full items-center justify-center gap-2 border-red-200 bg-red-50 px-3 py-2.5 text-sm font-semibold text-red-800 hover:bg-red-100"
+                idleLabel={t("logout.idle")}
+                pendingLabel={t("logout.pending")}
+                confirmMessage={t("logout.confirm")}
+                ariaLabel={t("logout.aria")}
+              />
             </form>
           </div>
         </div>

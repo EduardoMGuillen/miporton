@@ -2,8 +2,12 @@ import { requireRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/app/components/shell";
 import { formatDateTimeTegucigalpa } from "@/lib/datetime";
+import { getResidentLocale } from "@/lib/get-resident-locale";
+import { residentT } from "@/app/resident/resident-dictionary";
 
 export default async function ResidentSupportPage() {
+  const locale = await getResidentLocale();
+  const t = (key: string, vars?: Record<string, string | number>) => residentT(locale, key, vars);
   const session = await requireRole(["RESIDENT"]);
   const residential = session.residentialId
     ? await prisma.residential.findUnique({
@@ -32,9 +36,11 @@ export default async function ResidentSupportPage() {
 
   return (
     <Card>
-      <h2 className="mb-3 text-lg font-semibold text-slate-900">Contacto</h2>
+      <h2 className="mb-3 text-lg font-semibold text-slate-900">{t("support.heading")}</h2>
       <p className="mb-4 text-sm text-slate-600">
-        Soporte configurado por tu residencial {residential?.name ? `(${residential.name})` : ""}.
+        {residential?.name
+          ? `${t("support.intro")} (${residential.name}).`
+          : `${t("support.intro")}.`}
       </p>
       {supportWhatsappUrl ? (
         <a
@@ -43,14 +49,14 @@ export default async function ResidentSupportPage() {
           rel="noreferrer"
           className="inline-flex rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100"
         >
-          Contactar soporte por WhatsApp
+          {t("support.whatsapp")}
         </a>
       ) : (
-        <p className="text-sm text-slate-600">Tu residencial aun no configura un numero de soporte.</p>
+        <p className="text-sm text-slate-600">{t("support.noPhone")}</p>
       )}
 
       <div className="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Ultimo comunicado</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">{t("support.latest")}</p>
         {latestAnnouncement ? (
           <>
             <p className="mt-2 text-sm font-semibold text-slate-900">{latestAnnouncement.title}</p>
@@ -58,7 +64,7 @@ export default async function ResidentSupportPage() {
             <p className="mt-2 text-sm text-slate-700">{latestAnnouncement.message}</p>
           </>
         ) : (
-          <p className="mt-2 text-sm text-slate-600">Aun no tienes comunicados.</p>
+          <p className="mt-2 text-sm text-slate-600">{t("support.none")}</p>
         )}
       </div>
     </Card>

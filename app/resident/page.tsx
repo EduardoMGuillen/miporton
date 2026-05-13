@@ -8,6 +8,9 @@ import { ReservationRowActions } from "@/app/resident/reservation-row-actions";
 import { deleteInviteQrAction } from "@/app/resident/actions";
 import { QrShareActions } from "@/app/resident/qr-share-actions";
 import { formatDateTimeTegucigalpa } from "@/lib/datetime";
+import { getResidentLocale } from "@/lib/get-resident-locale";
+import { residentT } from "@/app/resident/resident-dictionary";
+import type { ResidentLocale } from "@/lib/resident-locale";
 
 type InviteWithImage = {
   id: string;
@@ -22,14 +25,16 @@ type InviteWithImage = {
   image: string;
 };
 
-function validityLabel(validityType: InviteWithImage["validityType"]) {
-  if (validityType === "SINGLE_USE") return "1 solo uso";
-  if (validityType === "ONE_DAY") return "Valido por 1 dia";
-  if (validityType === "INFINITE") return "Sin vencimiento";
-  return "Valido por 3 dias";
+function validityLabel(locale: ResidentLocale, validityType: InviteWithImage["validityType"]) {
+  if (validityType === "SINGLE_USE") return residentT(locale, "validity.single");
+  if (validityType === "ONE_DAY") return residentT(locale, "validity.oneDay");
+  if (validityType === "INFINITE") return residentT(locale, "validity.infinite");
+  return residentT(locale, "validity.threeDays");
 }
 
 export default async function ResidentPage() {
+  const locale = await getResidentLocale();
+  const t = (key: string, vars?: Record<string, string | number>) => residentT(locale, key, vars);
   const session = await requireRole(["RESIDENT"]);
   const residential = session.residentialId
     ? await prisma.residential.findUnique({
@@ -166,12 +171,12 @@ export default async function ResidentPage() {
   return (
     <>
       <Card>
-        <h2 className="mb-4 text-lg font-semibold text-slate-900">Crear anuncio de visita</h2>
+        <h2 className="mb-4 text-lg font-semibold text-slate-900">{t("home.createInvite")}</h2>
         <CreateQrForm allowedValidityTypes={allowedValidityTypes} />
       </Card>
 
       <Card>
-        <h2 className="mb-4 text-lg font-semibold text-slate-900">Reservar zona comun</h2>
+        <h2 className="mb-4 text-lg font-semibold text-slate-900">{t("home.reserveZone")}</h2>
         <CreateZoneReservationForm
           zones={zones.map((zone) => ({
             id: zone.id,
@@ -191,7 +196,11 @@ export default async function ResidentPage() {
               <p className="text-xs text-slate-600">
                 {formatDateTimeTegucigalpa(reservation.startsAt)} - {formatDateTimeTegucigalpa(reservation.endsAt)}
               </p>
-              {reservation.note ? <p className="text-xs text-slate-500">Nota: {reservation.note}</p> : null}
+              {reservation.note ? (
+                <p className="text-xs text-slate-500">
+                  {t("home.note")}: {reservation.note}
+                </p>
+              ) : null}
               <ReservationRowActions
                   residentialName={residential?.name ?? undefined}
                   reservationId={reservation.id}
@@ -211,35 +220,39 @@ export default async function ResidentPage() {
             </div>
           ))}
           {reservations.length === 0 ? (
-            <p className="text-sm text-slate-600">Aun no tienes reservas activas.</p>
+            <p className="text-sm text-slate-600">{t("home.noReservations")}</p>
           ) : null}
         </div>
       </Card>
 
       <Card>
-        <h2 className="mb-4 text-lg font-semibold text-slate-900">QRs activos</h2>
+        <h2 className="mb-4 text-lg font-semibold text-slate-900">{t("home.activeQrs")}</h2>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {activeInvites.map((invite) => (
             <article key={invite.id} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={invite.image}
-                alt={`QR de ${invite.visitorName}`}
+                alt={t("home.qrAlt", { name: invite.visitorName })}
                 className="mx-auto h-40 w-40 rounded-lg bg-white p-2 shadow-sm"
               />
               <p className="mt-3 text-sm font-semibold text-slate-900">{invite.visitorName}</p>
-              <p className="text-xs text-slate-600">{validityLabel(invite.validityType)}</p>
+              <p className="text-xs text-slate-600">{validityLabel(locale, invite.validityType)}</p>
               {invite.description ? (
-                <p className="text-xs text-slate-500">Descripcion: {invite.description}</p>
+                <p className="text-xs text-slate-500">
+                  {t("home.description")}: {invite.description}
+                </p>
               ) : null}
               <p className="text-xs text-slate-500">
-                Tipo de acceso: {invite.hasVehicle ? "Vehiculo" : "Acceso peatonal"}
+                {t("home.accessTypeLabel")}:{" "}
+                {invite.hasVehicle ? t("home.accessVehicle") : t("home.accessPeatonal")}
               </p>
               <p className="text-xs text-slate-500">
-                Expira: {formatDateTimeTegucigalpa(invite.validUntil)}
+                {t("home.expires")}: {formatDateTimeTegucigalpa(invite.validUntil)}
               </p>
               <p className="text-xs text-slate-500">
-                Usos: {invite.usedCount}/{invite.maxUses === 9999 ? "Ilimitado" : invite.maxUses}
+                {t("home.uses")}: {invite.usedCount}/
+                {invite.maxUses === 9999 ? t("home.unlimited") : invite.maxUses}
               </p>
               <p className="mt-2 break-all rounded-md bg-white px-2 py-1 text-[10px] text-slate-500">
                 MP:{invite.code}
@@ -248,21 +261,21 @@ export default async function ResidentPage() {
                 qrDataUrl={invite.image}
                 visitorName={invite.visitorName}
                 code={invite.code}
-                validityLabel={validityLabel(invite.validityType)}
+                validityLabel={validityLabel(locale, invite.validityType)}
                 validUntilLabel={formatDateTimeTegucigalpa(invite.validUntil)}
-                residentialName={residential?.name ?? "Residencial"}
+                residentialName={residential?.name ?? t("home.residentialFallback")}
                 residentName={session.fullName}
               />
               <form action={deleteInviteQrAction} className="mt-2">
                 <input type="hidden" name="qrId" value={invite.id} />
                 <button className="w-full rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700 transition hover:bg-red-100">
-                  Eliminar QR
+                  {t("home.deleteQr")}
                 </button>
               </form>
             </article>
           ))}
           {activeInvites.length === 0 ? (
-            <p className="text-sm text-slate-600">No tienes QRs activos ahora mismo.</p>
+            <p className="text-sm text-slate-600">{t("home.noActive")}</p>
           ) : null}
         </div>
       </Card>
@@ -270,12 +283,12 @@ export default async function ResidentPage() {
       <Card>
         <details>
           <summary className="cursor-pointer list-none text-lg font-semibold text-slate-900">
-            <span className="inline-flex items-center gap-2">QRs expirados ({expiredInvites.length})</span>
+            <span className="inline-flex items-center gap-2">
+              {t("home.expiredQrsCount", { n: expiredInvites.length })}
+            </span>
           </summary>
           {totalQrCount > activeInvites.length + expiredInvites.length ? (
-            <p className="mt-2 text-xs text-slate-500">
-              Listado limitado a los 20 mas recientes para que la pagina cargue rapido.
-            </p>
+            <p className="mt-2 text-xs text-slate-500">{t("home.expiredNote")}</p>
           ) : null}
           <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {expiredInvites.map((invite) => (
@@ -286,22 +299,26 @@ export default async function ResidentPage() {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={invite.image}
-                  alt={`QR de ${invite.visitorName}`}
+                  alt={t("home.qrAlt", { name: invite.visitorName })}
                   className="mx-auto h-40 w-40 rounded-lg bg-white p-2 shadow-sm grayscale"
                 />
                 <p className="mt-3 text-sm font-semibold text-slate-900">{invite.visitorName}</p>
-                <p className="text-xs text-slate-600">{validityLabel(invite.validityType)}</p>
+                <p className="text-xs text-slate-600">{validityLabel(locale, invite.validityType)}</p>
                 {invite.description ? (
-                  <p className="text-xs text-slate-500">Descripcion: {invite.description}</p>
+                  <p className="text-xs text-slate-500">
+                    {t("home.description")}: {invite.description}
+                  </p>
                 ) : null}
                 <p className="text-xs text-slate-500">
-                  Tipo de acceso: {invite.hasVehicle ? "Vehiculo" : "Acceso peatonal"}
+                  {t("home.accessTypeLabel")}:{" "}
+                  {invite.hasVehicle ? t("home.accessVehicle") : t("home.accessPeatonal")}
                 </p>
                 <p className="text-xs text-slate-500">
-                  Expira: {formatDateTimeTegucigalpa(invite.validUntil)}
+                  {t("home.expires")}: {formatDateTimeTegucigalpa(invite.validUntil)}
                 </p>
                 <p className="text-xs text-slate-500">
-                  Usos: {invite.usedCount}/{invite.maxUses === 9999 ? "Ilimitado" : invite.maxUses}
+                  {t("home.uses")}: {invite.usedCount}/
+                  {invite.maxUses === 9999 ? t("home.unlimited") : invite.maxUses}
                 </p>
                 <p className="mt-2 break-all rounded-md bg-white px-2 py-1 text-[10px] text-slate-500">
                   MP:{invite.code}
@@ -309,10 +326,10 @@ export default async function ResidentPage() {
               </article>
             ))}
             {expiredInvites.length === 0 ? (
-              <p className="text-sm text-slate-600">Aun no tienes QRs expirados.</p>
+              <p className="text-sm text-slate-600">{t("home.noExpired")}</p>
             ) : null}
             {totalQrCount === 0 ? (
-              <p className="text-sm text-slate-600">Aun no has generado QRs.</p>
+              <p className="text-sm text-slate-600">{t("home.noGenerated")}</p>
             ) : null}
           </div>
         </details>

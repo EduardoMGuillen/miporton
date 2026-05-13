@@ -4,28 +4,14 @@ import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { DashboardShell } from "@/app/components/shell";
 import { ResidentMenu } from "@/app/resident/resident-menu";
+import { useResidentT } from "@/app/resident/resident-i18n-context";
 
-const ROUTE_META: Record<string, { title: string; subtitle: string }> = {
-  "/resident": {
-    title: "Panel de Residente",
-    subtitle: "Anuncia tus visitas y comparte su QR.",
-  },
-  "/resident/perfil": {
-    title: "Mi perfil",
-    subtitle: "Datos de tu cuenta y vivienda.",
-  },
-  "/resident/soporte": {
-    title: "Soporte",
-    subtitle: "Contacto y comunicados de tu residencial.",
-  },
-  "/resident/sugerencias": {
-    title: "Sugerencias",
-    subtitle: "Envia ideas a la administracion.",
-  },
-  "/resident/ajustes": {
-    title: "Ajustes",
-    subtitle: "Notificaciones y datos de contacto.",
-  },
+const ROUTE_KEYS: Record<string, { titleKey: string; subtitleKey: string }> = {
+  "/resident": { titleKey: "route.resident.title", subtitleKey: "route.resident.subtitle" },
+  "/resident/perfil": { titleKey: "route.perfil.title", subtitleKey: "route.perfil.subtitle" },
+  "/resident/soporte": { titleKey: "route.soporte.title", subtitleKey: "route.soporte.subtitle" },
+  "/resident/sugerencias": { titleKey: "route.sugerencias.title", subtitleKey: "route.sugerencias.subtitle" },
+  "/resident/ajustes": { titleKey: "route.ajustes.title", subtitleKey: "route.ajustes.subtitle" },
 };
 
 function normalizePath(pathname: string) {
@@ -44,17 +30,18 @@ export function ResidentShell({
   residentialName: string;
   children: ReactNode;
 }) {
+  const { t } = useResidentT();
   const pathname = usePathname() ?? "/resident";
   const path = normalizePath(pathname);
-  const meta = ROUTE_META[path] ?? {
-    title: "Residente",
-    subtitle: "MiVisita",
+  const keys = ROUTE_KEYS[path] ?? {
+    titleKey: "route.default.title",
+    subtitleKey: "route.default.subtitle",
   };
 
   return (
     <DashboardShell
-      title={meta.title}
-      subtitle={meta.subtitle}
+      title={t(keys.titleKey)}
+      subtitle={t(keys.subtitleKey)}
       user={userFullName}
       showActiveSession={false}
       headerRight={<ResidentMenu userFullName={userFullName} residentialName={residentialName} />}

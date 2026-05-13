@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { updateResidentContactAction } from "@/app/resident/actions";
+import { useResidentT } from "@/app/resident/resident-i18n-context";
 
 function base64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -26,6 +27,7 @@ export function PushSubscriptionCard({
   initialPersonalEmail,
   initialPhoneNumber,
 }: PushSubscriptionCardProps) {
+  const { t } = useResidentT();
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [showContactForm, setShowContactForm] = useState(false);
@@ -39,20 +41,20 @@ export function PushSubscriptionCard({
     setMessage(null);
     try {
       if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-        setMessage("Este navegador no soporta notificaciones push.");
+        setMessage(t("push.browserUnsupported"));
         return;
       }
 
       const permission = await Notification.requestPermission();
       if (permission !== "granted") {
-        setMessage("Debes permitir notificaciones para recibir alertas.");
+        setMessage(t("push.permissionDenied"));
         return;
       }
 
       const registration = await navigator.serviceWorker.register("/sw.js");
       const publicVapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
       if (!publicVapidKey) {
-        setMessage("Falta configurar NEXT_PUBLIC_VAPID_PUBLIC_KEY.");
+        setMessage(t("push.missingVapid"));
         return;
       }
 
@@ -68,13 +70,13 @@ export function PushSubscriptionCard({
       });
 
       if (!response.ok) {
-        setMessage("No se pudo registrar el dispositivo.");
+        setMessage(t("push.registerFail"));
         return;
       }
 
-      setMessage("Notificaciones activadas correctamente.");
+      setMessage(t("push.enabledOk"));
     } catch {
-      setMessage("Ocurrio un error activando las notificaciones.");
+      setMessage(t("push.enableError"));
     } finally {
       setPending(false);
     }
@@ -82,7 +84,7 @@ export function PushSubscriptionCard({
 
   return (
     <div className="surface-card p-5 md:p-6">
-      <h2 className="text-lg font-semibold text-slate-900">Configuracion de cuenta</h2>
+      <h2 className="text-lg font-semibold text-slate-900">{t("push.accountHeading")}</h2>
       <div className="mt-3 flex flex-wrap gap-2">
         <button
           type="button"
@@ -90,14 +92,14 @@ export function PushSubscriptionCard({
           disabled={pending}
           className="btn-primary disabled:opacity-60"
         >
-          {pending ? "Activando..." : "Activar notificaciones"}
+          {pending ? t("push.enabling") : t("push.enable")}
         </button>
         <button
           type="button"
           onClick={() => setShowContactForm((value) => !value)}
           className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100"
         >
-          Datos de Contacto
+          {t("push.contactToggle")}
         </button>
       </div>
       {message ? <p className="mt-2 text-sm text-slate-700">{message}</p> : null}
@@ -108,20 +110,20 @@ export function PushSubscriptionCard({
             type="email"
             defaultValue={initialPersonalEmail}
             className="field-base"
-            placeholder="Correo personal (opcional)"
+            placeholder={t("contact.personalPlaceholder")}
           />
           <input
             name="phoneNumber"
             defaultValue={initialPhoneNumber}
             className="field-base"
-            placeholder="Telefono personal (opcional)"
+            placeholder={t("contact.phonePlaceholder")}
           />
           <button
             type="submit"
             disabled={isSavingContact}
             className="rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 disabled:opacity-60"
           >
-            {isSavingContact ? "Guardando..." : "Guardar datos de contacto"}
+            {isSavingContact ? t("push.savingContact") : t("push.saveContact")}
           </button>
           {contactMessage ? <p className="text-sm text-slate-700">{contactMessage}</p> : null}
         </form>

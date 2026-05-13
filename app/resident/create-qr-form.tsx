@@ -2,19 +2,21 @@
 
 import { useActionState } from "react";
 import { createInviteQrAction } from "@/app/resident/actions";
+import { useResidentT } from "@/app/resident/resident-i18n-context";
 
 const initialState: string | null = null;
 
 type ValidityType = "SINGLE_USE" | "ONE_DAY" | "THREE_DAYS" | "INFINITE";
 
-const VALIDITY_LABELS: Record<ValidityType, string> = {
-  SINGLE_USE: "1 solo uso",
-  ONE_DAY: "Valido por 1 dia",
-  THREE_DAYS: "Valido por maximo 3 dias",
-  INFINITE: "Validez infinita (sin vencimiento)",
+const VALIDITY_KEYS: Record<ValidityType, string> = {
+  SINGLE_USE: "invite.validitySingle",
+  ONE_DAY: "invite.validityOneDay",
+  THREE_DAYS: "invite.validityThreeDays",
+  INFINITE: "invite.validityInfinite",
 };
 
 export function CreateQrForm({ allowedValidityTypes }: { allowedValidityTypes: ValidityType[] }) {
+  const { t } = useResidentT();
   const [message, formAction, isPending] = useActionState(createInviteQrAction, initialState);
   const options: ValidityType[] =
     allowedValidityTypes.length > 0 ? allowedValidityTypes : ["SINGLE_USE"];
@@ -25,7 +27,7 @@ export function CreateQrForm({ allowedValidityTypes }: { allowedValidityTypes: V
       <input
         name="visitorName"
         required
-        placeholder="Nombre de la visita"
+        placeholder={t("invite.visitorPlaceholder")}
         className="field-base"
       />
       <select
@@ -36,31 +38,29 @@ export function CreateQrForm({ allowedValidityTypes }: { allowedValidityTypes: V
       >
         {options.map((option) => (
           <option key={option} value={option}>
-            {VALIDITY_LABELS[option]}
+            {t(VALIDITY_KEYS[option])}
           </option>
         ))}
       </select>
       <input
         name="description"
-        placeholder="Descripcion (opcional)"
+        placeholder={t("invite.descPlaceholder")}
         className="field-base md:col-span-2"
         maxLength={180}
       />
       <select name="hasVehicle" defaultValue="no" className="field-base">
-        <option value="no">Acceso peatonal</option>
-        <option value="yes">Vehiculo</option>
+        <option value="no">{t("invite.peaton")}</option>
+        <option value="yes">{t("invite.vehicle")}</option>
       </select>
       <button
         type="submit"
         disabled={isPending || !hasAllowedValidity}
         className="btn-primary disabled:opacity-60 md:col-span-2 md:w-max"
       >
-        {isPending ? "Generando..." : "Generar QR"}
+        {isPending ? t("invite.generating") : t("invite.generate")}
       </button>
       {!hasAllowedValidity ? (
-        <p className="text-sm text-amber-700 md:col-span-2">
-          La administracion desactivo temporalmente todas las vigencias QR para residentes.
-        </p>
+        <p className="text-sm text-amber-700 md:col-span-2">{t("invite.adminDisabled")}</p>
       ) : null}
       {message ? <p className="text-sm text-slate-700 md:col-span-2">{message}</p> : null}
     </form>

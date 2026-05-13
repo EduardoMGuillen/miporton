@@ -6,9 +6,11 @@ import { cancelZoneReservationAction } from "@/app/resident/actions";
 import { EditZoneReservationForm } from "@/app/resident/edit-zone-reservation-form";
 import { ReservationDetailsDialog } from "@/app/resident/reservation-details-dialog";
 import type { ZoneReservationDetailPayload } from "@/lib/zone-reservation-form-state";
+import { useResidentT } from "@/app/resident/resident-i18n-context";
 
 function CancelReservationSubmitButton() {
   const { pending } = useFormStatus();
+  const { t } = useResidentT();
   return (
     <button
       type="submit"
@@ -16,13 +18,14 @@ function CancelReservationSubmitButton() {
       className="rounded-lg border border-red-300 bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 disabled:cursor-wait disabled:opacity-75"
     >
       <span className={pending ? "inline-block animate-pulse" : ""}>
-        {pending ? "Cancelando..." : "Sí, cancelar"}
+        {pending ? t("res.cancel.yesPending") : t("res.cancel.yes")}
       </span>
     </button>
   );
 }
 
 function CancelReservationDialog({ reservationId }: { reservationId: string }) {
+  const { t } = useResidentT();
   const [open, setOpen] = useState(false);
 
   return (
@@ -32,7 +35,7 @@ function CancelReservationDialog({ reservationId }: { reservationId: string }) {
         onClick={() => setOpen(true)}
         className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-700 transition hover:bg-red-100"
       >
-        Cancelar reserva
+        {t("res.row.cancel")}
       </button>
       {open ? (
         <div
@@ -48,11 +51,9 @@ function CancelReservationDialog({ reservationId }: { reservationId: string }) {
             onClick={(event) => event.stopPropagation()}
           >
             <h3 id="cancel-reservation-title" className="text-base font-semibold text-slate-900">
-              ¿Seguro que quieres cancelar?
+              {t("res.cancel.title")}
             </h3>
-            <p className="mt-2 text-sm text-slate-600">
-              La reserva se anulará y no podrás recuperarla desde aquí.
-            </p>
+            <p className="mt-2 text-sm text-slate-600">{t("res.cancel.body")}</p>
             <form action={cancelZoneReservationAction} className="mt-5 flex flex-wrap justify-end gap-2">
               <input type="hidden" name="reservationId" value={reservationId} />
               <button
@@ -60,7 +61,7 @@ function CancelReservationDialog({ reservationId }: { reservationId: string }) {
                 className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
                 onClick={() => setOpen(false)}
               >
-                No, volver
+                {t("res.cancel.no")}
               </button>
               <CancelReservationSubmitButton />
             </form>
@@ -103,6 +104,7 @@ export function ReservationRowActions({
     reservationId?: string;
   }>;
 }) {
+  const { t } = useResidentT();
   const [viewDetail, setViewDetail] = useState<ZoneReservationDetailPayload>(() => ({
     residentialName,
     zoneName,
@@ -114,12 +116,14 @@ export function ReservationRowActions({
   const [editOpen, setEditOpen] = useState(false);
 
   useEffect(() => {
-    setViewDetail({
-      residentialName,
-      zoneName,
-      startsAtIso,
-      endsAtIso,
-      note,
+    queueMicrotask(() => {
+      setViewDetail({
+        residentialName,
+        zoneName,
+        startsAtIso,
+        endsAtIso,
+        note,
+      });
     });
   }, [residentialName, zoneName, startsAtIso, endsAtIso, note]);
 
@@ -137,14 +141,14 @@ export function ReservationRowActions({
           onClick={() => setViewOpen(true)}
           className="rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-medium text-blue-800 transition hover:bg-blue-100"
         >
-          Ver reserva
+          {t("res.row.view")}
         </button>
         <button
           type="button"
           onClick={() => setEditOpen(true)}
           className="rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-900 transition hover:bg-amber-100"
         >
-          Editar reserva
+          {t("res.row.edit")}
         </button>
         <CancelReservationDialog reservationId={reservationId} />
       </div>
@@ -153,7 +157,7 @@ export function ReservationRowActions({
         open={viewOpen}
         onClose={() => setViewOpen(false)}
         detail={viewDetail}
-        title="Tu reserva"
+        title={t("res.detail.titleView")}
       />
 
       {editOpen ? (
@@ -171,12 +175,12 @@ export function ReservationRowActions({
           >
             <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
               <h3 id="edit-reservation-title" className="text-base font-semibold text-slate-900">
-                Editar reserva
+                {t("res.edit.title")}
               </h3>
               <button
                 type="button"
                 className="rounded-lg p-2 text-lg leading-none text-slate-500 hover:bg-slate-100 hover:text-slate-800"
-                aria-label="Cerrar"
+                aria-label={t("res.edit.closeAria")}
                 onClick={() => setEditOpen(false)}
               >
                 ×

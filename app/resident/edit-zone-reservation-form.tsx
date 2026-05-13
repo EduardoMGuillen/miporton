@@ -11,6 +11,7 @@ import type {
   ZoneReservationDetailPayload,
 } from "@/lib/zone-reservation-form-state";
 import { formatTimeTegucigalpa } from "@/lib/datetime";
+import { useResidentT } from "@/app/resident/resident-i18n-context";
 
 const initialState: ZoneReservationActionState | null = null;
 
@@ -97,6 +98,7 @@ export function EditZoneReservationForm({
   /** Si se define, no se muestra el popup de éxito aquí; se notifica el detalle guardado. */
   onSuccessfulSave?: (detail: ZoneReservationDetailPayload) => void;
 }) {
+  const { t } = useResidentT();
   const startParts = useMemo(() => tegucigalpaWallParts(startsAtIso), [startsAtIso]);
   const initialDuration = Math.max(
     1,
@@ -210,7 +212,7 @@ export function EditZoneReservationForm({
         <ReservationSuccessDetailDialog
           state={state}
           isPending={isPending}
-          title="Horario actualizado"
+          title={t("zone.updatedTitle")}
         />
       ) : null}
       <form
@@ -219,11 +221,11 @@ export function EditZoneReservationForm({
       >
         <input type="hidden" name="reservationId" value={reservationId} />
         <p className="text-xs text-slate-600 md:col-span-2">
-          Zona: <span className="font-semibold text-slate-800">{zoneName}</span>
+          {t("zone.editZoneLine")}: <span className="font-semibold text-slate-800">{zoneName}</span>
         </p>
         <div className="min-w-0 max-w-full overflow-hidden md:col-span-2">
           <label htmlFor={`reservation-date-${reservationId}`} className="mb-1 block text-xs font-medium text-slate-600">
-            Fecha
+            {t("zone.dateLabel")}
           </label>
           <input
             id={`reservation-date-${reservationId}`}
@@ -244,7 +246,7 @@ export function EditZoneReservationForm({
           disabled={availableStartHours.length === 0}
         >
           {availableStartHours.length === 0 ? (
-            <option value="">No hay horas disponibles</option>
+            <option value="">{t("zone.noHours")}</option>
           ) : null}
           {availableStartHours.map((hour) => (
             <option key={hour} value={pad2(hour)}>
@@ -261,7 +263,7 @@ export function EditZoneReservationForm({
         >
           {durationOptions.map((hours) => (
             <option key={hours} value={String(hours)}>
-              {hours} hora{hours > 1 ? "s" : ""}
+              {hours} {hours > 1 ? t("zone.hourUnits") : t("zone.hourUnit")}
             </option>
           ))}
         </select>
@@ -271,23 +273,24 @@ export function EditZoneReservationForm({
           name="note"
           defaultValue={note ?? ""}
           className="field-base min-w-0 w-full max-w-full md:col-span-2"
-          placeholder="Nota de reserva (opcional)"
+          placeholder={t("zone.notePlaceholder")}
           maxLength={180}
         />
         {zone.oneReservationPerDay && dayReservationBlockingOnePerDay ? (
           <p className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-medium leading-relaxed text-sky-950 md:col-span-2">
-            La zona <span className="font-semibold">{zoneName}</span> se encuentra reservada de{" "}
-            {formatTimeTegucigalpa(dayReservationBlockingOnePerDay.startsAt)} a{" "}
-            {formatTimeTegucigalpa(dayReservationBlockingOnePerDay.endsAt)}. Puede acceder a la zona sin
-            necesidad de reservación en las demás horas.
+            {t("zone.onePerDayHint", {
+              name: zoneName,
+              from: formatTimeTegucigalpa(dayReservationBlockingOnePerDay.startsAt),
+              to: formatTimeTegucigalpa(dayReservationBlockingOnePerDay.endsAt),
+            })}
           </p>
         ) : availableStartHours.length === 0 ? (
           <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700 md:col-span-2">
-            No hay horas disponibles para esta zona en la fecha seleccionada.
+            {t("zone.noHoursDate")}
           </p>
         ) : null}
         <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 md:col-span-2">
-          <p className="mb-2 font-semibold text-slate-800">Horas ocupadas del dia (tachadas)</p>
+          <p className="mb-2 font-semibold text-slate-800">{t("zone.occupiedHeading")}</p>
           <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8">
             {HOURS.map((hour) => {
               const occupied = occupiedHours.has(hour);
@@ -310,7 +313,7 @@ export function EditZoneReservationForm({
           disabled={isPending || availableStartHours.length === 0 || maxSelectableDuration <= 0}
           className="btn-primary md:col-span-2 md:w-max disabled:opacity-60"
         >
-          {isPending ? "Guardando..." : "Guardar nuevo horario"}
+          {isPending ? t("zone.saving") : t("zone.saveSchedule")}
         </button>
         {state?.ok === false && state.message && !isZoneReservationTakenByResidentState(state) ? (
           <p className="text-sm text-slate-700 md:col-span-2">{state.message}</p>

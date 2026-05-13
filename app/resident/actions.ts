@@ -2,61 +2,71 @@
 
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { z } from "zod";
 import { requireRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
 import { calculateValidityWindow } from "@/lib/qr";
 import { notifyGuardsInResidential, notifyResidentialAdminsInResidential } from "@/lib/push";
 import {
-  ZONE_ONE_RESERVATION_PER_DAY_TAKEN,
-  ZONE_RESERVATION_OCCUPIED_BY_RESIDENT,
-} from "@/lib/zone-reservation-feedback";
-import {
   zoneReservationError,
   zoneReservationSuccess,
   type ZoneReservationActionState,
 } from "@/lib/zone-reservation-form-state";
+import { getResidentLocale } from "@/lib/get-resident-locale";
+import { RESIDENT_LOCALE_COOKIE, type ResidentLocale } from "@/lib/resident-locale";
+import { residentT } from "@/app/resident/resident-dictionary";
+
+function translateZodIssue(locale: ResidentLocale, message: string | undefined, fallbackKey?: string) {
+  if (message && message.startsWith("errors.")) return residentT(locale, message);
+  return residentT(locale, fallbackKey ?? "errors.invite.invalidData");
+}
+
+function translateZoneZodIssue(locale: ResidentLocale, message: string | undefined) {
+  if (message && message.startsWith("errors.")) return residentT(locale, message);
+  return residentT(locale, "errors.zone.invalidData");
+}
 
 const createInviteSchema = z.object({
-  visitorName: z.string().min(2, "Nombre de visita invalido."),
+  visitorName: z.string().min(2, "errors.invite.visitorName"),
   validityType: z.enum(["SINGLE_USE", "ONE_DAY", "THREE_DAYS", "INFINITE"]),
-  description: z.string().max(180, "Descripcion demasiado larga.").optional(),
+  description: z.string().max(180, "errors.invite.description").optional(),
   hasVehicle: z.enum(["yes", "no"]).default("no"),
 });
 
 const createZoneReservationSchema = z.object({
-  zoneId: z.string().min(1, "Debes seleccionar una zona."),
-  startsAt: z.string().min(1, "Debes seleccionar fecha/hora de inicio."),
-  endsAt: z.string().min(1, "Debes seleccionar fecha/hora de fin."),
-  note: z.string().max(180, "Nota demasiado larga.").optional(),
+  zoneId: z.string().min(1, "errors.zone.selectZoneRequired"),
+  startsAt: z.string().min(1, "errors.zone.startRequired"),
+  endsAt: z.string().min(1, "errors.zone.endRequired"),
+  note: z.string().max(180, "errors.zone.noteLong").optional(),
 });
 
 const updateZoneReservationSchema = z.object({
-  reservationId: z.string().min(1, "Reserva invalida."),
-  startsAt: z.string().min(1, "Debes seleccionar fecha/hora de inicio."),
-  endsAt: z.string().min(1, "Debes seleccionar fecha/hora de fin."),
-  note: z.string().max(180, "Nota demasiado larga.").optional(),
+  reservationId: z.string().min(1, "errors.zone.reservationInvalid"),
+  startsAt: z.string().min(1, "errors.zone.startRequired"),
+  endsAt: z.string().min(1, "errors.zone.endRequired"),
+  note: z.string().max(180, "errors.zone.noteLong").optional(),
 });
 
 const createSuggestionSchema = z.object({
   message: z
     .string()
     .trim()
-    .min(6, "Escribe una sugerencia un poco mas detallada.")
-    .max(500, "La sugerencia es demasiado larga."),
+    .min(6, "errors.suggestion.message")
+    .max(500, "errors.suggestion.messageLong"),
 });
 
 const updateContactSchema = z.object({
   personalEmail: z
     .string()
     .trim()
-    .max(120, "Correo personal demasiado largo.")
+    .max(120, "errors.contact.emailLong")
     .optional()
     .transform((value) => value ?? ""),
   phoneNumber: z
     .string()
     .trim()
-    .max(30, "Numero de telefono demasiado largo.")
+    .max(30, "errors.contact.phoneLong")
     .optional()
     .transform((value) => value ?? ""),
 });
@@ -103,8 +113,9 @@ function parseLocalDateTimeParts(value: string) {
 }
 
 export async function createInviteQrAction(_prevState: string | null, formData: FormData) {
+  const locale = await getResidentLocale();
   const session = await requireRole(["RESIDENT"]);
-  if (!session.residentialId) return "Sesion invalida sin residencial asociada.";
+  if (!session.residentialId) return residentT(locale, "errors.invite.session");
 
   const parsed = createInviteSchema.safeParse({
     visitorName: formData.get("visitorName"),
@@ -113,7 +124,7 @@ export async function createInviteQrAction(_prevState: string | null, formData: 
     hasVehicle: formData.get("hasVehicle") || "no",
   });
 
-  if (!parsed.success) return parsed.error.issues[0]?.message ?? "Datos invalidos.";
+  if (!parsed.success) return translateZodIssue(locale, parsed.error.issues[0]?.message);
 
   const residential = await prisma.residential.findUnique({
     where: { id: session.residentialId },
@@ -124,7 +135,7 @@ export async function createInviteQrAction(_prevState: string | null, formData: 
       allowResidentQrInfinite: true,
     },
   });
-  if (!residential) return "No se encontro la residencial asociada.";
+  if (!residential) return residentT(locale, "errors.invite.residentialNotFound");
 
   const validityAllowed =
     (parsed.data.validityType === "SINGLE_USE" && residential.allowResidentQrSingleUse) ||
@@ -132,7 +143,7 @@ export async function createInviteQrAction(_prevState: string | null, formData: 
     (parsed.data.validityType === "THREE_DAYS" && residential.allowResidentQrThreeDays) ||
     (parsed.data.validityType === "INFINITE" && residential.allowResidentQrInfinite);
   if (!validityAllowed) {
-    return "La administracion de tu residencial desactivo ese tipo de vigencia QR.";
+    return residentT(locale, "errors.invite.validityDisabled");
   }
 
   const generatedCode = randomUUID().replaceAll("-", "");
@@ -160,15 +171,16 @@ export async function createInviteQrAction(_prevState: string | null, formData: 
   });
 
   revalidatePath("/resident");
-  return "QR generado correctamente.";
+  return residentT(locale, "success.invite");
 }
 
 export async function createZoneReservationAction(
   _prevState: ZoneReservationActionState | null,
   formData: FormData,
 ): Promise<ZoneReservationActionState> {
+  const locale = await getResidentLocale();
   const session = await requireRole(["RESIDENT"]);
-  if (!session.residentialId) return zoneReservationError("Sesion invalida sin residencial asociada.");
+  if (!session.residentialId) return zoneReservationError(residentT(locale, "errors.zone.session"));
 
   const parsed = createZoneReservationSchema.safeParse({
     zoneId: formData.get("zoneId"),
@@ -176,16 +188,17 @@ export async function createZoneReservationAction(
     endsAt: formData.get("endsAt"),
     note: formData.get("note") || undefined,
   });
-  if (!parsed.success)
-    return zoneReservationError(parsed.error.issues[0]?.message ?? "Datos invalidos.");
+  if (!parsed.success) {
+    return zoneReservationError(translateZoneZodIssue(locale, parsed.error.issues[0]?.message));
+  }
 
   const startsAt = parseTegucigalpaDateTime(parsed.data.startsAt);
   const endsAt = parseTegucigalpaDateTime(parsed.data.endsAt);
   if (!startsAt || !endsAt || Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
-    return zoneReservationError("Fecha/hora invalida.");
+    return zoneReservationError(residentT(locale, "errors.zone.invalidDateTime"));
   }
-  if (startsAt >= endsAt) return zoneReservationError("La hora final debe ser mayor que la hora inicial.");
-  if (startsAt < new Date()) return zoneReservationError("No puedes reservar en el pasado.");
+  if (startsAt >= endsAt) return zoneReservationError(residentT(locale, "errors.zone.endBeforeStart"));
+  if (startsAt < new Date()) return zoneReservationError(residentT(locale, "errors.zone.past"));
 
   const zone = await prisma.zone.findFirst({
     where: {
@@ -202,25 +215,30 @@ export async function createZoneReservationAction(
       scheduleEndHour: true,
     },
   });
-  if (!zone) return zoneReservationError("Zona no disponible.");
+  if (!zone) return zoneReservationError(residentT(locale, "errors.zone.unavailable"));
 
   const hours = (endsAt.getTime() - startsAt.getTime()) / (1000 * 60 * 60);
   if (hours > zone.maxHoursPerReservation) {
-    return zoneReservationError(`El maximo permitido para esta zona es ${zone.maxHoursPerReservation} hora(s).`);
+    return zoneReservationError(
+      residentT(locale, "errors.zone.maxHours", { n: zone.maxHoursPerReservation }),
+    );
   }
 
   const localStart = parseLocalDateTimeParts(parsed.data.startsAt);
   const localEnd = parseLocalDateTimeParts(parsed.data.endsAt);
-  if (!localStart || !localEnd) return zoneReservationError("Fecha/hora invalida.");
+  if (!localStart || !localEnd) return zoneReservationError(residentT(locale, "errors.zone.invalidDateTime"));
   if (localStart.datePart !== localEnd.datePart) {
-    return zoneReservationError("La reserva debe iniciar y finalizar en la misma fecha.");
+    return zoneReservationError(residentT(locale, "errors.zone.sameDay"));
   }
   if (localStart.minute !== 0 || localEnd.minute !== 0) {
-    return zoneReservationError("La reserva debe ser en bloques de hora completa.");
+    return zoneReservationError(residentT(locale, "errors.zone.hourBlocks"));
   }
   if (localStart.hour < zone.scheduleStartHour || localEnd.hour > zone.scheduleEndHour) {
     return zoneReservationError(
-      `Horario no permitido. Esta zona opera de ${String(zone.scheduleStartHour).padStart(2, "0")}:00 a ${String(zone.scheduleEndHour).padStart(2, "0")}:00.`,
+      residentT(locale, "errors.zone.schedule", {
+        start: String(zone.scheduleStartHour).padStart(2, "0"),
+        end: String(zone.scheduleEndHour).padStart(2, "0"),
+      }),
     );
   }
 
@@ -243,7 +261,7 @@ export async function createZoneReservationAction(
       select: { id: true },
     });
     if (reservationInDay) {
-      return zoneReservationError(ZONE_ONE_RESERVATION_PER_DAY_TAKEN);
+      return zoneReservationError(residentT(locale, "errors.zone.onePerDay"), { conflict: "onePerDay" });
     }
   }
 
@@ -264,12 +282,14 @@ export async function createZoneReservationAction(
   const reservationConflict = existingReservations.some((item) =>
     overlapRange(startsAt, endsAt, item.startsAt, item.endsAt),
   );
-  if (reservationConflict) return zoneReservationError(ZONE_RESERVATION_OCCUPIED_BY_RESIDENT);
+  if (reservationConflict) {
+    return zoneReservationError(residentT(locale, "errors.zone.occupied"), { conflict: "occupied" });
+  }
 
   const blockConflict = existingBlocks.some((item) =>
     overlapRange(startsAt, endsAt, item.startsAt, item.endsAt),
   );
-  if (blockConflict) return zoneReservationError("Ese horario esta bloqueado por administracion.");
+  if (blockConflict) return zoneReservationError(residentT(locale, "errors.zone.blocked"));
 
   await prisma.zoneReservation.create({
     data: {
@@ -314,8 +334,9 @@ export async function updateZoneReservationAction(
   _prevState: ZoneReservationActionState | null,
   formData: FormData,
 ): Promise<ZoneReservationActionState> {
+  const locale = await getResidentLocale();
   const session = await requireRole(["RESIDENT"]);
-  if (!session.residentialId) return zoneReservationError("Sesion invalida sin residencial asociada.");
+  if (!session.residentialId) return zoneReservationError(residentT(locale, "errors.zone.session"));
 
   const parsed = updateZoneReservationSchema.safeParse({
     reservationId: formData.get("reservationId"),
@@ -323,16 +344,17 @@ export async function updateZoneReservationAction(
     endsAt: formData.get("endsAt"),
     note: formData.get("note") || undefined,
   });
-  if (!parsed.success)
-    return zoneReservationError(parsed.error.issues[0]?.message ?? "Datos invalidos.");
+  if (!parsed.success) {
+    return zoneReservationError(translateZoneZodIssue(locale, parsed.error.issues[0]?.message));
+  }
 
   const startsAt = parseTegucigalpaDateTime(parsed.data.startsAt);
   const endsAt = parseTegucigalpaDateTime(parsed.data.endsAt);
   if (!startsAt || !endsAt || Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
-    return zoneReservationError("Fecha/hora invalida.");
+    return zoneReservationError(residentT(locale, "errors.zone.invalidDateTime"));
   }
-  if (startsAt >= endsAt) return zoneReservationError("La hora final debe ser mayor que la hora inicial.");
-  if (startsAt < new Date()) return zoneReservationError("No puedes mover la reserva al pasado.");
+  if (startsAt >= endsAt) return zoneReservationError(residentT(locale, "errors.zone.endBeforeStart"));
+  if (startsAt < new Date()) return zoneReservationError(residentT(locale, "errors.zone.pastMove"));
 
   const existing = await prisma.zoneReservation.findFirst({
     where: {
@@ -356,26 +378,31 @@ export async function updateZoneReservationAction(
       },
     },
   });
-  if (!existing) return zoneReservationError("No encontramos esa reserva activa.");
+  if (!existing) return zoneReservationError(residentT(locale, "errors.zone.notFound"));
 
   const zone = existing.zone;
   const hours = (endsAt.getTime() - startsAt.getTime()) / (1000 * 60 * 60);
   if (hours > zone.maxHoursPerReservation) {
-    return zoneReservationError(`El maximo permitido para esta zona es ${zone.maxHoursPerReservation} hora(s).`);
+    return zoneReservationError(
+      residentT(locale, "errors.zone.maxHours", { n: zone.maxHoursPerReservation }),
+    );
   }
 
   const localStart = parseLocalDateTimeParts(parsed.data.startsAt);
   const localEnd = parseLocalDateTimeParts(parsed.data.endsAt);
-  if (!localStart || !localEnd) return zoneReservationError("Fecha/hora invalida.");
+  if (!localStart || !localEnd) return zoneReservationError(residentT(locale, "errors.zone.invalidDateTime"));
   if (localStart.datePart !== localEnd.datePart) {
-    return zoneReservationError("La reserva debe iniciar y finalizar en la misma fecha.");
+    return zoneReservationError(residentT(locale, "errors.zone.sameDay"));
   }
   if (localStart.minute !== 0 || localEnd.minute !== 0) {
-    return zoneReservationError("La reserva debe ser en bloques de hora completa.");
+    return zoneReservationError(residentT(locale, "errors.zone.hourBlocks"));
   }
   if (localStart.hour < zone.scheduleStartHour || localEnd.hour > zone.scheduleEndHour) {
     return zoneReservationError(
-      `Horario no permitido. Esta zona opera de ${String(zone.scheduleStartHour).padStart(2, "0")}:00 a ${String(zone.scheduleEndHour).padStart(2, "0")}:00.`,
+      residentT(locale, "errors.zone.schedule", {
+        start: String(zone.scheduleStartHour).padStart(2, "0"),
+        end: String(zone.scheduleEndHour).padStart(2, "0"),
+      }),
     );
   }
 
@@ -399,7 +426,7 @@ export async function updateZoneReservationAction(
       select: { id: true },
     });
     if (reservationInDay) {
-      return zoneReservationError(ZONE_ONE_RESERVATION_PER_DAY_TAKEN);
+      return zoneReservationError(residentT(locale, "errors.zone.onePerDay"), { conflict: "onePerDay" });
     }
   }
 
@@ -421,12 +448,14 @@ export async function updateZoneReservationAction(
   const reservationConflict = existingReservations.some((item) =>
     overlapRange(startsAt, endsAt, item.startsAt, item.endsAt),
   );
-  if (reservationConflict) return zoneReservationError(ZONE_RESERVATION_OCCUPIED_BY_RESIDENT);
+  if (reservationConflict) {
+    return zoneReservationError(residentT(locale, "errors.zone.occupied"), { conflict: "occupied" });
+  }
 
   const blockConflict = existingBlocks.some((item) =>
     overlapRange(startsAt, endsAt, item.startsAt, item.endsAt),
   );
-  if (blockConflict) return zoneReservationError("Ese horario esta bloqueado por administracion.");
+  if (blockConflict) return zoneReservationError(residentT(locale, "errors.zone.blocked"));
 
   const updated = await prisma.zoneReservation.updateMany({
     where: {
@@ -441,7 +470,7 @@ export async function updateZoneReservationAction(
       note: parsed.data.note?.trim() || null,
     },
   });
-  if (updated.count === 0) return zoneReservationError("No se pudo actualizar la reserva.");
+  if (updated.count === 0) return zoneReservationError(residentT(locale, "errors.zone.updateFailed"));
 
   const residentialRow = await prisma.residential.findUnique({
     where: { id: session.residentialId },
@@ -508,13 +537,16 @@ export async function deleteInviteQrAction(formData: FormData) {
 }
 
 export async function createResidentSuggestionAction(_prevState: string | null, formData: FormData) {
+  const locale = await getResidentLocale();
   const session = await requireRole(["RESIDENT"]);
-  if (!session.residentialId) return "Sesion invalida sin residencial asociada.";
+  if (!session.residentialId) return residentT(locale, "errors.suggestion.session");
 
   const parsed = createSuggestionSchema.safeParse({
     message: formData.get("message"),
   });
-  if (!parsed.success) return parsed.error.issues[0]?.message ?? "Datos invalidos.";
+  if (!parsed.success) {
+    return translateZodIssue(locale, parsed.error.issues[0]?.message, "errors.suggestion.invalidData");
+  }
 
   await prisma.residentSuggestion.create({
     data: {
@@ -526,17 +558,20 @@ export async function createResidentSuggestionAction(_prevState: string | null, 
 
   revalidatePath("/resident");
   revalidatePath("/residential-admin/sugerencias");
-  return "Sugerencia enviada correctamente.";
+  return residentT(locale, "success.suggestion");
 }
 
 export async function updateResidentContactAction(_prevState: string | null, formData: FormData) {
+  const locale = await getResidentLocale();
   const session = await requireRole(["RESIDENT"]);
 
   const parsed = updateContactSchema.safeParse({
     personalEmail: formData.get("personalEmail") || "",
     phoneNumber: formData.get("phoneNumber") || "",
   });
-  if (!parsed.success) return parsed.error.issues[0]?.message ?? "Datos invalidos.";
+  if (!parsed.success) {
+    return translateZodIssue(locale, parsed.error.issues[0]?.message, "errors.contact.invalidData");
+  }
 
   const personalEmailRaw = parsed.data.personalEmail;
   const phoneNumberRaw = parsed.data.phoneNumber;
@@ -545,7 +580,7 @@ export async function updateResidentContactAction(_prevState: string | null, for
 
   if (personalEmail) {
     const isEmailValid = z.string().email().safeParse(personalEmail).success;
-    if (!isEmailValid) return "Ingresa un correo personal valido.";
+    if (!isEmailValid) return residentT(locale, "errors.contact.emailInvalid");
   }
 
   await prisma.user.update({
@@ -557,5 +592,18 @@ export async function updateResidentContactAction(_prevState: string | null, for
   });
 
   revalidatePath("/resident");
-  return "Datos de contacto guardados correctamente.";
+  return residentT(locale, "success.contact");
+}
+
+export async function setResidentLocaleAction(formData: FormData) {
+  await requireRole(["RESIDENT"]);
+  const choice = String(formData.get("locale") ?? "");
+  const next: ResidentLocale = choice === "en" ? "en" : "es";
+  const jar = await cookies();
+  jar.set(RESIDENT_LOCALE_COOKIE, next, {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 400,
+    sameSite: "lax",
+  });
+  revalidatePath("/resident", "layout");
 }
