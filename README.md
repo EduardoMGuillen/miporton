@@ -1,102 +1,136 @@
 # MiVisita
 
-MiVisita es una plataforma de control de acceso residencial con arquitectura multi-rol, PWA, escaneo QR en porteria, evidencia de ingreso y reporteria operativa.
+MiVisita es una plataforma web (PWA) de control de acceso residencial: invitaciones con QR, validación en portería con evidencia fotográfica, reservas de zonas comunes, notificaciones push y reportes operativos por residencial.
 
-## Roles del sistema
+## Roles en el producto
 
-- `SUPER_ADMIN`
-- `RESIDENTIAL_ADMIN`
-- `RESIDENT`
-- `GUARD`
+| Rol | Uso |
+| --- | --- |
+| **RESIDENT** | Crea invitaciones QR, reserva zonas, recibe comunicados y alertas. |
+| **GUARD** | Escanea QR, registra evidencia, anuncia delivery, confirma llegadas y salidas. |
+| **RESIDENTIAL_ADMIN** | Gestiona usuarios, zonas, comunicados, QRs de administración y reportes de su residencial. |
 
-## Funcionalidades implementadas
+El repositorio incluye además el rol `SUPER_ADMIN` para operación global de la plataforma; **no se documenta aquí**.
 
-### Residente
+---
 
-- Creacion de invitaciones QR con vigencia:
-  - `SINGLE_USE`
-  - `ONE_DAY`
-  - `THREE_DAYS`
-  - `INFINITE`
-- Campo de descripcion en QR.
-- Indicador de visita con vehiculo.
-- Compartir QR (acciones de compartir/exportar).
-- Visualizacion de QRs activos y expirados.
-- Reserva de zonas comunes por fecha/hora.
-- Cancelacion de reserva propia.
-- Boton de soporte por WhatsApp configurado por la residencial.
-- Envio de sugerencias a la administracion.
-- Suscripcion a notificaciones push.
+## Público (sin sesión)
 
-### Guardia
+- **Landing** (`/`): presentación del producto y acceso a inicio de sesión.
+- **Políticas de privacidad** y **Términos de uso** con enlaces desde el pie de página.
+- **Recuperación de contraseña**: solicitud de enlace por correo (`/forgot-password`) y restablecimiento (`/reset-password`) vía Resend.
+- **PWA / modo offline**: manifiesto y página **`/offline`** cuando no hay conexión.
 
-- Escaneo de QR.
-- Validacion con evidencia de identificacion.
-- Evidencia de placa obligatoria cuando el QR indica vehiculo.
-- Confirmacion manual de llegada para visitas anunciadas (con evidencia obligatoria de ID y placa cuando aplica).
-- Anuncio de delivery a residente con push inmediato.
-- Vista de anuncios pendientes y recientes.
-- Seccion dedicada para revisar entradas manuales registradas.
+---
 
-### Admin residencial
+## Residente (`/resident`)
 
-- Gestion de usuarios de su residencial (crear, editar, eliminar).
-- Suspension/reactivacion temporal de cuentas de residentes y guardias.
-- Filtros en usuarios por texto (nombre/correo/vivienda), rol y estado (activo/suspendido).
-- Gestion de zonas:
-  - alta de zonas
-  - bloqueo de rangos de fecha/hora
-  - limite de horas por reserva
-- Visualizacion y cancelacion de reservas por admin.
-- Comunicados push (todos o residentes seleccionados).
-- Generacion de QR de administracion.
-- Modulo QR admin con activos/expirados y acciones de compartir.
-- Registro de entradas con filtros avanzados.
-- Exportacion PDF por registro.
-- Reporte mensual PDF (entradas + delivery, con evidencia disponible).
-- Configuracion:
-  - activacion de notificaciones
-  - telefono de soporte residencial
-  - control de vigencias QR permitidas para residentes (1 uso, 1 dia, 3 dias, infinito).
-- Vista de sugerencias de residentes.
+Panel principal orientado a visitas y zonas comunes, con interfaz en **español o inglés** (selector en el menú de cuenta).
 
-### Super Admin
+### Inicio
 
-- Alta de residenciales con admin residencial inicial.
-- Gestion de admins residenciales.
-- Cotizador con PDF.
-- Contrato de servicio con PDF profesional e impresion posterior.
-- Registro global de entradas (por residencial) con filtros y contadores de entradas/delivery.
-- Exportes PDF por registro y reporte mensual global.
-- Backup manual de reportes:
-  - ZIP con un PDF por residencial.
-- Backup completo de base de datos:
-  - ZIP con snapshot JSON de tablas principales
-  - evidencia de escaneos serializada en base64.
-- Switch de suspension temporal por residencial (activar/desactivar operacion).
-- Navegacion por modulos separados: residenciales, contratos, respaldos, registros y estadisticas.
-- Panel de estadisticas con KPIs de consumo y tendencia.
+- **Crear invitación QR** con:
+  - Vigencias: un solo uso, un día, tres días o sin vencimiento (según lo que habilite la administración de la residencial).
+  - Nombre de la visita, descripción opcional y tipo de acceso **peatonal** o **vehículo**.
+- Listado de **QRs activos** y **expirados o agotados** (listado de expirados acotado para rendimiento).
+- **Compartir / exportar** imagen del QR.
+- **Eliminar** invitaciones propias.
+- **Reservas de zonas comunes**: crear reserva en franjas permitidas por la zona; **editar** fecha/horario (según reglas); **cancelar** la propia.
+- Accesos rápidos desde el inicio según configuración de la residencial.
 
-## Novedades recientes
+### Menú de cuenta
 
-- Footer con enlaces legales a `Politicas de Privacidad` y `Terminos de Uso`.
-- Paginas legales dedicadas con boton para regresar al inicio/panel segun sesion.
-- Soporte de suspension de usuarios por admin residencial con bloqueo de login al estar suspendidos.
-- Politica por residencial para definir vigencias QR habilitadas a residentes (sin afectar admins).
+- **Inicio**, **Anuncios**, **Mi perfil**, **Soporte**, **Sugerencias**, **Ajustes**.
+- **Anuncios**: últimos **cinco** comunicados enviados por la administración a tu usuario para tu residencial.
+- **Soporte**: enlace a **WhatsApp** si la residencial configuró teléfono de soporte; bloque con el **último comunicado** recibido.
+- **Sugerencias**: envío de mensajes al equipo administrativo de la residencial.
+- **Ajustes**: notificaciones push en el dispositivo y datos de contacto personal.
+- **Idioma** (ES / EN), **actualizar vista** y **cerrar sesión**.
 
-## Seguridad, evidencia y retencion
+### Mi perfil
 
-- Evidencias de ingreso almacenadas en DB:
-  - ID (`idPhotoData`)
-  - placa (`platePhotoData`)
-- Politica de retencion de evidencia:
-  - purga automatica de bytes sensibles a los 60 dias
-  - el registro operativo (evento) se mantiene.
-- Control de acceso por residencial en escaneo y consultas.
-- Si una residencial esta suspendida:
-  - usuarios no super admin de esa residencial no pueden operar.
+- Datos de cuenta: nombre, correo de acceso, residencial, vivienda, categoría (propietario / inquilino).
+- **Contacto personal**: correo personal y teléfono opcionales (formulario dedicado).
 
-## Stack tecnico
+### Notificaciones
+
+- Suscripción a **Web Push** (VAPID) para alertas (por ejemplo visitas anunciadas, delivery en entrada, comunicados).
+
+---
+
+## Guardia (`/guard`)
+
+- **Escaneo de QR** de visitas con validación contra la residencial de la sesión.
+- **Evidencia en ingreso**:
+  - Foto de identificación.
+  - Foto de placa **obligatoria** cuando el QR indica acceso con vehículo.
+- **Visitas anunciadas pendientes**: invitaciones vigentes aún sin primer escaneo; **confirmación manual de llegada** con el mismo flujo de evidencia.
+- **Delivery en entrada**: selección de residente y notificación push inmediata.
+- **Reservas de zonas del día** (zona horaria Tegucigalpa): vista para caseta con horario y nota.
+- **Salida manual**: listado de entradas válidas sin salida registrada; confirmación de salida (alternativa al re-escaneo del QR).
+- **Historial**: últimos anuncios registrados (acordeón) y **refresco automático** de la vista.
+- Suscripción a **notificaciones push** para el puesto de guardia.
+
+---
+
+## Administración residencial (`/residential-admin`)
+
+Navegación por secciones (menú lateral en escritorio, desplegable en móvil).
+
+### Usuarios
+
+- Alta de **residentes** (categoría dueño o inquilino, vivienda, etc.) y **guardias**; edición y eliminación de usuarios de la residencial.
+- **Suspensión y reactivación** temporal de cuentas; los suspendidos no pueden iniciar sesión.
+- **Filtros**: texto (nombre, correo, vivienda), rol y estado activo/suspendido.
+- **Copiar credenciales** al portapapeles y **contraseña de un solo uso** con controles dedicados por usuario.
+
+### Zonas y reservas
+
+- **Alta de zonas** comunes con reglas (horario operativo, duración máxima por reserva, límite de una reserva por día, bloques de hora completa cuando aplique).
+- **Bloqueo** de rangos fecha/hora por administración.
+- **Visualización y cancelación** de reservas de residentes.
+
+### Comunicados
+
+- Envío de **comunicados** con título y mensaje (hasta 500 caracteres) y notificación push a destinatarios:
+  - Todos los residentes.
+  - Solo **propietarios**.
+  - **Residentes seleccionados** (lista con casillas).
+- Historial reciente de envíos con fecha y cantidad de destinatarios.
+
+### Sugerencias
+
+- Lectura de **sugerencias** enviadas por residentes.
+
+### QR administración
+
+- **Generación de QRs** de administración (visitante, vigencia, modo peatonal/vehículo, etc.).
+- Listado de QRs **activos** y **expirados** con acciones de compartir y **revocación** donde corresponda.
+
+### Registro y reportes
+
+- **Registro de entradas** con filtros avanzados (fechas, tipos de evento, búsqueda, etc.).
+- **Exportación PDF** por registro individual.
+- **Reporte mensual PDF** (entradas y delivery, con referencia a evidencia disponible según retención).
+
+### Configuración
+
+- **Teléfono de soporte** residencial (usado en el enlace WhatsApp del residente).
+- **Política de vigencias QR** para residentes: qué tipos de duración pueden usar al crear invitaciones (activar/desactivar por tipo).
+- **Notificaciones**: activación de alertas para la cuenta del administrador en el dispositivo.
+
+---
+
+## Seguridad, evidencia y suspensión por residencial
+
+- Evidencias de ingreso almacenadas en base de datos: foto de **ID** y foto de **placa** cuando aplica.
+- **Retención**: purga automática de bytes de evidencia a los **60 días**; el registro del evento se conserva.
+- Acceso a escaneo y consultas acotado por **residencial** de la sesión.
+- Si la residencial está **suspendida** a nivel plataforma, los usuarios de esa residencial (excepto operación global) **no pueden operar** hasta reactivación.
+
+---
+
+## Stack técnico
 
 - Next.js (App Router)
 - React + TypeScript
@@ -104,7 +138,7 @@ MiVisita es una plataforma de control de acceso residencial con arquitectura mul
 - PostgreSQL (Supabase recomendado)
 - Web Push (VAPID)
 - jsPDF (documentos)
-- JSZip (backups ZIP)
+- JSZip (empaquetado en utilidades de respaldo donde existan)
 
 ## Requisitos
 
@@ -137,14 +171,14 @@ NEXT_PUBLIC_WHATSAPP_URL=
 
 ## Migraciones
 
-### Opcion A: Prisma (recomendada en entorno controlado)
+### Opción A: Prisma (recomendada en entorno controlado)
 
 ```bash
 npm run prisma:generate
 npm run prisma:push
 ```
 
-### Opcion B: SQL manual (Supabase SQL Editor)
+### Opción B: SQL manual (Supabase SQL Editor)
 
 Ejecutar en orden:
 
@@ -170,7 +204,7 @@ npm run dev
 
 Abrir `http://localhost:3000`.
 
-## Scripts utiles
+## Scripts útiles
 
 ```bash
 npm run dev
@@ -185,11 +219,10 @@ npm run prisma:push
 En `vercel.json` se mantiene:
 
 - `/api/internal/purge-id-evidence`
-  - borra bytes de evidencia vencida (60 dias).
+  - Borra bytes de evidencia vencida (60 días).
 
-## Operacion recomendada
+## Operación recomendada
 
-- Ejecutar backup PDF por residencial de forma periodica.
-- Ejecutar backup completo de DB antes de cambios mayores.
-- Mantener `AUTH_SECRET` y llaves VAPID fuera de repositorio.
-- Revisar peso de backups si hay alto volumen de evidencia.
+- Generar y archivar **reportes mensuales PDF** por residencial desde el panel de administración.
+- Mantener `AUTH_SECRET` y llaves VAPID fuera del repositorio.
+- Revisar el volumen de evidencia almacenada si el tráfico de visitas es alto.

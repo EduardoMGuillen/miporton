@@ -190,7 +190,7 @@ export function ResidentMenu({
 
       {open ? (
         <div
-          className="absolute right-0 z-[100] mt-2 max-h-[min(32rem,calc(100dvh-6rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)))] w-[min(18.5rem,calc(100dvw-2.75rem-env(safe-area-inset-left,0px)-env(safe-area-inset-right,0px)))] overflow-x-hidden overflow-y-auto overscroll-contain rounded-2xl border border-slate-200 bg-white shadow-xl sm:w-[min(20rem,calc(100dvw-2.75rem-env(safe-area-inset-left,0px)-env(safe-area-inset-right,0px)))]"
+          className="absolute right-0 z-[100] mt-2 max-h-[min(32rem,calc(100dvh-6rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)))] w-[min(18.5rem,calc(100dvw-2.75rem-env(safe-area-inset-left,0px)-env(safe-area-inset-right,0px)))] overflow-x-hidden overflow-y-auto overscroll-contain rounded-2xl border border-slate-200 bg-white shadow-xl [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden sm:w-[min(20rem,calc(100dvw-2.75rem-env(safe-area-inset-left,0px)-env(safe-area-inset-right,0px)))]"
           role="menu"
         >
           <div className="border-b border-slate-100 bg-slate-50/80 px-3 py-2.5 sm:px-4 sm:py-3">

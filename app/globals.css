@@ -87,3 +87,75 @@ input[type="month"].field-base {
   transform: translateY(-1px);
   box-shadow: 0 6px 18px rgba(37, 99, 235, 0.24);
 }
+
+/* Landing marketing (home) */
+@keyframes landing-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes landing-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes landing-float {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-10px) scale(1.03);
+  }
+}
+
+@keyframes landing-shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+.animate-landing-marquee {
+  animation: landing-marquee 38s linear infinite;
+}
+
+.landing-reveal {
+  opacity: 0;
+  animation: landing-fade-up 0.72s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-landing-float {
+  animation: landing-float 7s ease-in-out infinite;
+}
+
+.animate-landing-shimmer {
+  background-size: 200% auto;
+  animation: landing-shimmer 5s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-landing-marquee,
+  .landing-reveal,
+  .animate-landing-float,
+  .animate-landing-shimmer {
+    animation: none !important;
+  }
+
+  .landing-reveal {
+    opacity: 1;
+    transform: none;
+  }
+}
