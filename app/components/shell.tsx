@@ -20,7 +20,7 @@ export function DashboardShell({
 }) {
   return (
     <main className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 md:py-8">
-      <header className="surface-card flex flex-wrap items-end justify-between gap-4 p-5 md:p-6">
+      <header className="surface-card relative z-50 flex flex-wrap items-end justify-between gap-4 p-5 md:p-6">
         <div className="space-y-1">
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-blue-700">MiVisita</p>
           <h1 className="text-2xl font-bold text-slate-900 md:text-3xl">{title}</h1>

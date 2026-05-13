@@ -153,7 +153,7 @@ export function ResidentMenu({
   }, [open]);
 
   return (
-    <div className="relative" ref={rootRef}>
+    <div className="relative z-50" ref={rootRef}>
       <button
         type="button"
         className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-50"
@@ -167,7 +167,7 @@ export function ResidentMenu({
 
       {open ? (
         <div
-          className="absolute right-0 z-50 mt-2 w-[min(calc(100vw-2rem),20rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
+          className="absolute right-0 z-[100] mt-2 w-[min(calc(100vw-2rem),20rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
           role="menu"
         >
           <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-3">
