@@ -2,7 +2,7 @@
 
 import { useFormStatus } from "react-dom";
 
-export function LogoutSubmitButton() {
+export function LogoutSubmitButton({ className }: { className?: string }) {
   const { pending } = useFormStatus();
 
   return (
@@ -10,7 +10,7 @@ export function LogoutSubmitButton() {
       type="submit"
       disabled={pending}
       aria-label="Cerrar sesion"
-      className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70"
+      className={`rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70 ${className ?? ""}`}
       onClick={(event) => {
         if (!window.confirm("¿Seguro que quieres cerrar sesion?")) {
           event.preventDefault();

@@ -1,0 +1,218 @@
+"use client";
+
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { logoutAction } from "@/app/login/actions";
+import { RefreshButton } from "@/app/components/refresh-button";
+import { LogoutSubmitButton } from "@/app/components/logout-submit-button";
+
+function normalizePath(pathname: string) {
+  if (pathname.length > 1 && pathname.endsWith("/")) {
+    return pathname.slice(0, -1);
+  }
+  return pathname;
+}
+
+function isActivePath(pathname: string, href: string) {
+  const p = normalizePath(pathname);
+  const h = normalizePath(href);
+  if (h === "/resident") return p === "/resident";
+  return p === h;
+}
+
+type MenuItem = {
+  href: string;
+  label: string;
+  icon: ReactNode;
+};
+
+function IconUser() {
+  return (
+    <svg className="h-5 w-5 text-slate-500" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M20 21a8 8 0 0 0-16 0M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function IconHome() {
+  return (
+    <svg className="h-5 w-5 text-slate-500" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1v-9.5Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function IconHelp() {
+  return (
+    <svg className="h-5 w-5 text-slate-500" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M9.5 9.5a2.5 2.5 0 1 1 3.2 2.4c-.8.4-1.2.9-1.2 1.6V14M12 17h.01"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+      />
+    </svg>
+  );
+}
+
+function IconMessage() {
+  return (
+    <svg className="h-5 w-5 text-slate-500" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M4 5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-4 4v-4.2A2 2 0 0 1 4 16V5Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function IconSettings() {
+  return (
+    <svg className="h-5 w-5 text-slate-500" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+      />
+      <path
+        d="m19.4 15 .9-.6c.3-.2.5-.6.4-.9l-.8-2.8c-.1-.4-.5-.7-.9-.7h-.2l-1 .2c-.3.1-.7 0-.9-.2l-1.2-1c-.2-.2-.4-.6-.3-.9l.3-1c.1-.4-.1-.9-.5-1.1l-2.6-1.5c-.4-.2-.9-.1-1.2.2l-.7.8c-.2.3-.6.5-.9.5h-1.6c-.4 0-.8-.2-1-.5l-.7-.8c-.3-.4-.8-.5-1.2-.2L6 7.4c-.4.2-.6.7-.5 1.1l.3 1c.1.3 0 .7-.3.9l-1.2 1c-.3.2-.7.3-1 .2l-1-.2h-.2c-.4 0-.8.3-.9.7l-.8 2.8c-.1.4 0 .8.4 1l.9.6c.3.2.6.6.6 1v1.4c0 .4-.3.8-.6 1l-.9.6c-.4.2-.5.6-.4 1l.8 2.8c.1.4.5.7.9.7h.2l1-.2c.3-.1.7 0 1 .2l1.2 1c.2.2.4.6.3.9l-.3 1c-.1.4.1.9.5 1.1l2.6 1.5c.4.2.9.1 1.2-.2l.7-.8c.2-.3.6-.5 1-.5h1.6c.4 0 .8.2 1 .5l.7.8c.3.4.8.5 1.2.2l2.6-1.5c.4-.2.6-.7.5-1.1l-.3-1c-.1-.3 0-.7.3-.9l1.2-1c.3-.2.7-.3 1-.2l1 .2h.2c.4 0 .8-.3.9-.7l.8-2.8c.1-.4 0-.8-.4-1l-.9-.6a1.2 1.2 0 0 1-.6-1v-1.4c0-.4.3-.8.6-1Z"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function IconMenu() {
+  return (
+    <svg className="h-6 w-6 text-slate-700" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+const MENU_ITEMS: MenuItem[] = [
+  { href: "/resident", label: "Inicio", icon: <IconHome /> },
+  { href: "/resident/perfil", label: "Mi perfil", icon: <IconUser /> },
+  { href: "/resident/soporte", label: "Soporte", icon: <IconHelp /> },
+  { href: "/resident/sugerencias", label: "Sugerencias", icon: <IconMessage /> },
+  { href: "/resident/ajustes", label: "Ajustes", icon: <IconSettings /> },
+];
+
+export function ResidentMenu({
+  userFullName,
+  residentialName,
+}: {
+  userFullName: string;
+  residentialName: string;
+}) {
+  const pathname = usePathname() ?? "/resident";
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const initial = userFullName.trim().charAt(0).toUpperCase() || "?";
+
+  useEffect(() => {
+    if (!open) return;
+    function onPointerDown(event: PointerEvent) {
+      const el = rootRef.current;
+      if (!el) return;
+      if (event.target instanceof Node && !el.contains(event.target)) {
+        setOpen(false);
+      }
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div className="relative" ref={rootRef}>
+      <button
+        type="button"
+        className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-50"
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-label="Abrir menu de cuenta"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <IconMenu />
+      </button>
+
+      {open ? (
+        <div
+          className="absolute right-0 z-50 mt-2 w-[min(calc(100vw-2rem),20rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
+          role="menu"
+        >
+          <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-3">
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-100 text-base font-semibold text-blue-800">
+                {initial}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-slate-900">{userFullName}</p>
+                <p className="truncate text-xs text-slate-600">{residentialName}</p>
+              </div>
+            </div>
+          </div>
+
+          <nav className="py-2">
+            {MENU_ITEMS.map((item) => {
+              const active = isActivePath(pathname, item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  role="menuitem"
+                  className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition ${
+                    active ? "bg-blue-50 text-blue-900" : "text-slate-800 hover:bg-slate-50"
+                  }`}
+                  onClick={() => setOpen(false)}
+                >
+                  <span className="shrink-0">{item.icon}</span>
+                  <span className="min-w-0 truncate">{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+
+          <div className="border-t border-slate-100 px-3 py-3">
+            <RefreshButton className="flex w-full items-center justify-center px-3 py-2.5 text-sm font-semibold" />
+          </div>
+
+          <div className="border-t border-slate-100 px-3 pb-3">
+            <form action={logoutAction} className="px-1">
+              <LogoutSubmitButton className="flex w-full items-center justify-center gap-2 border-red-200 bg-red-50 px-3 py-2.5 text-sm font-semibold text-red-800 hover:bg-red-100" />
+            </form>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}

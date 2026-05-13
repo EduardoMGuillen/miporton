@@ -1,12 +1,10 @@
 import QRCode from "qrcode";
 import { requireRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
-import { Card, DashboardShell } from "@/app/components/shell";
+import { Card } from "@/app/components/shell";
 import { CreateQrForm } from "@/app/resident/create-qr-form";
 import { CreateZoneReservationForm } from "@/app/resident/create-zone-reservation-form";
 import { ReservationRowActions } from "@/app/resident/reservation-row-actions";
-import { ResidentSuggestionForm } from "@/app/resident/suggestion-form";
-import { PushSubscriptionCard } from "@/app/resident/push-subscription";
 import { deleteInviteQrAction } from "@/app/resident/actions";
 import { QrShareActions } from "@/app/resident/qr-share-actions";
 import { formatDateTimeTegucigalpa } from "@/lib/datetime";
@@ -38,7 +36,6 @@ export default async function ResidentPage() {
         where: { id: session.residentialId },
         select: {
           name: true,
-          supportPhone: true,
           allowResidentQrSingleUse: true,
           allowResidentQrOneDay: true,
           allowResidentQrThreeDays: true,
@@ -46,13 +43,6 @@ export default async function ResidentPage() {
         },
       })
     : null;
-  const residentContact = await prisma.user.findUnique({
-    where: { id: session.userId },
-    select: {
-      personalEmail: true,
-      phoneNumber: true,
-    },
-  });
   const allowedValidityTypes: Array<"SINGLE_USE" | "ONE_DAY" | "THREE_DAYS" | "INFINITE"> = [];
   if (residential?.allowResidentQrSingleUse ?? true) allowedValidityTypes.push("SINGLE_USE");
   if (residential?.allowResidentQrOneDay ?? true) allowedValidityTypes.push("ONE_DAY");
@@ -86,7 +76,7 @@ export default async function ResidentPage() {
   const expiredRows = Array.from(expiredById.values())
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
     .slice(0, 20);
-  const [zones, reservations, zoneReservations, zoneBlocks, latestAnnouncementRecipient] = await Promise.all([
+  const [zones, reservations, zoneReservations, zoneBlocks] = await Promise.all([
     prisma.zone.findMany({
       where: { residentialId: session.residentialId ?? "", isActive: true },
       orderBy: { name: "asc" },
@@ -138,21 +128,7 @@ export default async function ResidentPage() {
       orderBy: { startsAt: "asc" },
       take: 800,
     }),
-    prisma.adminAnnouncementRecipient.findFirst({
-      where: { userId: session.userId },
-      include: {
-        announcement: {
-          select: {
-            title: true,
-            message: true,
-            createdAt: true,
-          },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-    }),
   ]);
-  const latestAnnouncement = latestAnnouncementRecipient?.announcement ?? null;
 
   const mapToInviteWithImage = async (invite: (typeof activeRows)[0]): Promise<InviteWithImage> => ({
     id: invite.id,
@@ -171,9 +147,6 @@ export default async function ResidentPage() {
     Promise.all(activeRows.map(mapToInviteWithImage)),
     Promise.all(expiredRows.map(mapToInviteWithImage)),
   ]);
-  const supportPhoneDigits = (residential?.supportPhone ?? "").replaceAll(/\D+/g, "");
-  const supportWhatsappUrl = supportPhoneDigits ? `https://wa.me/${supportPhoneDigits}` : null;
-
   const zoneOccupiedSlots = [
     ...zoneReservations.map((item) => ({
       zoneId: item.zoneId,
@@ -191,16 +164,7 @@ export default async function ResidentPage() {
   ];
 
   return (
-    <DashboardShell
-      title="Panel de Residente"
-      subtitle="Anuncia tus visitas y comparte su QR."
-      user={session.fullName}
-    >
-      <PushSubscriptionCard
-        initialPersonalEmail={residentContact?.personalEmail ?? ""}
-        initialPhoneNumber={residentContact?.phoneNumber ?? ""}
-      />
-
+    <>
       <Card>
         <h2 className="mb-4 text-lg font-semibold text-slate-900">Crear anuncio de visita</h2>
         <CreateQrForm allowedValidityTypes={allowedValidityTypes} />
@@ -353,43 +317,6 @@ export default async function ResidentPage() {
           </div>
         </details>
       </Card>
-
-      <Card>
-        <h2 className="mb-3 text-lg font-semibold text-slate-900">Soporte</h2>
-        {supportWhatsappUrl ? (
-          <a
-            href={supportWhatsappUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100"
-          >
-            Contactar soporte por WhatsApp
-          </a>
-        ) : (
-          <p className="text-sm text-slate-600">
-            Tu residencial aun no configura un numero de soporte.
-          </p>
-        )}
-        <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-600">Ultimo comunicado</p>
-          {latestAnnouncement ? (
-            <>
-              <p className="mt-1 text-sm font-semibold text-slate-900">{latestAnnouncement.title}</p>
-              <p className="text-xs text-slate-600">
-                {formatDateTimeTegucigalpa(latestAnnouncement.createdAt)}
-              </p>
-              <p className="mt-1 text-sm text-slate-700">{latestAnnouncement.message}</p>
-            </>
-          ) : (
-            <p className="mt-1 text-sm text-slate-600">Aun no tienes comunicados.</p>
-          )}
-        </div>
-      </Card>
-
-      <Card>
-        <h2 className="mb-3 text-lg font-semibold text-slate-900">Sugerencias para la administracion</h2>
-        <ResidentSuggestionForm />
-      </Card>
-    </DashboardShell>
+    </>
   );
 }
