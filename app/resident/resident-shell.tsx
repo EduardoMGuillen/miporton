@@ -8,6 +8,7 @@ import { useResidentT } from "@/app/resident/resident-i18n-context";
 
 const ROUTE_KEYS: Record<string, { titleKey: string; subtitleKey: string }> = {
   "/resident": { titleKey: "route.resident.title", subtitleKey: "route.resident.subtitle" },
+  "/resident/anuncios": { titleKey: "route.anuncios.title", subtitleKey: "route.anuncios.subtitle" },
   "/resident/perfil": { titleKey: "route.perfil.title", subtitleKey: "route.perfil.subtitle" },
   "/resident/soporte": { titleKey: "route.soporte.title", subtitleKey: "route.soporte.subtitle" },
   "/resident/sugerencias": { titleKey: "route.sugerencias.title", subtitleKey: "route.sugerencias.subtitle" },

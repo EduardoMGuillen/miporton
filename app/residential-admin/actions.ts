@@ -669,6 +669,8 @@ export async function sendResidentialAnnouncementAction(_prevState: string | nul
   );
 
   revalidatePath("/residential-admin");
+  revalidatePath("/resident/anuncios");
+  revalidatePath("/resident/soporte");
   return `Comunicado enviado a ${targetResidents.length} residente(s).`;
 }
 

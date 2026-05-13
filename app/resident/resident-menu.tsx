@@ -88,6 +88,25 @@ function IconMessage() {
   );
 }
 
+function IconMegaphone() {
+  return (
+    <svg className="h-5 w-5 text-slate-500" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="M4 11v2a2 2 0 0 0 2 2h1v4h2v-4h2l5 2V5L11 7H6a2 2 0 0 0-2 2Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M18 9a3 3 0 0 1 0 6"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 function IconSettings() {
   return (
     <svg className="h-5 w-5 text-slate-500" viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -116,6 +135,7 @@ function IconMenu() {
 
 const MENU_LINKS: MenuLink[] = [
   { href: "/resident", labelKey: "menu.inicio", icon: <IconHome /> },
+  { href: "/resident/anuncios", labelKey: "menu.anuncios", icon: <IconMegaphone /> },
   { href: "/resident/perfil", labelKey: "menu.perfil", icon: <IconUser /> },
   { href: "/resident/soporte", labelKey: "menu.soporte", icon: <IconHelp /> },
   { href: "/resident/sugerencias", labelKey: "menu.sugerencias", icon: <IconMessage /> },
@@ -170,12 +190,12 @@ export function ResidentMenu({
 
       {open ? (
         <div
-          className="absolute right-0 z-[100] mt-2 w-[min(calc(100vw-2rem),20rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
+          className="absolute right-0 z-[100] mt-2 max-h-[min(32rem,calc(100dvh-6rem-env(safe-area-inset-top,0px)-env(safe-area-inset-bottom,0px)))] w-[min(18.5rem,calc(100dvw-2.75rem-env(safe-area-inset-left,0px)-env(safe-area-inset-right,0px)))] overflow-x-hidden overflow-y-auto overscroll-contain rounded-2xl border border-slate-200 bg-white shadow-xl sm:w-[min(20rem,calc(100dvw-2.75rem-env(safe-area-inset-left,0px)-env(safe-area-inset-right,0px)))]"
           role="menu"
         >
-          <div className="border-b border-slate-100 bg-slate-50/80 px-4 py-3">
-            <div className="flex items-start gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-100 text-base font-semibold text-blue-800">
+          <div className="border-b border-slate-100 bg-slate-50/80 px-3 py-2.5 sm:px-4 sm:py-3">
+            <div className="flex items-start gap-2.5 sm:gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-800 sm:h-11 sm:w-11 sm:text-base">
                 {initial}
               </div>
               <div className="min-w-0 flex-1">
@@ -185,7 +205,7 @@ export function ResidentMenu({
             </div>
           </div>
 
-          <nav className="py-2">
+          <nav className="py-1.5 sm:py-2">
             {MENU_LINKS.map((item) => {
               const active = isActivePath(pathname, item.href);
               return (
@@ -193,19 +213,21 @@ export function ResidentMenu({
                   key={item.href}
                   href={item.href}
                   role="menuitem"
-                  className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition ${
+                  className={`flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium transition sm:gap-3 sm:px-4 sm:py-2.5 sm:text-sm ${
                     active ? "bg-blue-50 text-blue-900" : "text-slate-800 hover:bg-slate-50"
                   }`}
                   onClick={() => setOpen(false)}
                 >
-                  <span className="shrink-0">{item.icon}</span>
+                  <span className="shrink-0 [&>svg]:h-[1.125rem] [&>svg]:w-[1.125rem] sm:[&>svg]:h-5 sm:[&>svg]:w-5">
+                    {item.icon}
+                  </span>
                   <span className="min-w-0 truncate">{t(item.labelKey)}</span>
                 </Link>
               );
             })}
           </nav>
 
-          <div className="border-t border-slate-100 px-3 py-2">
+          <div className="border-t border-slate-100 px-2.5 py-2 sm:px-3">
             <p className="px-1 pb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
               {t("menu.language")}
             </p>
@@ -237,7 +259,7 @@ export function ResidentMenu({
             </div>
           </div>
 
-          <div className="border-t border-slate-100 px-3 py-3">
+          <div className="border-t border-slate-100 px-2.5 py-2.5 sm:px-3 sm:py-3">
             <RefreshButton
               className="flex w-full items-center justify-center px-3 py-2.5 text-sm font-semibold"
               idleLabel={t("refresh.idle")}
@@ -247,8 +269,8 @@ export function ResidentMenu({
             />
           </div>
 
-          <div className="border-t border-slate-100 px-3 pb-3">
-            <form action={logoutAction} className="px-1">
+          <div className="border-t border-slate-100 px-2.5 pb-2.5 sm:px-3 sm:pb-3">
+            <form action={logoutAction} className="px-0.5 sm:px-1">
               <LogoutSubmitButton
                 className="flex w-full items-center justify-center gap-2 border-red-200 bg-red-50 px-3 py-2.5 text-sm font-semibold text-red-800 hover:bg-red-100"
                 idleLabel={t("logout.idle")}
