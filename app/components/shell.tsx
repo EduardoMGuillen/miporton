@@ -23,10 +23,13 @@ export function DashboardShell({
 }) {
   const headerClass = compactHeaderActions
     ? "surface-card relative z-50 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 p-5 sm:gap-4 md:p-6"
-    : "surface-card relative z-50 flex flex-nowrap items-center justify-between gap-3 p-5 sm:gap-4 md:p-6";
+    : "surface-card relative z-50 flex flex-col gap-4 p-5 sm:flex-row sm:flex-nowrap sm:items-start sm:justify-between sm:gap-4 md:p-6";
   const titleBlockClass = compactHeaderActions
     ? "min-w-0 space-y-1 pr-2"
-    : "min-w-0 flex-1 space-y-1 pr-2";
+    : "min-w-0 flex-1 space-y-1 sm:pr-2";
+  const actionsClass = compactHeaderActions
+    ? "flex shrink-0 items-center justify-end gap-2"
+    : "flex w-full shrink-0 flex-wrap items-center gap-2 border-t border-slate-100 pt-3 sm:w-auto sm:justify-end sm:border-0 sm:pt-0";
 
   return (
     <main className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6 md:py-8">
@@ -39,7 +42,7 @@ export function DashboardShell({
             <p className="mt-2 text-xs text-slate-500">Sesion activa: {user}</p>
           ) : null}
         </div>
-        <div className="flex shrink-0 items-center justify-end gap-2">
+        <div className={actionsClass}>
           {headerRight ?? (
             <>
               <RefreshButton />
