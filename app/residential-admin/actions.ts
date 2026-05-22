@@ -721,6 +721,7 @@ export async function createAdminQrAction(_prevState: string | null, formData: F
   });
 
   revalidatePath("/residential-admin");
+  revalidatePath("/residential-admin/qr-admin");
   revalidatePath("/guard");
   return "QR generado correctamente por administracion.";
 }

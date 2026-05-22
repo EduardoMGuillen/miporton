@@ -28,8 +28,12 @@ export function ResidentI18nProvider({
   return <ResidentI18nContext.Provider value={value}>{children}</ResidentI18nContext.Provider>;
 }
 
+export function useOptionalResidentT() {
+  return useContext(ResidentI18nContext);
+}
+
 export function useResidentT() {
-  const ctx = useContext(ResidentI18nContext);
+  const ctx = useOptionalResidentT();
   if (!ctx) {
     throw new Error("useResidentT must be used within ResidentI18nProvider");
   }

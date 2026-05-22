@@ -2,7 +2,8 @@
 
 import { useMemo } from "react";
 import { jsPDF } from "jspdf";
-import { useResidentT } from "@/app/resident/resident-i18n-context";
+import { residentT } from "@/app/resident/resident-dictionary";
+import { useOptionalResidentT } from "@/app/resident/resident-i18n-context";
 
 type Props = {
   qrDataUrl: string;
@@ -126,8 +127,18 @@ async function buildQrImageBlob(props: Props, labels: QrPdfFieldLabels) {
   return blob;
 }
 
+function useQrShareT() {
+  const i18n = useOptionalResidentT();
+  return useMemo(
+    () =>
+      i18n?.t ??
+      ((key: string, vars?: Record<string, string | number>) => residentT("es", key, vars)),
+    [i18n],
+  );
+}
+
 export function QrShareActions(props: Props) {
-  const { t } = useResidentT();
+  const t = useQrShareT();
   const pdfLabels = useMemo<QrPdfFieldLabels>(
     () => ({
       title: t("qr.pdfTitle"),
