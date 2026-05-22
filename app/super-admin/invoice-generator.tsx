@@ -6,10 +6,10 @@ import { formatDateTimeTegucigalpa } from "@/lib/datetime";
 
 const NEXUS_ISSUER = {
   legalName: "Nexus Global",
-  rtn: "0801-1990-12345",
-  address: "Tegucigalpa, Francisco Morazan, Honduras",
-  email: "facturacion@nexusglobal.hn",
-  phone: "+504 0000-0000",
+  id: "0501200002818",
+  address: "San Pedro Sula, Honduras",
+  email: "eduardoguillendev@proton.me",
+  phone: "31496601",
 };
 
 type ResidentialOption = { id: string; name: string };
@@ -105,12 +105,6 @@ function drawLabelValue(doc: jsPDF, label: string, value: string, x: number, y: 
 
 export function InvoiceGenerator({ residentials }: { residentials: ResidentialOption[] }) {
   const [residentialId, setResidentialId] = useState("");
-  const [clientName, setClientName] = useState("");
-  const [contactName, setContactName] = useState("");
-  const [contactEmail, setContactEmail] = useState("");
-  const [contactPhone, setContactPhone] = useState("");
-  const [clientTaxId, setClientTaxId] = useState("");
-  const [clientAddress, setClientAddress] = useState("");
   const [paymentMonth, setPaymentMonth] = useState(() => {
     const now = new Date();
     const month = String(now.getMonth() + 1).padStart(2, "0");
@@ -137,19 +131,13 @@ export function InvoiceGenerator({ residentials }: { residentials: ResidentialOp
     [residentialId, residentials],
   );
 
-  function handleResidentialChange(id: string) {
-    setResidentialId(id);
-    const selected = residentials.find((item) => item.id === id);
-    if (selected) setClientName(selected.name);
-  }
-
   async function generatePdf(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage(null);
 
     const numericAmount = Number(amount);
-    if (!clientName.trim()) {
-      setMessage("Indica el nombre del cliente o residencial.");
+    if (!selectedResidential) {
+      setMessage("Selecciona la residencial a facturar.");
       return;
     }
     if (!paymentMonth) {
@@ -162,10 +150,6 @@ export function InvoiceGenerator({ residentials }: { residentials: ResidentialOp
     }
     if (!bankName.trim() || !accountHolderName.trim() || !accountNumber.trim()) {
       setMessage("Completa banco, nombre de cuenta y numero de cuenta.");
-      return;
-    }
-    if (!clientTaxId.trim()) {
-      setMessage("Indica el RTN o identidad tributaria del cliente.");
       return;
     }
 
@@ -207,7 +191,7 @@ export function InvoiceGenerator({ residentials }: { residentials: ResidentialOp
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
       y = drawLabelValue(doc, "Razon social:", NEXUS_ISSUER.legalName, 40, y);
-      y = drawLabelValue(doc, "RTN:", NEXUS_ISSUER.rtn, 40, y);
+      y = drawLabelValue(doc, "ID:", NEXUS_ISSUER.id, 40, y);
       y = drawLabelValue(doc, "Direccion:", NEXUS_ISSUER.address, 40, y);
       y = drawLabelValue(doc, "Correo:", NEXUS_ISSUER.email, 40, y);
       y = drawLabelValue(doc, "Telefono:", NEXUS_ISSUER.phone, 40, y);
@@ -219,17 +203,7 @@ export function InvoiceGenerator({ residentials }: { residentials: ResidentialOp
       y += 18;
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
-      y = drawLabelValue(doc, "Cliente:", clientName.trim(), 40, y);
-      if (selectedResidential) {
-        y = drawLabelValue(doc, "Residencial:", selectedResidential.name, 40, y);
-      }
-      y = drawLabelValue(doc, "Contacto:", contactName.trim() || "—", 40, y);
-      y = drawLabelValue(doc, "Correo:", contactEmail.trim() || "—", 40, y);
-      y = drawLabelValue(doc, "Telefono:", contactPhone.trim() || "—", 40, y);
-      y = drawLabelValue(doc, "RTN / ID:", clientTaxId.trim(), 40, y);
-      if (clientAddress.trim()) {
-        y = drawLabelValue(doc, "Direccion:", clientAddress.trim(), 40, y);
-      }
+      y = drawLabelValue(doc, "Residencial:", selectedResidential.name, 40, y);
 
       y += 8;
       doc.setFont("helvetica", "bold");
@@ -302,7 +276,7 @@ export function InvoiceGenerator({ residentials }: { residentials: ResidentialOp
         Math.min(y + 34, 780),
       );
 
-      const fileSlug = safeFilePart(clientName) || "cliente";
+      const fileSlug = safeFilePart(selectedResidential.name) || "residencial";
       const monthSlug = paymentMonth.replace("-", "");
       doc.save(`factura-${fileSlug}-${monthSlug}.pdf`);
       setMessage("Factura PDF generada correctamente.");
@@ -318,7 +292,8 @@ export function InvoiceGenerator({ residentials }: { residentials: ResidentialOp
       <select
         className="field-base md:col-span-2"
         value={residentialId}
-        onChange={(event) => handleResidentialChange(event.target.value)}
+        onChange={(event) => setResidentialId(event.target.value)}
+        required
       >
         <option value="">Seleccionar residencial</option>
         {residentials.map((residential) => (
@@ -327,49 +302,6 @@ export function InvoiceGenerator({ residentials }: { residentials: ResidentialOp
           </option>
         ))}
       </select>
-
-      <input
-        className="field-base md:col-span-2"
-        placeholder="Nombre del cliente / residencial (facturar a)"
-        value={clientName}
-        onChange={(event) => setClientName(event.target.value)}
-        required
-      />
-      <input
-        className="field-base"
-        placeholder="Nombre de contacto"
-        value={contactName}
-        onChange={(event) => setContactName(event.target.value)}
-        required
-      />
-      <input
-        className="field-base"
-        type="email"
-        placeholder="Correo de contacto"
-        value={contactEmail}
-        onChange={(event) => setContactEmail(event.target.value)}
-        required
-      />
-      <input
-        className="field-base"
-        placeholder="Telefono de contacto"
-        value={contactPhone}
-        onChange={(event) => setContactPhone(event.target.value)}
-        required
-      />
-      <input
-        className="field-base"
-        placeholder="RTN o identidad tributaria del cliente"
-        value={clientTaxId}
-        onChange={(event) => setClientTaxId(event.target.value)}
-        required
-      />
-      <input
-        className="field-base md:col-span-2"
-        placeholder="Direccion del cliente (opcional)"
-        value={clientAddress}
-        onChange={(event) => setClientAddress(event.target.value)}
-      />
 
       <input
         className="field-base"

@@ -35,7 +35,7 @@ export default async function SuperAdminContractsPage() {
       <Card>
         <h2 className="mb-2 text-lg font-semibold text-slate-900">Crear factura</h2>
         <p className="mb-4 text-sm text-slate-600">
-          Genera una factura PDF formal a nombre de Nexus Global con datos del cliente, periodo de cobro e
+          Genera una factura PDF formal a nombre de Nexus Global: residencial, periodo de cobro e
           instrucciones bancarias.
         </p>
         <InvoiceGenerator residentials={residentials} />
