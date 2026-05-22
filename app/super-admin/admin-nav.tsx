@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 
 const NAV_ITEMS = [
   { href: "/super-admin/residenciales", label: "Residenciales y admins" },
-  { href: "/super-admin/contratos", label: "Cotizaciones y contratos" },
+  { href: "/super-admin/contratos", label: "Cotizaciones, facturas y contratos" },
   { href: "/super-admin/respaldos", label: "Respaldos" },
   { href: "/super-admin/registros", label: "Registro y reportes" },
   { href: "/super-admin/estadisticas", label: "Estadisticas" },

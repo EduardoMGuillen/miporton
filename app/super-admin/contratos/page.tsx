@@ -1,4 +1,5 @@
 import { Card } from "@/app/components/shell";
+import { InvoiceGenerator } from "@/app/super-admin/invoice-generator";
 import { QuotationGenerator } from "@/app/super-admin/quotation-generator";
 import { ServiceContractForm } from "@/app/super-admin/service-contract-form";
 import { ServiceContractPrintButton } from "@/app/super-admin/service-contract-print-button";
@@ -29,6 +30,15 @@ export default async function SuperAdminContractsPage() {
           Residencial.
         </p>
         <QuotationGenerator />
+      </Card>
+
+      <Card>
+        <h2 className="mb-2 text-lg font-semibold text-slate-900">Crear factura</h2>
+        <p className="mb-4 text-sm text-slate-600">
+          Genera una factura PDF formal a nombre de Nexus Global con datos del cliente, periodo de cobro e
+          instrucciones bancarias.
+        </p>
+        <InvoiceGenerator residentials={residentials} />
       </Card>
 
       <Card>
