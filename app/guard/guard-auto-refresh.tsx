@@ -3,8 +3,8 @@
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
-const REFRESH_INTERVAL_MS = 15000;
-const REFRESH_DEBOUNCE_MS = 5000;
+const REFRESH_INTERVAL_MS = 45000;
+const REFRESH_DEBOUNCE_MS = 8000;
 
 export function GuardAutoRefresh() {
   const router = useRouter();
