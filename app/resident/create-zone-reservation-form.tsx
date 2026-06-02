@@ -8,6 +8,11 @@ import { isZoneReservationTakenByResidentState } from "@/lib/zone-reservation-fe
 import type { ZoneReservationActionState } from "@/lib/zone-reservation-form-state";
 import { formatTimeTegucigalpa } from "@/lib/datetime";
 import { useResidentT } from "@/app/resident/resident-i18n-context";
+import {
+  formatAllowedDaysLabel,
+  isWeekdayAllowed,
+  tegucigalpaWeekdayFromDatePart,
+} from "@/lib/zone-weekdays";
 
 const initialState: ZoneReservationActionState | null = null;
 
@@ -45,6 +50,7 @@ export function CreateZoneReservationForm({
     name: string;
     maxHoursPerReservation: number;
     oneReservationPerDay: boolean;
+    reservationWeekdaysMask: number;
     scheduleStartHour: number;
     scheduleEndHour: number;
   }>;
@@ -56,15 +62,23 @@ export function CreateZoneReservationForm({
     reservationId?: string;
   }>;
 }) {
-  const { t } = useResidentT();
+  const { t, locale } = useResidentT();
   const [state, formAction, isPending] = useActionState(createZoneReservationAction, initialState);
   const [zoneId, setZoneId] = useState(zones[0]?.id ?? "");
   const [reservationDate, setReservationDate] = useState(dateOnly(new Date()));
   const [startHour, setStartHour] = useState("08");
   const [durationHours, setDurationHours] = useState("1");
-
   const selectedZone = useMemo(() => zones.find((item) => item.id === zoneId) ?? null, [zones, zoneId]);
   const maxHoursByZone = Math.max(1, selectedZone?.maxHoursPerReservation ?? 1);
+
+  const selectedWeekday = useMemo(
+    () => (reservationDate ? tegucigalpaWeekdayFromDatePart(reservationDate) : null),
+    [reservationDate],
+  );
+  const isDateAllowed = useMemo(() => {
+    if (!selectedZone || selectedWeekday === null) return true;
+    return isWeekdayAllowed(selectedZone.reservationWeekdaysMask, selectedWeekday);
+  }, [selectedZone, selectedWeekday]);
 
   const slotRanges = useMemo(
     () =>
@@ -94,6 +108,9 @@ export function CreateZoneReservationForm({
 
   const occupiedHours = useMemo(() => {
     if (!zoneId || !reservationDate) return new Set<number>();
+    if (!isDateAllowed) {
+      return new Set(HOURS);
+    }
     const dayStart = new Date(`${reservationDate}T00:00`);
     const dayEnd = new Date(`${reservationDate}T23:59:59`);
     const set = new Set<number>();
@@ -125,7 +142,7 @@ export function CreateZoneReservationForm({
       if (taken) set.add(hour);
     });
     return set;
-  }, [zoneId, reservationDate, slotRanges, selectedZone]);
+  }, [zoneId, reservationDate, slotRanges, selectedZone, isDateAllowed]);
 
   const availableStartHours = useMemo(() => HOURS.filter((hour) => !occupiedHours.has(hour)), [occupiedHours]);
   const selectedStartHourNumberRaw = Number(startHour);
@@ -218,7 +235,14 @@ export function CreateZoneReservationForm({
         placeholder={t("zone.notePlaceholder")}
         maxLength={180}
       />
-      {selectedZone?.oneReservationPerDay && dayReservationBlockingOnePerDay ? (
+      {!isDateAllowed && selectedZone ? (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 md:col-span-2">
+          {t("zone.dayNotAllowedHint", {
+            name: selectedZone.name,
+            days: formatAllowedDaysLabel(selectedZone.reservationWeekdaysMask, locale),
+          })}
+        </p>
+      ) : selectedZone?.oneReservationPerDay && dayReservationBlockingOnePerDay ? (
         <p className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-medium leading-relaxed text-sky-950 md:col-span-2">
           {t("zone.onePerDayHint", {
             name: selectedZone.name,
@@ -252,7 +276,9 @@ export function CreateZoneReservationForm({
         </div>
       </div>
       <button
-        disabled={isPending || availableStartHours.length === 0 || maxSelectableDuration <= 0}
+        disabled={
+          isPending || !isDateAllowed || availableStartHours.length === 0 || maxSelectableDuration <= 0
+        }
         className="btn-primary md:col-span-2 md:w-max disabled:opacity-60"
       >
         {isPending ? t("zone.reserving") : t("zone.reserve")}

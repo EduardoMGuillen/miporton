@@ -8,12 +8,12 @@ export type ZoneReservationDetailPayload = {
 
 export type ZoneReservationActionState =
   | null
-  | { ok: false; message: string; conflict?: "occupied" | "onePerDay" }
+  | { ok: false; message: string; conflict?: "occupied" | "onePerDay" | "dayNotAllowed" }
   | { ok: true; detail: ZoneReservationDetailPayload };
 
 export function zoneReservationError(
   message: string,
-  options?: { conflict?: "occupied" | "onePerDay" },
+  options?: { conflict?: "occupied" | "onePerDay" | "dayNotAllowed" },
 ): Extract<ZoneReservationActionState, { ok: false }> {
   return { ok: false, message, ...(options?.conflict ? { conflict: options.conflict } : {}) };
 }

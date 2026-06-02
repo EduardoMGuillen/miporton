@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { createZoneAction } from "@/app/residential-admin/actions";
+import { ZoneWeekdayFields } from "@/app/residential-admin/zone-weekday-fields";
 
 const initialState: string | null = null;
 
@@ -45,6 +46,7 @@ export function CreateZoneForm() {
         className="field-base md:col-span-2"
         placeholder="Descripcion (opcional)"
       />
+      <ZoneWeekdayFields />
       <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 md:col-span-2">
         <input type="checkbox" name="oneReservationPerDay" className="h-4 w-4 accent-blue-600" />
         1 reserva por dia

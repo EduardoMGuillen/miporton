@@ -18,6 +18,8 @@ export function isZoneReservationTakenByResidentMessage(message: string | null):
 
 export function isZoneReservationTakenByResidentState(state: ZoneReservationActionState): boolean {
   if (!state || state.ok !== false) return false;
-  if (state.conflict === "occupied" || state.conflict === "onePerDay") return true;
+  if (state.conflict === "occupied" || state.conflict === "onePerDay" || state.conflict === "dayNotAllowed") {
+    return true;
+  }
   return isZoneReservationTakenByResidentMessage(state.message);
 }

@@ -9,6 +9,7 @@ import { decryptOtp, encryptOtp } from "@/lib/otp-crypto";
 import { DEFAULT_RESIDENT_OTP } from "@/lib/otp-default";
 import { generateResidentOneTimePassword } from "@/lib/otp-generator";
 import { prisma } from "@/lib/prisma";
+import { maskFromFormEntries } from "@/lib/zone-weekdays";
 import { calculateValidityWindow } from "@/lib/qr";
 import { notifyUser } from "@/lib/push";
 
@@ -447,6 +448,11 @@ export async function createZoneAction(_prevState: string | null, formData: Form
     return "El horario final debe ser mayor al inicial.";
   }
 
+  const reservationWeekdaysMask = maskFromFormEntries(formData);
+  if (reservationWeekdaysMask === 0) {
+    return "Selecciona al menos un dia habilitado para reservas.";
+  }
+
   const existing = await prisma.zone.findFirst({
     where: {
       residentialId: session.residentialId,
@@ -464,6 +470,7 @@ export async function createZoneAction(_prevState: string | null, formData: Form
       scheduleStartHour: parsed.data.scheduleStartHour,
       scheduleEndHour: parsed.data.scheduleEndHour,
       oneReservationPerDay: parsed.data.oneReservationPerDay === "on",
+      reservationWeekdaysMask,
       residentialId: session.residentialId,
     },
   });
@@ -485,6 +492,9 @@ export async function updateZoneScheduleAction(formData: FormData) {
   if (!parsed.success) return;
   if (parsed.data.scheduleStartHour >= parsed.data.scheduleEndHour) return;
 
+  const reservationWeekdaysMask = maskFromFormEntries(formData);
+  if (reservationWeekdaysMask === 0) return;
+
   await prisma.zone.updateMany({
     where: {
       id: parsed.data.zoneId,
@@ -494,6 +504,7 @@ export async function updateZoneScheduleAction(formData: FormData) {
       scheduleStartHour: parsed.data.scheduleStartHour,
       scheduleEndHour: parsed.data.scheduleEndHour,
       oneReservationPerDay: parsed.data.oneReservationPerDay === "on",
+      reservationWeekdaysMask,
     },
   });
 

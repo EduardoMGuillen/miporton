@@ -6,6 +6,8 @@ import {
   updateZoneScheduleAction,
 } from "@/app/residential-admin/actions";
 import { formatDateTimeTegucigalpa } from "@/lib/datetime";
+import { formatAllowedDaysLabel } from "@/lib/zone-weekdays";
+import { ZoneWeekdayFields } from "@/app/residential-admin/zone-weekday-fields";
 import { requireRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
 
@@ -107,6 +109,9 @@ export default async function ResidentialAdminZonesPage({
               <p className="text-xs text-slate-600">
                 Limite diario: {zone.oneReservationPerDay ? "1 reserva por dia" : "Multiples reservas por dia"}
               </p>
+              <p className="text-xs text-slate-600">
+                Dias habilitados: {formatAllowedDaysLabel(zone.reservationWeekdaysMask)}
+              </p>
               {zone.description ? <p className="text-xs text-slate-500">{zone.description}</p> : null}
               <form action={updateZoneScheduleAction} className="mt-2 grid gap-2 sm:grid-cols-2">
                 <input type="hidden" name="zoneId" value={zone.id} />
@@ -137,8 +142,9 @@ export default async function ResidentialAdminZonesPage({
                   />
                   Activar 1 reserva por dia
                 </label>
+                <ZoneWeekdayFields defaultMask={zone.reservationWeekdaysMask} />
                 <button className="rounded-lg border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 sm:col-span-2 sm:w-max">
-                  Guardar horario
+                  Guardar horario y dias
                 </button>
               </form>
             </div>

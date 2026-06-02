@@ -99,6 +99,7 @@ export default async function ResidentPage() {
             name: true,
             maxHoursPerReservation: true,
             oneReservationPerDay: true,
+            reservationWeekdaysMask: true,
             scheduleStartHour: true,
             scheduleEndHour: true,
           },
@@ -183,6 +184,7 @@ export default async function ResidentPage() {
             name: zone.name,
             maxHoursPerReservation: zone.maxHoursPerReservation,
             oneReservationPerDay: zone.oneReservationPerDay,
+            reservationWeekdaysMask: zone.reservationWeekdaysMask,
             scheduleStartHour: zone.scheduleStartHour,
             scheduleEndHour: zone.scheduleEndHour,
           }))}
@@ -212,6 +214,7 @@ export default async function ResidentPage() {
                   zone={{
                     maxHoursPerReservation: reservation.zone.maxHoursPerReservation,
                     oneReservationPerDay: reservation.zone.oneReservationPerDay,
+                    reservationWeekdaysMask: reservation.zone.reservationWeekdaysMask,
                     scheduleStartHour: reservation.zone.scheduleStartHour,
                     scheduleEndHour: reservation.zone.scheduleEndHour,
                   }}

@@ -181,6 +181,7 @@ model Zone {
   description            String?
   maxHoursPerReservation Int
   oneReservationPerDay   Boolean           @default(false)
+  reservationWeekdaysMask Int              @default(127)
   scheduleStartHour      Int               @default(0)
   scheduleEndHour        Int               @default(24)
   isActive               Boolean           @default(true)

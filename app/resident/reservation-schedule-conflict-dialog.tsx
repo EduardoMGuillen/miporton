@@ -32,7 +32,19 @@ export function ReservationScheduleConflictDialog({
 
   if (!open || state?.ok !== false) return null;
 
-  const isDayMessage = state.conflict === "onePerDay";
+  const isOnePerDay = state.conflict === "onePerDay";
+  const isWeekdayBlocked = state.conflict === "dayNotAllowed";
+
+  const titleKey = isWeekdayBlocked
+    ? "res.conflict.weekdayTitle"
+    : isOnePerDay
+      ? "res.conflict.dayTitle"
+      : "res.conflict.slotTitle";
+  const bodyKey = isWeekdayBlocked
+    ? "res.conflict.weekdayBody"
+    : isOnePerDay
+      ? "res.conflict.dayBody"
+      : "res.conflict.slotBody";
 
   return (
     <div
@@ -43,11 +55,9 @@ export function ReservationScheduleConflictDialog({
     >
       <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
         <h3 id="reservation-conflict-title" className="text-lg font-semibold text-slate-900">
-          {isDayMessage ? t("res.conflict.dayTitle") : t("res.conflict.slotTitle")}
+          {t(titleKey)}
         </h3>
-        <p className="mt-3 text-sm leading-relaxed text-slate-600">
-          {isDayMessage ? t("res.conflict.dayBody") : t("res.conflict.slotBody")}
-        </p>
+        <p className="mt-3 text-sm leading-relaxed text-slate-600">{t(bodyKey)}</p>
         <button type="button" className="btn-primary mt-6 w-full" onClick={() => setOpen(false)}>
           {t("res.conflict.ok")}
         </button>

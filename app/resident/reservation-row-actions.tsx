@@ -93,6 +93,7 @@ export function ReservationRowActions({
   zone: {
     maxHoursPerReservation: number;
     oneReservationPerDay: boolean;
+    reservationWeekdaysMask: number;
     scheduleStartHour: number;
     scheduleEndHour: number;
   };

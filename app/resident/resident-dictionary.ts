@@ -120,6 +120,8 @@ const MESSAGES: Record<ResidentLocale, Record<string, string>> = {
     "zone.updatedTitle": "Horario actualizado",
     "zone.onePerDayHint":
       "La zona {{name}} se encuentra reservada de {{from}} a {{to}}. Puede acceder a la zona sin necesidad de reservacion en las demas horas.",
+    "zone.dayNotAllowedHint":
+      "La zona {{name}} no acepta reservas en la fecha seleccionada. Dias habilitados: {{days}}.",
     "zone.editZoneLine": "Zona",
     "zone.dateLabel": "Fecha",
     "zone.hourUnit": "hora",
@@ -153,6 +155,9 @@ const MESSAGES: Record<ResidentLocale, Record<string, string>> = {
     "res.conflict.slotTitle": "Horario no disponible",
     "res.conflict.dayBody":
       "Esta zona solo permite una reserva por dia y esa fecha ya esta ocupada por otro residente. Por favor elige otra fecha.",
+    "res.conflict.weekdayTitle": "Dia no habilitado",
+    "res.conflict.weekdayBody":
+      "Esta zona no permite reservas en el dia de la semana que elegiste. Por favor elige otra fecha.",
     "res.conflict.slotBody":
       "Este horario ya esta reservado por otro residente. Por favor elige otra fecha u hora.",
     "res.conflict.ok": "Entendido",
@@ -220,6 +225,8 @@ const MESSAGES: Record<ResidentLocale, Record<string, string>> = {
     "errors.zone.occupied": "Ese horario ya esta reservado.",
     "errors.zone.onePerDay":
       "Esta zona permite solo 1 reserva por dia y ya existe una reserva para esa fecha.",
+    "errors.zone.dayNotAllowed":
+      "Esta zona no permite reservas en el dia de la semana seleccionado.",
     "errors.zone.blocked": "Ese horario esta bloqueado por administracion.",
     "errors.zone.notFound": "No encontramos esa reserva activa.",
     "errors.zone.updateFailed": "No se pudo actualizar la reserva.",
@@ -342,6 +349,8 @@ const MESSAGES: Record<ResidentLocale, Record<string, string>> = {
     "zone.updatedTitle": "Schedule updated",
     "zone.onePerDayHint":
       "The area {{name}} is booked from {{from}} to {{to}}. You may use the area without a booking at other times.",
+    "zone.dayNotAllowedHint":
+      "The area {{name}} does not accept bookings on the selected date. Allowed days: {{days}}.",
     "zone.editZoneLine": "Area",
     "zone.dateLabel": "Date",
     "zone.hourUnit": "hour",
@@ -375,6 +384,9 @@ const MESSAGES: Record<ResidentLocale, Record<string, string>> = {
     "res.conflict.slotTitle": "Time not available",
     "res.conflict.dayBody":
       "This area allows only one booking per day and that date is already taken by another resident. Please pick another date.",
+    "res.conflict.weekdayTitle": "Day not allowed",
+    "res.conflict.weekdayBody":
+      "This area does not allow bookings on the weekday you selected. Please pick another date.",
     "res.conflict.slotBody":
       "This time is already booked by another resident. Please pick another date or time.",
     "res.conflict.ok": "Got it",
@@ -439,6 +451,7 @@ const MESSAGES: Record<ResidentLocale, Record<string, string>> = {
     "errors.zone.schedule": "Time not allowed. This area operates from {{start}}:00 to {{end}}:00.",
     "errors.zone.occupied": "That time is already booked.",
     "errors.zone.onePerDay": "This area allows only one booking per day and there is already a booking for that date.",
+    "errors.zone.dayNotAllowed": "This area does not allow bookings on the selected weekday.",
     "errors.zone.blocked": "That time is blocked by management.",
     "errors.zone.notFound": "We could not find that active booking.",
     "errors.zone.updateFailed": "Could not update the booking.",

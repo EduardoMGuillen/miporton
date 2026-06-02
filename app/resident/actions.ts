@@ -16,6 +16,7 @@ import {
 import { getResidentLocale } from "@/lib/get-resident-locale";
 import { RESIDENT_LOCALE_COOKIE, type ResidentLocale } from "@/lib/resident-locale";
 import { residentT } from "@/app/resident/resident-dictionary";
+import { isWeekdayAllowed, tegucigalpaWeekdayFromDatePart } from "@/lib/zone-weekdays";
 
 function translateZodIssue(locale: ResidentLocale, message: string | undefined, fallbackKey?: string) {
   if (message && message.startsWith("errors.")) return residentT(locale, message);
@@ -211,11 +212,22 @@ export async function createZoneReservationAction(
       name: true,
       maxHoursPerReservation: true,
       oneReservationPerDay: true,
+      reservationWeekdaysMask: true,
       scheduleStartHour: true,
       scheduleEndHour: true,
     },
   });
   if (!zone) return zoneReservationError(residentT(locale, "errors.zone.unavailable"));
+
+  const localStartForDay = parseLocalDateTimeParts(parsed.data.startsAt);
+  if (localStartForDay) {
+    const weekday = tegucigalpaWeekdayFromDatePart(localStartForDay.datePart);
+    if (weekday !== null && !isWeekdayAllowed(zone.reservationWeekdaysMask, weekday)) {
+      return zoneReservationError(residentT(locale, "errors.zone.dayNotAllowed"), {
+        conflict: "dayNotAllowed",
+      });
+    }
+  }
 
   const hours = (endsAt.getTime() - startsAt.getTime()) / (1000 * 60 * 60);
   if (hours > zone.maxHoursPerReservation) {
@@ -372,6 +384,7 @@ export async function updateZoneReservationAction(
           name: true,
           maxHoursPerReservation: true,
           oneReservationPerDay: true,
+          reservationWeekdaysMask: true,
           scheduleStartHour: true,
           scheduleEndHour: true,
         },
@@ -381,6 +394,16 @@ export async function updateZoneReservationAction(
   if (!existing) return zoneReservationError(residentT(locale, "errors.zone.notFound"));
 
   const zone = existing.zone;
+  const localStartForDay = parseLocalDateTimeParts(parsed.data.startsAt);
+  if (localStartForDay) {
+    const weekday = tegucigalpaWeekdayFromDatePart(localStartForDay.datePart);
+    if (weekday !== null && !isWeekdayAllowed(zone.reservationWeekdaysMask, weekday)) {
+      return zoneReservationError(residentT(locale, "errors.zone.dayNotAllowed"), {
+        conflict: "dayNotAllowed",
+      });
+    }
+  }
+
   const hours = (endsAt.getTime() - startsAt.getTime()) / (1000 * 60 * 60);
   if (hours > zone.maxHoursPerReservation) {
     return zoneReservationError(
