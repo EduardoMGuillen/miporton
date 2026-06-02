@@ -1,6 +1,13 @@
 "use client";
 
 import { jsPDF } from "jspdf";
+import {
+  MIVISITA_CONTRACT_INTRO,
+  MIVISITA_CONTRACT_RESPONSIBILITY_CLAUSES,
+  MIVISITA_CONTRACT_RESPONSIBILITY_SECTION_TITLE,
+  MIVISITA_CONTRACT_SCOPE_EXCLUSION,
+  MIVISITA_CONTRACT_SCOPE_SECTIONS,
+} from "@/lib/mivisita-contract-scope";
 
 export type ServiceContractPdfInput = {
   contractId?: string;
@@ -205,21 +212,64 @@ export async function generateServiceContractPdf(input: ServiceContractPdfInput)
   });
   y += 8;
 
-  y = ensureSpace(doc, y, 210);
+  y = ensureSpace(doc, y, 80);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
-  doc.text("3. Terminos de uso y operacion", 40, y);
+  doc.text("3. Alcance del servicio MiVisita", 40, y);
+  y += 16;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  y = drawWrappedParagraph(doc, MIVISITA_CONTRACT_INTRO, 48, y, 507, 13) + 6;
+
+  MIVISITA_CONTRACT_SCOPE_SECTIONS.forEach((section) => {
+    y = ensureSpace(doc, y, 48);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10.5);
+    doc.text(section.title, 48, y);
+    y += 14;
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    section.items.forEach((item, index) => {
+      y = ensureSpace(doc, y, 36);
+      y = drawWrappedParagraph(doc, `${index + 1}. ${item}`, 56, y, 499, 12) + 4;
+    });
+    y += 4;
+  });
+
+  y = ensureSpace(doc, y, 40);
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(9.5);
+  y = drawWrappedParagraph(doc, MIVISITA_CONTRACT_SCOPE_EXCLUSION, 48, y, 507, 12) + 10;
+
+  y = ensureSpace(doc, y, 60);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.text(MIVISITA_CONTRACT_RESPONSIBILITY_SECTION_TITLE, 40, y);
+  y += 16;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  MIVISITA_CONTRACT_RESPONSIBILITY_CLAUSES.forEach((clause, index) => {
+    y = ensureSpace(doc, y, 32);
+    y = drawWrappedParagraph(doc, `${index + 1}. ${clause}`, 48, y, 507, 12) + 4;
+  });
+  y += 6;
+
+  y = ensureSpace(doc, y, 100);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.text("5. Terminos de uso y operacion", 40, y);
   y += 16;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
   const standardTerms = [
-    "El servicio MiVisita se provee para control de acceso y gestion de visitas en la residencial contratante.",
+    "Nexus Global otorga a la residencial contratante una licencia de uso no exclusiva de la plataforma MiVisita durante la vigencia del contrato, limitada a los usuarios y modulos descritos en la seccion 3.",
     "Nexus Global brindara soporte tecnico en horario laboral y atencion de incidentes criticos conforme al plan contratado.",
     "La residencial se compromete a usar la plataforma de forma licita, proteger sus credenciales y reportar accesos no autorizados.",
     "El incumplimiento de pagos por mas de 30 dias habilita suspension temporal del servicio hasta regularizacion.",
     "Cualquier modificacion relevante del servicio se notificara por escrito con antelacion razonable.",
   ];
   standardTerms.forEach((term, index) => {
+    y = ensureSpace(doc, y, 28);
     y = drawWrappedParagraph(doc, `${index + 1}. ${term}`, 48, y, 507, 13) + 3;
   });
 
@@ -227,7 +277,7 @@ export async function generateServiceContractPdf(input: ServiceContractPdfInput)
   y = ensureSpace(doc, y, 170);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(12);
-  doc.text("4. Privacidad y tratamiento de datos", 40, y);
+  doc.text("6. Privacidad y tratamiento de datos", 40, y);
   y += 16;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(10);
@@ -239,7 +289,7 @@ export async function generateServiceContractPdf(input: ServiceContractPdfInput)
     y = ensureSpace(doc, y, 120);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(12);
-    doc.text("5. Clausulas adicionales acordadas", 40, y);
+    doc.text("7. Clausulas adicionales acordadas", 40, y);
     y += 16;
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);

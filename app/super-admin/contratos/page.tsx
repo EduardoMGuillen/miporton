@@ -44,7 +44,8 @@ export default async function SuperAdminContractsPage() {
       <Card>
         <h2 className="mb-2 text-lg font-semibold text-slate-900">Contrato de servicio (super admin)</h2>
         <p className="mb-4 text-sm text-slate-600">
-          Crea contrato para conjunto residencial y genera su PDF.
+          Crea contrato para conjunto residencial y genera su PDF con el alcance detallado del servicio
+          (residente, guardia y administración residencial).
         </p>
         <ServiceContractForm residentials={residentials} />
         <div className="mt-4 grid gap-2">

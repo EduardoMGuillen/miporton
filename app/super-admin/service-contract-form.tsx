@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { createServiceContractAction } from "@/app/super-admin/actions";
 import { generateServiceContractPdf } from "@/app/super-admin/service-contract-pdf";
+import { MIVISITA_CONTRACT_DEFAULT_ADDITIONAL_TERMS } from "@/lib/mivisita-contract-scope";
 
 const initialState: string | null = null;
 
@@ -21,8 +22,7 @@ export function ServiceContractForm({
     monthlyAmount: "",
     startsOn: "",
     endsOn: "",
-    terms:
-      "El cliente acepta el uso de la plataforma para gestion de accesos y notificaciones. Cualquier solicitud de personalizacion adicional se cotizara por separado mediante anexo.",
+    terms: MIVISITA_CONTRACT_DEFAULT_ADDITIONAL_TERMS,
   });
 
   async function generatePreviewPdf() {
@@ -133,7 +133,7 @@ export function ServiceContractForm({
         className="field-base md:col-span-2"
         rows={4}
         maxLength={1500}
-        placeholder="Terminos adicionales"
+        placeholder="Clausulas adicionales (el PDF incluye el alcance detallado del servicio)"
         value={formValues.terms}
         onChange={(event) => setFormValues((prev) => ({ ...prev, terms: event.target.value }))}
       />
