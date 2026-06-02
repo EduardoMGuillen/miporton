@@ -1,0 +1,68 @@
+================================================================================
+MiVisita - Registro sencillo de bugs (encontrado / causa / fix)
+================================================================================
+Formato por entrada:
+  ID, fecha, modulo, sintoma, causa, fix, commit, archivos, notas
+
+Mantener entradas breves. Agregar nuevos bugs al final con el siguiente ID.
+
+--------------------------------------------------------------------------------
+BUG-001 | 2026-05 (aprox.) | Admin residencial - QR administracion
+--------------------------------------------------------------------------------
+
+SINTOMA
+  Pantalla "Application error" en /residential-admin/qr-admin al abrir la pagina
+  o despues de crear el primer QR de administracion. En residenciales sin QR
+  activos a veces solo se veia el formulario; al haber QRs en el listado, crasheaba.
+
+  Reporte: parecia ligado a una 4.a residencial nueva; en realidad dependia de si
+  ya existian QRs activos de admin en esa residencial, no del numero de residenciales.
+
+CAUSA
+  La pagina qr-admin (app/residential-admin/qr-admin/page.tsx) reutiliza el
+  componente QrShareActions del modulo residente para Compartir/PDF/imagen de
+  cada QR activo.
+
+  Tras el commit de i18n del residente (14857bc), QrShareActions paso a usar
+  useResidentT(), que lanza error si no hay ResidentI18nProvider:
+
+    "useResidentT must be used within ResidentI18nProvider"
+
+  El layout de admin residencial NO incluye ese provider (solo el layout de
+  /resident lo incluye). Al montar QrShareActions en admin, React falla en
+  cliente y Next muestra "Application error".
+
+  La creacion de QR en servidor (createAdminQrAction) funcionaba bien; el fallo
+  era solo de renderizado del listado.
+
+FIX (commit 1eb54a5, rama main)
+  1. app/resident/resident-i18n-context.tsx
+     - Nuevo hook useOptionalResidentT() que devuelve null sin provider.
+     - useResidentT() sigue exigiendo provider (modulo residente intacto).
+
+  2. app/resident/qr-share-actions.tsx
+     - Hook useQrShareT(): si hay contexto i18n, usa ES/EN del residente;
+       si no (panel admin), fallback a textos en espanol via residentT("es", ...).
+
+  3. app/residential-admin/actions.ts
+     - createAdminQrAction: revalidatePath("/residential-admin/qr-admin") para
+       refrescar el listado tras crear (ajuste menor, no corrige el crash).
+
+ARCHIVOS CLAVE
+  - app/residential-admin/qr-admin/page.tsx
+  - app/resident/qr-share-actions.tsx
+  - app/resident/resident-i18n-context.tsx
+  - app/residential-admin/layout.tsx (sin ResidentI18nProvider)
+
+RIESGO DEL FIX
+  Bajo. Residentes conservan i18n ES/EN; admin ve botones de compartir en espanol.
+
+VERIFICACION
+  - Admin con QRs activos: /residential-admin/qr-admin carga sin error.
+  - Crear QR general y QR a nombre de residente.
+  - Residente: compartir QR sigue respetando idioma.
+  - Porteria: escaneo de QRs existentes sin cambios.
+
+--------------------------------------------------------------------------------
+(Agregar BUG-002 aqui)
+--------------------------------------------------------------------------------
