@@ -23,7 +23,7 @@ export function ZoneWeekdayFields({
             <input
               type="checkbox"
               name={`${namePrefix}_${day}`}
-              defaultChecked={(defaultMask >> day) & 1}
+              defaultChecked={((defaultMask >> day) & 1) === 1}
               className="h-4 w-4 accent-blue-600"
             />
             {WEEKDAY_LABELS_ES[day]}
