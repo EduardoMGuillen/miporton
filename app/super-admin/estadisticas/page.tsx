@@ -1,299 +1,134 @@
 import { Card } from "@/app/components/shell";
+import { StatsPlatformFilter } from "@/app/super-admin/estadisticas/platform-filter";
 import { requireRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
+import { isDragonStatsConfigured, prismaDragon } from "@/lib/prisma-dragon";
+import {
+  fetchPlatformStats,
+  mergeSuperAdminStats,
+  parseStatsPlatformFilter,
+  percent,
+} from "@/lib/super-admin-stats";
 
-type ResidentialConsumption = {
-  residentialId: string;
-  residentialName: string;
-  entries: number;
-  deliveries: number;
-  qrCreated: number;
-  total: number;
-};
-
-type TrendItem = {
-  monthKey: string;
-  label: string;
-  entries: number;
-  deliveries: number;
-  qrCreated: number;
-};
-
-type ActiveUsersByResidential = {
-  residentialId: string;
-  residentialName: string;
-  activeUsers7d: number;
-};
-
-function monthKey(value: Date) {
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  return `${value.getFullYear()}-${month}`;
-}
-
-function monthStart(value: Date) {
-  return new Date(value.getFullYear(), value.getMonth(), 1);
-}
-
-function addMonths(value: Date, amount: number) {
-  return new Date(value.getFullYear(), value.getMonth() + amount, 1);
-}
-
-function monthShortLabel(value: Date) {
-  return value.toLocaleDateString("es-HN", { month: "short", year: "2-digit" });
-}
-
-function percent(value: number, total: number) {
-  if (total <= 0) return 0;
-  return Math.round((value / total) * 100);
-}
-
-export default async function SuperAdminStatsPage() {
+export default async function SuperAdminStatsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   await requireRole(["SUPER_ADMIN"]);
 
-  const now = new Date();
-  const currentMonthStart = monthStart(now);
-  const nextMonthStart = addMonths(currentMonthStart, 1);
-  const sixMonthsStart = addMonths(currentMonthStart, -5);
-  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const params = await searchParams;
+  const platformRaw = Array.isArray(params.platform) ? params.platform[0] : params.platform;
+  const filter = parseStatsPlatformFilter(platformRaw);
+  const dragonConfigured = isDragonStatsConfigured();
 
-  const [
-    residentials,
-    entriesMonth,
-    deliveriesMonth,
-    qrCreatedMonth,
-    idEvidenceMonth,
-    scansForConsumption,
-    deliveriesForConsumption,
-    qrsForConsumption,
-    scansForTrend,
-    deliveriesForTrend,
-    qrsForTrend,
-    totalActiveUsers7d,
-    activeUsersByResidential7d,
-  ] = await Promise.all([
-    prisma.residential.findMany({
-      select: { id: true, name: true, isSuspended: true },
-      orderBy: { name: "asc" },
-    }),
-    prisma.qrScan.count({
-      where: {
-        isValid: true,
-        scannedAt: { gte: currentMonthStart, lt: nextMonthStart },
-      },
-    }),
-    prisma.deliveryAnnouncement.count({
-      where: {
-        createdAt: { gte: currentMonthStart, lt: nextMonthStart },
-      },
-    }),
-    prisma.qrCode.count({
-      where: {
-        createdAt: { gte: currentMonthStart, lt: nextMonthStart },
-      },
-    }),
-    prisma.qrScan.count({
-      where: {
-        isValid: true,
-        scannedAt: { gte: currentMonthStart, lt: nextMonthStart },
-        idPhotoData: { not: null },
-      },
-    }),
-    prisma.qrScan.findMany({
-      where: {
-        isValid: true,
-        scannedAt: { gte: currentMonthStart, lt: nextMonthStart },
-      },
-      select: {
-        code: {
-          select: {
-            residentialId: true,
-            residential: { select: { name: true } },
-          },
-        },
-      },
-    }),
-    prisma.deliveryAnnouncement.findMany({
-      where: {
-        createdAt: { gte: currentMonthStart, lt: nextMonthStart },
-      },
-      select: {
-        residentialId: true,
-        residential: { select: { name: true } },
-      },
-    }),
-    prisma.qrCode.findMany({
-      where: {
-        createdAt: { gte: currentMonthStart, lt: nextMonthStart },
-      },
-      select: {
-        residentialId: true,
-        residential: { select: { name: true } },
-      },
-    }),
-    prisma.qrScan.findMany({
-      where: {
-        isValid: true,
-        scannedAt: { gte: sixMonthsStart, lt: nextMonthStart },
-      },
-      select: { scannedAt: true },
-    }),
-    prisma.deliveryAnnouncement.findMany({
-      where: {
-        createdAt: { gte: sixMonthsStart, lt: nextMonthStart },
-      },
-      select: { createdAt: true },
-    }),
-    prisma.qrCode.findMany({
-      where: {
-        createdAt: { gte: sixMonthsStart, lt: nextMonthStart },
-      },
-      select: { createdAt: true },
-    }),
-    prisma.user.count({
-      where: {
-        residentialId: { not: null },
-        lastLoginAt: { gte: sevenDaysAgo },
-      },
-    }),
-    prisma.user.groupBy({
-      by: ["residentialId"],
-      where: {
-        residentialId: { not: null },
-        lastLoginAt: { gte: sevenDaysAgo },
-      },
-      _count: { _all: true },
-    }),
+  const [mivisita, dragon] = await Promise.all([
+    fetchPlatformStats(prisma, "mivisita", "MiVisita"),
+    dragonConfigured && prismaDragon
+      ? fetchPlatformStats(prismaDragon, "dragon", "Dragon")
+      : Promise.resolve(null),
   ]);
 
-  const usageRate = qrCreatedMonth > 0 ? Math.round((entriesMonth / qrCreatedMonth) * 100) : 0;
-  const idEvidenceRate = entriesMonth > 0 ? Math.round((idEvidenceMonth / entriesMonth) * 100) : 0;
+  const stats = mergeSuperAdminStats({
+    filter,
+    dragonConfigured,
+    mivisita,
+    dragon,
+  });
 
-  const residentialNameMap = new Map(residentials.map((item) => [item.id, item.name]));
-  const consumptionMap = new Map<string, ResidentialConsumption>();
-  const ensureResidentialBucket = (residentialId: string, residentialName: string) => {
-    if (!consumptionMap.has(residentialId)) {
-      consumptionMap.set(residentialId, {
-        residentialId,
-        residentialName,
-        entries: 0,
-        deliveries: 0,
-        qrCreated: 0,
-        total: 0,
-      });
-    }
-    return consumptionMap.get(residentialId)!;
-  };
-
-  for (const scan of scansForConsumption) {
-    const id = scan.code.residentialId;
-    const bucket = ensureResidentialBucket(id, scan.code.residential.name);
-    bucket.entries += 1;
-  }
-  for (const delivery of deliveriesForConsumption) {
-    const bucket = ensureResidentialBucket(delivery.residentialId, delivery.residential.name);
-    bucket.deliveries += 1;
-  }
-  for (const qr of qrsForConsumption) {
-    const id = qr.residentialId;
-    const name = qr.residential?.name ?? residentialNameMap.get(id) ?? "Residencial";
-    const bucket = ensureResidentialBucket(id, name);
-    bucket.qrCreated += 1;
-  }
-
-  const topConsumption = Array.from(consumptionMap.values())
-    .map((item) => ({ ...item, total: item.entries + item.deliveries }))
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 10);
-  const maxTotalConsumption = Math.max(...topConsumption.map((item) => item.total), 1);
-  const maxEntries = Math.max(...topConsumption.map((item) => item.entries), 1);
-  const maxDeliveries = Math.max(...topConsumption.map((item) => item.deliveries), 1);
-
-  const trend: TrendItem[] = [];
-  const trendMap = new Map<string, TrendItem>();
-  for (let index = 0; index < 6; index += 1) {
-    const monthDate = addMonths(sixMonthsStart, index);
-    const key = monthKey(monthDate);
-    const base: TrendItem = {
-      monthKey: key,
-      label: monthShortLabel(monthDate),
-      entries: 0,
-      deliveries: 0,
-      qrCreated: 0,
-    };
-    trendMap.set(key, base);
-    trend.push(base);
-  }
-  for (const scan of scansForTrend) {
-    const key = monthKey(scan.scannedAt);
-    const bucket = trendMap.get(key);
-    if (bucket) bucket.entries += 1;
-  }
-  for (const delivery of deliveriesForTrend) {
-    const key = monthKey(delivery.createdAt);
-    const bucket = trendMap.get(key);
-    if (bucket) bucket.deliveries += 1;
-  }
-  for (const qr of qrsForTrend) {
-    const key = monthKey(qr.createdAt);
-    const bucket = trendMap.get(key);
-    if (bucket) bucket.qrCreated += 1;
-  }
-  const maxTrendValue = Math.max(
-    ...trend.flatMap((item) => [item.entries, item.deliveries, item.qrCreated]),
-    1,
-  );
-
-  const activeUsers7dByResidential: ActiveUsersByResidential[] = activeUsersByResidential7d
-    .filter((item) => item.residentialId)
-    .map((item) => {
-      const residentialId = item.residentialId as string;
-      return {
-        residentialId,
-        residentialName: residentialNameMap.get(residentialId) ?? "Residencial",
-        activeUsers7d: item._count._all,
-      };
-    })
-    .sort((a, b) => b.activeUsers7d - a.activeUsers7d);
-  const maxActiveUsers7d = Math.max(...activeUsers7dByResidential.map((item) => item.activeUsers7d), 1);
-
-  const activeResidentials = residentials.filter((item) => !item.isSuspended).length;
-  const suspendedResidentials = residentials.length - activeResidentials;
+  const showPlatformSplit = stats.filter === "all" && dragonConfigured && dragon?.available;
 
   return (
     <>
       <Card>
-        <h2 className="text-lg font-semibold text-slate-900">Estadisticas globales (mes actual)</h2>
-        <p className="mt-2 text-sm text-slate-600">
-          Resumen operativo de consumo por residenciales sin modificar estructura de base de datos.
-        </p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">Estadisticas globales (mes actual)</h2>
+            <p className="mt-2 text-sm text-slate-600">
+              Resumen operativo unificado. Las residenciales se muestran con etiqueta de plataforma.
+            </p>
+          </div>
+          <StatsPlatformFilter current={stats.filter} dragonConfigured={dragonConfigured} />
+        </div>
+
+        {stats.dragonError ? (
+          <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            No se pudo cargar Dragon: {stats.dragonError}. Se muestran solo datos de MiVisita.
+          </p>
+        ) : null}
+
+        {!dragonConfigured ? (
+          <p className="mt-3 text-xs text-slate-500">
+            Dragon no configurado. Agrega <code className="text-slate-700">DATABASE_URL_DRAGON</code> en Vercel para
+            ver ambas plataformas.
+          </p>
+        ) : null}
+
+        {showPlatformSplit ? (
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Usuarios totales</p>
+              <p className="mt-1 text-2xl font-bold text-slate-900">{stats.totals.totalUsers}</p>
+              <p className="mt-1 text-xs text-slate-600">
+                MiVisita: {mivisita.totalUsers} | Dragon: {dragon?.totalUsers ?? 0}
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Entradas (mes)</p>
+              <p className="mt-1 text-2xl font-bold text-slate-900">{stats.totals.entriesMonth}</p>
+              <p className="mt-1 text-xs text-slate-600">
+                MiVisita: {mivisita.entriesMonth} | Dragon: {dragon?.entriesMonth ?? 0}
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-white p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Salidas (mes)</p>
+              <p className="mt-1 text-2xl font-bold text-slate-900">{stats.totals.exitsMonth}</p>
+              <p className="mt-1 text-xs text-slate-600">
+                MiVisita: {mivisita.exitsMonth} | Dragon: {dragon?.exitsMonth ?? 0}
+              </p>
+            </div>
+          </div>
+        ) : null}
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Residenciales</p>
-            <p className="mt-1 text-2xl font-bold text-slate-900">{residentials.length}</p>
+            <p className="mt-1 text-2xl font-bold text-slate-900">{stats.totals.residentials}</p>
             <p className="mt-1 text-xs text-slate-600">
-              Activas: {activeResidentials} | Suspendidas: {suspendedResidentials}
+              Activas: {stats.totals.activeResidentials} | Suspendidas: {stats.totals.suspendedResidentials}
             </p>
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Usuarios</p>
+            <p className="mt-1 text-2xl font-bold text-slate-900">{stats.totals.totalUsers}</p>
+            <p className="mt-1 text-xs text-slate-600">Cuentas en la plataforma</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Entradas</p>
-            <p className="mt-1 text-2xl font-bold text-slate-900">{entriesMonth}</p>
-            <p className="mt-1 text-xs text-slate-600">Con evidencia ID: {idEvidenceRate}%</p>
+            <p className="mt-1 text-2xl font-bold text-slate-900">{stats.totals.entriesMonth}</p>
+            <p className="mt-1 text-xs text-slate-600">Con evidencia ID: {stats.idEvidenceRate}%</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Salidas</p>
+            <p className="mt-1 text-2xl font-bold text-slate-900">{stats.totals.exitsMonth}</p>
+            <p className="mt-1 text-xs text-slate-600">Registros con salida en el mes</p>
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Deliveries</p>
-            <p className="mt-1 text-2xl font-bold text-slate-900">{deliveriesMonth}</p>
+            <p className="mt-1 text-2xl font-bold text-slate-900">{stats.totals.deliveriesMonth}</p>
             <p className="mt-1 text-xs text-slate-600">Actividad de entregas del mes actual</p>
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">QRs creados</p>
-            <p className="mt-1 text-2xl font-bold text-slate-900">{qrCreatedMonth}</p>
-            <p className="mt-1 text-xs text-slate-600">Tasa de uso: {usageRate}%</p>
+            <p className="mt-1 text-2xl font-bold text-slate-900">{stats.totals.qrCreatedMonth}</p>
+            <p className="mt-1 text-xs text-slate-600">Tasa de uso: {stats.usageRate}%</p>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Usuarios activos 7d</p>
-            <p className="mt-1 text-2xl font-bold text-slate-900">{totalActiveUsers7d}</p>
-            <p className="mt-1 text-xs text-slate-600">Cuentas con login en ultimos 7 dias</p>
-          </div>
+        </div>
+
+        <div className="mt-3 rounded-xl border border-indigo-100 bg-indigo-50/50 p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">Usuarios activos 7d</p>
+          <p className="mt-1 text-xl font-bold text-slate-900">{stats.totals.totalActiveUsers7d}</p>
+          <p className="mt-1 text-xs text-slate-600">Cuentas con login en ultimos 7 dias (con residencial)</p>
         </div>
       </Card>
 
@@ -303,8 +138,8 @@ export default async function SuperAdminStatsPage() {
           Conteo de cuentas unicas que iniciaron sesion al menos una vez en la ultima semana.
         </p>
         <div className="mt-4 space-y-3">
-          {activeUsers7dByResidential.map((item) => (
-            <div key={item.residentialId} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+          {stats.activeUsers7dByResidential.map((item) => (
+            <div key={item.key} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-semibold text-slate-900">{item.residentialName}</p>
                 <p className="text-xs text-slate-600">Activos 7d: {item.activeUsers7d}</p>
@@ -312,12 +147,12 @@ export default async function SuperAdminStatsPage() {
               <div className="mt-2 h-2 w-full rounded-full bg-slate-200">
                 <div
                   className="h-2 rounded-full bg-indigo-600"
-                  style={{ width: `${percent(item.activeUsers7d, maxActiveUsers7d)}%` }}
+                  style={{ width: `${percent(item.activeUsers7d, stats.maxActiveUsers7d)}%` }}
                 />
               </div>
             </div>
           ))}
-          {activeUsers7dByResidential.length === 0 ? (
+          {stats.activeUsers7dByResidential.length === 0 ? (
             <p className="text-sm text-slate-600">Aun no hay usuarios con inicio de sesion en los ultimos 7 dias.</p>
           ) : null}
         </div>
@@ -329,18 +164,18 @@ export default async function SuperAdminStatsPage() {
           Ranking por volumen de actividad combinada (entradas + delivery).
         </p>
         <div className="mt-4 space-y-3">
-          {topConsumption.map((item) => (
-            <div key={item.residentialId} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+          {stats.topConsumption.map((item) => (
+            <div key={item.key} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-semibold text-slate-900">{item.residentialName}</p>
                 <p className="text-xs text-slate-600">
-                  Total: {item.total} | QRs: {item.qrCreated}
+                  Total: {item.total} | QRs: {item.qrCreated} | Salidas: {item.exits}
                 </p>
               </div>
               <div className="mt-2 h-2 w-full rounded-full bg-slate-200">
                 <div
                   className="h-2 rounded-full bg-blue-600"
-                  style={{ width: `${percent(item.total, maxTotalConsumption)}%` }}
+                  style={{ width: `${percent(item.total, stats.maxTotalConsumption)}%` }}
                 />
               </div>
               <div className="mt-2 grid gap-1 text-xs text-slate-600 sm:grid-cols-2">
@@ -349,7 +184,7 @@ export default async function SuperAdminStatsPage() {
                   <div className="mt-1 h-1.5 rounded-full bg-slate-200">
                     <div
                       className="h-1.5 rounded-full bg-emerald-600"
-                      style={{ width: `${percent(item.entries, maxEntries)}%` }}
+                      style={{ width: `${percent(item.entries, stats.maxEntries)}%` }}
                     />
                   </div>
                 </div>
@@ -358,14 +193,14 @@ export default async function SuperAdminStatsPage() {
                   <div className="mt-1 h-1.5 rounded-full bg-slate-200">
                     <div
                       className="h-1.5 rounded-full bg-amber-500"
-                      style={{ width: `${percent(item.deliveries, maxDeliveries)}%` }}
+                      style={{ width: `${percent(item.deliveries, stats.maxDeliveries)}%` }}
                     />
                   </div>
                 </div>
               </div>
             </div>
           ))}
-          {topConsumption.length === 0 ? (
+          {stats.topConsumption.length === 0 ? (
             <p className="text-sm text-slate-600">Aun no hay consumo registrado en este mes.</p>
           ) : null}
         </div>
@@ -374,10 +209,10 @@ export default async function SuperAdminStatsPage() {
       <Card>
         <h2 className="text-lg font-semibold text-slate-900">Tendencia de 6 meses</h2>
         <p className="mt-2 text-sm text-slate-600">
-          Evolucion de entradas, deliveries y QRs creados para seguimiento de crecimiento.
+          Evolucion de entradas, salidas, deliveries y QRs creados.
         </p>
         <div className="mt-4 space-y-3">
-          {trend.map((item) => (
+          {stats.trend.map((item) => (
             <div key={item.monthKey} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
               <p className="text-sm font-semibold text-slate-900">{item.label}</p>
               <div className="mt-2 space-y-2 text-xs text-slate-600">
@@ -386,7 +221,16 @@ export default async function SuperAdminStatsPage() {
                   <div className="mt-1 h-2 rounded-full bg-slate-200">
                     <div
                       className="h-2 rounded-full bg-emerald-600"
-                      style={{ width: `${percent(item.entries, maxTrendValue)}%` }}
+                      style={{ width: `${percent(item.entries, stats.maxTrendValue)}%` }}
+                    />
+                  </div>
+                </div>
+                <div>
+                  Salidas: {item.exits}
+                  <div className="mt-1 h-2 rounded-full bg-slate-200">
+                    <div
+                      className="h-2 rounded-full bg-violet-600"
+                      style={{ width: `${percent(item.exits, stats.maxTrendValue)}%` }}
                     />
                   </div>
                 </div>
@@ -395,7 +239,7 @@ export default async function SuperAdminStatsPage() {
                   <div className="mt-1 h-2 rounded-full bg-slate-200">
                     <div
                       className="h-2 rounded-full bg-amber-500"
-                      style={{ width: `${percent(item.deliveries, maxTrendValue)}%` }}
+                      style={{ width: `${percent(item.deliveries, stats.maxTrendValue)}%` }}
                     />
                   </div>
                 </div>
@@ -404,7 +248,7 @@ export default async function SuperAdminStatsPage() {
                   <div className="mt-1 h-2 rounded-full bg-slate-200">
                     <div
                       className="h-2 rounded-full bg-blue-600"
-                      style={{ width: `${percent(item.qrCreated, maxTrendValue)}%` }}
+                      style={{ width: `${percent(item.qrCreated, stats.maxTrendValue)}%` }}
                     />
                   </div>
                 </div>
