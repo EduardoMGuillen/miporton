@@ -59,6 +59,8 @@ export type PlatformStatsSnapshot = {
   maxDeliveries: number;
   maxActiveUsers7d: number;
   maxTrendValue: number;
+  /** Conteo directo SQL (diagnostico permisos / BD vacia). */
+  probe?: { users: number; residentials: number; scans: number };
 };
 
 function monthKey(value: Date) {
@@ -403,6 +405,29 @@ export async function fetchPlatformStats(
     const activeResidentials = residentials.filter((item) => !item.isSuspended).length;
     const suspendedResidentials = residentials.length - activeResidentials;
 
+    let probe: PlatformStatsSnapshot["probe"];
+    if (platformId === "dragon") {
+      try {
+        const [row] = await db.$queryRaw<
+          [{ users: bigint; residentials: bigint; scans: bigint }]
+        >`
+          SELECT
+            (SELECT COUNT(*)::bigint FROM "User") AS users,
+            (SELECT COUNT(*)::bigint FROM "Residential") AS residentials,
+            (SELECT COUNT(*)::bigint FROM "QrScan") AS scans
+        `;
+        if (row) {
+          probe = {
+            users: Number(row.users),
+            residentials: Number(row.residentials),
+            scans: Number(row.scans),
+          };
+        }
+      } catch {
+        probe = undefined;
+      }
+    }
+
     return {
       platformId,
       platformLabel,
@@ -427,6 +452,7 @@ export async function fetchPlatformStats(
       maxDeliveries,
       maxActiveUsers7d,
       maxTrendValue,
+      probe,
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Error de conexion";

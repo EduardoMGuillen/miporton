@@ -42,6 +42,13 @@ export default async function SuperAdminStatsPage({
     ? dragonConnectionHint(stats.dragonError)
     : null;
 
+  const dragonProbe = dragon?.probe;
+  const dragonLooksEmpty =
+    dragon?.available &&
+    dragon.totalUsers === 0 &&
+    dragon.residentials.length === 0 &&
+    dragon.entriesMonth === 0;
+
   return (
     <>
       <Card>
@@ -70,6 +77,54 @@ export default async function SuperAdminStatsPage({
             Dragon no configurado. Agrega <code className="text-slate-700">DATABASE_URL_DRAGON</code> en Vercel para
             ver ambas plataformas.
           </p>
+        ) : null}
+
+        {dragonLooksEmpty ? (
+          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            <p className="font-medium">Dragon conecta pero los conteos salen en 0.</p>
+            {dragonProbe ? (
+              <p className="mt-1 text-xs">
+                Diagnostico en BD (usuario read-only): {dragonProbe.residentials} residenciales, {dragonProbe.users}{" "}
+                usuarios, {dragonProbe.scans} escaneos totales.
+              </p>
+            ) : null}
+            <p className="mt-2 text-xs">
+              Si en Control Dragon si hay datos, el rol <code className="text-[11px]">mivisita_readonly</code> no ve
+              filas (permisos o RLS). En Supabase del proyecto Dragon → SQL Editor, ejecuta como postgres:
+            </p>
+            <pre className="mt-2 overflow-x-auto rounded bg-amber-100/80 p-2 text-[10px] leading-relaxed text-amber-950">
+{`GRANT USAGE ON SCHEMA public TO mivisita_readonly;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO mivisita_readonly;
+GRANT SELECT ON ALL SEQUENCES IN SCHEMA public TO mivisita_readonly;
+
+DO $$
+DECLARE r RECORD;
+BEGIN
+  FOR r IN
+    SELECT c.relname AS name
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relkind = 'r'
+  LOOP
+    EXECUTE format('GRANT SELECT ON TABLE %I TO mivisita_readonly', r.name);
+    IF (SELECT relrowsecurity FROM pg_class c2
+        JOIN pg_namespace n2 ON n2.oid = c2.relnamespace
+        WHERE n2.nspname = 'public' AND c2.relname = r.name) THEN
+      EXECUTE format('DROP POLICY IF EXISTS mivisita_readonly_select ON %I', r.name);
+      EXECUTE format(
+        'CREATE POLICY mivisita_readonly_select ON %I FOR SELECT TO mivisita_readonly USING (true)',
+        r.name
+      );
+    END IF;
+  END LOOP;
+END $$;`}
+            </pre>
+            <p className="mt-2 text-xs">
+              Comprueba en SQL: <code className="text-[11px]">SELECT COUNT(*) FROM &quot;User&quot;;</code> (como
+              postgres). Si ves filas y el diagnostico sigue en 0, revisa que la URL apunte al mismo proyecto Supabase que
+              mivisita-dragon.
+            </p>
+          </div>
         ) : null}
 
         {showPlatformSplit ? (
