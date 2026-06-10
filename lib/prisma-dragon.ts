@@ -1,18 +1,23 @@
 import { PrismaClient } from "@prisma/client";
+import { normalizeServerlessPostgresUrl } from "@/lib/postgres-serverless-url";
 
 declare global {
   var prismaDragon: PrismaClient | undefined;
 }
 
-const dragonDatabaseUrl = process.env.DATABASE_URL_DRAGON?.trim() ?? "";
+const rawDragonUrl = process.env.DATABASE_URL_DRAGON?.trim() ?? "";
+const dragonDatabaseUrl = rawDragonUrl
+  ? normalizeServerlessPostgresUrl(rawDragonUrl)
+  : "";
 
 export function isDragonStatsConfigured(): boolean {
   return dragonDatabaseUrl.length > 0;
 }
 
 function createDragonClient(): PrismaClient {
+  // datasourceUrl evita que Prisma mezcle DIRECT_URL de MiVisita con esta conexion.
   return new PrismaClient({
-    datasources: { db: { url: dragonDatabaseUrl } },
+    datasourceUrl: dragonDatabaseUrl,
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
 }

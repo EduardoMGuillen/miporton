@@ -2,6 +2,7 @@ import { Card } from "@/app/components/shell";
 import { StatsPlatformFilter } from "@/app/super-admin/estadisticas/platform-filter";
 import { requireRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
+import { dragonConnectionHint } from "@/lib/postgres-serverless-url";
 import { isDragonStatsConfigured, prismaDragon } from "@/lib/prisma-dragon";
 import {
   fetchPlatformStats,
@@ -37,6 +38,9 @@ export default async function SuperAdminStatsPage({
   });
 
   const showPlatformSplit = stats.filter === "all" && dragonConfigured && dragon?.available;
+  const dragonConnectionHelp = stats.dragonError
+    ? dragonConnectionHint(stats.dragonError)
+    : null;
 
   return (
     <>
@@ -52,9 +56,14 @@ export default async function SuperAdminStatsPage({
         </div>
 
         {stats.dragonError ? (
-          <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-            No se pudo cargar Dragon: {stats.dragonError}. Se muestran solo datos de MiVisita.
-          </p>
+          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            <p>No se pudo cargar Dragon. Se muestran solo datos de MiVisita.</p>
+            {dragonConnectionHelp ? (
+              <p className="mt-2 font-medium">{dragonConnectionHelp}</p>
+            ) : (
+              <p className="mt-2 text-xs opacity-90">{stats.dragonError}</p>
+            )}
+          </div>
         ) : null}
 
         {!dragonConfigured ? (
