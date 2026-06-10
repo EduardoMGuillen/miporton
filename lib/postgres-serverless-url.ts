@@ -39,17 +39,29 @@ export function normalizeServerlessPostgresUrl(raw: string): string {
 }
 
 export function dragonConnectionHint(errorMessage: string): string | null {
-  if (!/can't reach database server/i.test(errorMessage)) {
+  const unreachable = /can't reach database server|ENOTFOUND|getaddrinfo/i.test(errorMessage);
+  if (!unreachable) {
     return null;
   }
-  if (/supabase\.co:5432/i.test(errorMessage)) {
+
+  if (/db\.[a-z0-9]+\.supabase\.co/i.test(errorMessage)) {
     return (
-      "Vercel intento el puerto 5432 (directo). En DATABASE_URL_DRAGON usa :6543, usuario " +
-      "mivisita_readonly.uzgkoqsvnjschyqwudmf y redeploy. Si ya tienes :6543, copia la misma URL " +
-      "que usa mivisita-dragon en Vercel (host y puerto) y solo cambia usuario/contraseña."
+      "El host db.….supabase.co (aunque sea puerto 6543) suele ser IPv6 y Vercel no lo alcanza en plan free. " +
+      "No uses el host db.…. Copia la DATABASE_URL del proyecto mivisita-dragon en Vercel: el host debe ser " +
+      "aws-0-REGION.pooler.supabase.com:6543 (pooler compartido). Solo cambia usuario a " +
+      "mivisita_readonly.uzgkoqsvnjschyqwudmf y la contraseña del rol read-only."
     );
   }
+
+  if (/supabase\.co:5432/i.test(errorMessage)) {
+    return (
+      "Puerto 5432 en host directo. Usa Transaction pooler :6543 en aws-0-REGION.pooler.supabase.com " +
+      "(misma URL que mivisita-dragon, usuario read-only)."
+    );
+  }
+
   return (
-    "Revisa DATABASE_URL_DRAGON en Vercel: debe ser el pooler (puerto 6543), no la conexion directa (5432)."
+    "Desde Vercel usa el pooler compartido (aws-0-REGION.pooler.supabase.com:6543), no db.….supabase.co. " +
+    "Copia la DATABASE_URL de mivisita-dragon y cambia solo usuario/contraseña."
   );
 }

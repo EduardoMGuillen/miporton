@@ -60,9 +60,8 @@ export default async function SuperAdminStatsPage({
             <p>No se pudo cargar Dragon. Se muestran solo datos de MiVisita.</p>
             {dragonConnectionHelp ? (
               <p className="mt-2 font-medium">{dragonConnectionHelp}</p>
-            ) : (
-              <p className="mt-2 text-xs opacity-90">{stats.dragonError}</p>
-            )}
+            ) : null}
+            <p className="mt-2 text-xs opacity-90">{stats.dragonError}</p>
           </div>
         ) : null}
 
