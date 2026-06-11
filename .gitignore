@@ -33,6 +33,11 @@ dev.db
 .env.*
 !.env.example
 
+# Capacitor iOS (subproyecto miporton-ios/)
+/miporton-ios/node_modules/
+/miporton-ios/.capacitor/
+/miporton-ios/ios/App/Pods/
+
 # Android
 **/.gradle/
 **/local.properties

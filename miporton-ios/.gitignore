@@ -1,0 +1,11 @@
+node_modules/
+.DS_Store
+
+# Xcode / CocoaPods (generados al abrir en Mac)
+ios/App/Pods/
+ios/App/App/public/
+ios/DerivedData/
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+
+.capacitor/
