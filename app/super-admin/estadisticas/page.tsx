@@ -267,7 +267,7 @@ END $$;`}
       <Card>
         <h2 className="text-lg font-semibold text-slate-900">Tendencia de 6 meses</h2>
         <p className="mt-2 text-sm text-slate-600">
-          Evolucion de entradas, salidas, deliveries, QRs creados y usuarios registrados.
+          Evolucion de entradas, salidas, deliveries, QRs creados y usuarios totales.
         </p>
         <div className="mt-4 space-y-3">
           {stats.trend.map((item) => (
@@ -311,11 +311,11 @@ END $$;`}
                   </div>
                 </div>
                 <div>
-                  Usuarios registrados: {item.usersRegistered}
+                  Usuarios totales: {item.totalUsers}
                   <div className="mt-1 h-2 rounded-full bg-slate-200">
                     <div
                       className="h-2 rounded-full bg-indigo-600"
-                      style={{ width: `${percent(item.usersRegistered, stats.maxTrendValue)}%` }}
+                      style={{ width: `${percent(item.totalUsers, stats.maxTrendValue)}%` }}
                     />
                   </div>
                 </div>

@@ -24,7 +24,7 @@ export type TrendRow = {
   exits: number;
   deliveries: number;
   qrCreated: number;
-  usersRegistered: number;
+  totalUsers: number;
 };
 
 export type ActiveUsersByResidentialRow = {
@@ -158,7 +158,7 @@ export async function fetchPlatformStats(
       exitsForTrend,
       deliveriesForTrend,
       qrsForTrend,
-      usersForTrend,
+      allUsersCreatedAt,
       usersByResidential,
       totalActiveUsers7d,
       activeUsersByResidential7d,
@@ -270,9 +270,6 @@ export async function fetchPlatformStats(
         select: { createdAt: true },
       }),
       db.user.findMany({
-        where: {
-          createdAt: { gte: sixMonthsStart, lt: nextMonthStart },
-        },
         select: { createdAt: true },
       }),
       db.user.groupBy({
@@ -368,7 +365,9 @@ export async function fetchPlatformStats(
     const trendMap = new Map<string, TrendRow>();
     for (let index = 0; index < 6; index += 1) {
       const monthDate = addMonths(sixMonthsStart, index);
+      const monthEnd = addMonths(monthDate, 1);
       const key = monthKey(monthDate);
+      const totalUsersAtMonth = allUsersCreatedAt.filter((user) => user.createdAt < monthEnd).length;
       const base: TrendRow = {
         monthKey: key,
         label: monthShortLabel(monthDate),
@@ -376,7 +375,7 @@ export async function fetchPlatformStats(
         exits: 0,
         deliveries: 0,
         qrCreated: 0,
-        usersRegistered: 0,
+        totalUsers: totalUsersAtMonth,
       };
       trendMap.set(key, base);
       trend.push(base);
@@ -402,19 +401,13 @@ export async function fetchPlatformStats(
       const bucket = trendMap.get(key);
       if (bucket) bucket.qrCreated += 1;
     }
-    for (const user of usersForTrend) {
-      const key = monthKey(user.createdAt);
-      const bucket = trendMap.get(key);
-      if (bucket) bucket.usersRegistered += 1;
-    }
-
     const maxTrendValue = Math.max(
       ...trend.flatMap((item) => [
         item.entries,
         item.exits,
         item.deliveries,
         item.qrCreated,
-        item.usersRegistered,
+        item.totalUsers,
       ]),
       1,
     );
@@ -577,7 +570,7 @@ function mergeTrends(snapshots: PlatformStatsSnapshot[]): TrendRow[] {
         existing.exits += row.exits;
         existing.deliveries += row.deliveries;
         existing.qrCreated += row.qrCreated;
-        existing.usersRegistered += row.usersRegistered;
+        existing.totalUsers += row.totalUsers;
       }
     }
   }
@@ -642,7 +635,7 @@ export function mergeSuperAdminStats(input: {
         i.exits,
         i.deliveries,
         i.qrCreated,
-        i.usersRegistered,
+        i.totalUsers,
       ]),
       1,
     ),
