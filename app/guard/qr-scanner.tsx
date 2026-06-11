@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
+import { EvidencePhotoField } from "@/app/components/evidence-photo-field";
 
 type ScanResult = {
   valid: boolean;
@@ -447,33 +448,19 @@ export function GuardQrScanner() {
               </p>
             ) : null}
 
-            <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-slate-600">
-              Foto del ID
-            </label>
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              capture="environment"
-              onChange={(event) => setIdPhotoFile(event.target.files?.[0] ?? null)}
-              className="mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
+            <EvidencePhotoField
+              key={`id-${pendingScannedCode ?? "none"}`}
+              className="mt-4 grid gap-2"
+              label="Foto del ID"
+              onFileChange={(file) => setIdPhotoFile(file)}
             />
-            <p className="mt-2 text-xs text-slate-500">
-              Formatos: JPG, PNG o WEBP. Maximo 5MB por archivo (se optimiza automaticamente antes de enviar).
-            </p>
-
             {pendingResult?.hasVehicle ? (
-              <>
-                <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-slate-600">
-                  Foto de placa
-                </label>
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  capture="environment"
-                  onChange={(event) => setPlatePhotoFile(event.target.files?.[0] ?? null)}
-                  className="mt-2 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
-                />
-              </>
+              <EvidencePhotoField
+                key={`plate-${pendingScannedCode ?? "none"}`}
+                className="mt-4 grid gap-2"
+                label="Foto de placa"
+                onFileChange={(file) => setPlatePhotoFile(file)}
+              />
             ) : null}
             {idCaptureError ? <p className="mt-2 text-sm text-red-600">{idCaptureError}</p> : null}
 

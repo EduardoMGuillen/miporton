@@ -13,6 +13,7 @@ export type ResidentialConsumptionRow = {
   exits: number;
   deliveries: number;
   qrCreated: number;
+  users: number;
   total: number;
 };
 
@@ -23,6 +24,7 @@ export type TrendRow = {
   exits: number;
   deliveries: number;
   qrCreated: number;
+  usersRegistered: number;
 };
 
 export type ActiveUsersByResidentialRow = {
@@ -57,6 +59,7 @@ export type PlatformStatsSnapshot = {
   maxTotalConsumption: number;
   maxEntries: number;
   maxDeliveries: number;
+  maxUsers: number;
   maxActiveUsers7d: number;
   maxTrendValue: number;
   /** Conteo directo SQL (diagnostico permisos / BD vacia). */
@@ -121,6 +124,7 @@ function emptySnapshot(
     maxTotalConsumption: 1,
     maxEntries: 1,
     maxDeliveries: 1,
+    maxUsers: 1,
     maxActiveUsers7d: 1,
     maxTrendValue: 1,
   };
@@ -154,6 +158,8 @@ export async function fetchPlatformStats(
       exitsForTrend,
       deliveriesForTrend,
       qrsForTrend,
+      usersForTrend,
+      usersByResidential,
       totalActiveUsers7d,
       activeUsersByResidential7d,
     ] = await Promise.all([
@@ -263,6 +269,17 @@ export async function fetchPlatformStats(
         },
         select: { createdAt: true },
       }),
+      db.user.findMany({
+        where: {
+          createdAt: { gte: sixMonthsStart, lt: nextMonthStart },
+        },
+        select: { createdAt: true },
+      }),
+      db.user.groupBy({
+        by: ["residentialId"],
+        where: { residentialId: { not: null } },
+        _count: { _all: true },
+      }),
       db.user.count({
         where: {
           residentialId: { not: null },
@@ -299,11 +316,19 @@ export async function fetchPlatformStats(
           exits: 0,
           deliveries: 0,
           qrCreated: 0,
+          users: 0,
           total: 0,
         });
       }
       return consumptionMap.get(key)!;
     };
+
+    for (const row of usersByResidential) {
+      if (!row.residentialId) continue;
+      const name = residentialNameMap.get(row.residentialId) ?? "Residencial";
+      const bucket = ensureBucket(row.residentialId, name);
+      bucket.users = row._count._all;
+    }
 
     for (const scan of scansForConsumption) {
       const id = scan.code.residentialId;
@@ -337,6 +362,7 @@ export async function fetchPlatformStats(
     const maxTotalConsumption = Math.max(...topConsumption.map((item) => item.total), 1);
     const maxEntries = Math.max(...topConsumption.map((item) => item.entries), 1);
     const maxDeliveries = Math.max(...topConsumption.map((item) => item.deliveries), 1);
+    const maxUsers = Math.max(...topConsumption.map((item) => item.users), 1);
 
     const trend: TrendRow[] = [];
     const trendMap = new Map<string, TrendRow>();
@@ -350,6 +376,7 @@ export async function fetchPlatformStats(
         exits: 0,
         deliveries: 0,
         qrCreated: 0,
+        usersRegistered: 0,
       };
       trendMap.set(key, base);
       trend.push(base);
@@ -375,9 +402,20 @@ export async function fetchPlatformStats(
       const bucket = trendMap.get(key);
       if (bucket) bucket.qrCreated += 1;
     }
+    for (const user of usersForTrend) {
+      const key = monthKey(user.createdAt);
+      const bucket = trendMap.get(key);
+      if (bucket) bucket.usersRegistered += 1;
+    }
 
     const maxTrendValue = Math.max(
-      ...trend.flatMap((item) => [item.entries, item.exits, item.deliveries, item.qrCreated]),
+      ...trend.flatMap((item) => [
+        item.entries,
+        item.exits,
+        item.deliveries,
+        item.qrCreated,
+        item.usersRegistered,
+      ]),
       1,
     );
 
@@ -450,6 +488,7 @@ export async function fetchPlatformStats(
       maxTotalConsumption,
       maxEntries,
       maxDeliveries,
+      maxUsers,
       maxActiveUsers7d,
       maxTrendValue,
       probe,
@@ -492,6 +531,7 @@ export type MergedSuperAdminStats = {
   maxTotalConsumption: number;
   maxEntries: number;
   maxDeliveries: number;
+  maxUsers: number;
   maxActiveUsers7d: number;
   maxTrendValue: number;
 };
@@ -537,6 +577,7 @@ function mergeTrends(snapshots: PlatformStatsSnapshot[]): TrendRow[] {
         existing.exits += row.exits;
         existing.deliveries += row.deliveries;
         existing.qrCreated += row.qrCreated;
+        existing.usersRegistered += row.usersRegistered;
       }
     }
   }
@@ -593,9 +634,16 @@ export function mergeSuperAdminStats(input: {
     maxTotalConsumption: Math.max(...topConsumption.map((i) => i.total), 1),
     maxEntries: Math.max(...topConsumption.map((i) => i.entries), 1),
     maxDeliveries: Math.max(...topConsumption.map((i) => i.deliveries), 1),
+    maxUsers: Math.max(...topConsumption.map((i) => i.users), 1),
     maxActiveUsers7d: Math.max(...activeUsers7dByResidential.map((i) => i.activeUsers7d), 1),
     maxTrendValue: Math.max(
-      ...trend.flatMap((i) => [i.entries, i.exits, i.deliveries, i.qrCreated]),
+      ...trend.flatMap((i) => [
+        i.entries,
+        i.exits,
+        i.deliveries,
+        i.qrCreated,
+        i.usersRegistered,
+      ]),
       1,
     ),
   };

@@ -127,32 +127,6 @@ END $$;`}
           </div>
         ) : null}
 
-        {showPlatformSplit ? (
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border border-slate-200 bg-white p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Usuarios totales</p>
-              <p className="mt-1 text-2xl font-bold text-slate-900">{stats.totals.totalUsers}</p>
-              <p className="mt-1 text-xs text-slate-600">
-                MiVisita: {mivisita.totalUsers} | Dragon: {dragon?.totalUsers ?? 0}
-              </p>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-white p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Entradas (mes)</p>
-              <p className="mt-1 text-2xl font-bold text-slate-900">{stats.totals.entriesMonth}</p>
-              <p className="mt-1 text-xs text-slate-600">
-                MiVisita: {mivisita.entriesMonth} | Dragon: {dragon?.entriesMonth ?? 0}
-              </p>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-white p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Salidas (mes)</p>
-              <p className="mt-1 text-2xl font-bold text-slate-900">{stats.totals.exitsMonth}</p>
-              <p className="mt-1 text-xs text-slate-600">
-                MiVisita: {mivisita.exitsMonth} | Dragon: {dragon?.exitsMonth ?? 0}
-              </p>
-            </div>
-          </div>
-        ) : null}
-
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Residenciales</p>
@@ -164,16 +138,33 @@ END $$;`}
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Usuarios</p>
             <p className="mt-1 text-2xl font-bold text-slate-900">{stats.totals.totalUsers}</p>
-            <p className="mt-1 text-xs text-slate-600">Cuentas en la plataforma</p>
+            {showPlatformSplit ? (
+              <p className="mt-1 text-xs text-slate-600">
+                MiVisita: {mivisita.totalUsers} | Dragon: {dragon?.totalUsers ?? 0}
+              </p>
+            ) : null}
+            <p className="mt-1 text-xs text-slate-600">
+              Activos 7d: {stats.totals.totalActiveUsers7d}
+            </p>
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Entradas</p>
             <p className="mt-1 text-2xl font-bold text-slate-900">{stats.totals.entriesMonth}</p>
+            {showPlatformSplit ? (
+              <p className="mt-1 text-xs text-slate-600">
+                MiVisita: {mivisita.entriesMonth} | Dragon: {dragon?.entriesMonth ?? 0}
+              </p>
+            ) : null}
             <p className="mt-1 text-xs text-slate-600">Con evidencia ID: {stats.idEvidenceRate}%</p>
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Salidas</p>
             <p className="mt-1 text-2xl font-bold text-slate-900">{stats.totals.exitsMonth}</p>
+            {showPlatformSplit ? (
+              <p className="mt-1 text-xs text-slate-600">
+                MiVisita: {mivisita.exitsMonth} | Dragon: {dragon?.exitsMonth ?? 0}
+              </p>
+            ) : null}
             <p className="mt-1 text-xs text-slate-600">Registros con salida en el mes</p>
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -188,11 +179,6 @@ END $$;`}
           </div>
         </div>
 
-        <div className="mt-3 rounded-xl border border-indigo-100 bg-indigo-50/50 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-indigo-700">Usuarios activos 7d</p>
-          <p className="mt-1 text-xl font-bold text-slate-900">{stats.totals.totalActiveUsers7d}</p>
-          <p className="mt-1 text-xs text-slate-600">Cuentas con login en ultimos 7 dias (con residencial)</p>
-        </div>
       </Card>
 
       <Card>
@@ -241,7 +227,7 @@ END $$;`}
                   style={{ width: `${percent(item.total, stats.maxTotalConsumption)}%` }}
                 />
               </div>
-              <div className="mt-2 grid gap-1 text-xs text-slate-600 sm:grid-cols-2">
+              <div className="mt-2 grid gap-1 text-xs text-slate-600 sm:grid-cols-3">
                 <div>
                   Entradas: {item.entries}
                   <div className="mt-1 h-1.5 rounded-full bg-slate-200">
@@ -260,6 +246,15 @@ END $$;`}
                     />
                   </div>
                 </div>
+                <div>
+                  Usuarios: {item.users}
+                  <div className="mt-1 h-1.5 rounded-full bg-slate-200">
+                    <div
+                      className="h-1.5 rounded-full bg-indigo-600"
+                      style={{ width: `${percent(item.users, stats.maxUsers)}%` }}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           ))}
@@ -272,7 +267,7 @@ END $$;`}
       <Card>
         <h2 className="text-lg font-semibold text-slate-900">Tendencia de 6 meses</h2>
         <p className="mt-2 text-sm text-slate-600">
-          Evolucion de entradas, salidas, deliveries y QRs creados.
+          Evolucion de entradas, salidas, deliveries, QRs creados y usuarios registrados.
         </p>
         <div className="mt-4 space-y-3">
           {stats.trend.map((item) => (
@@ -312,6 +307,15 @@ END $$;`}
                     <div
                       className="h-2 rounded-full bg-blue-600"
                       style={{ width: `${percent(item.qrCreated, stats.maxTrendValue)}%` }}
+                    />
+                  </div>
+                </div>
+                <div>
+                  Usuarios registrados: {item.usersRegistered}
+                  <div className="mt-1 h-2 rounded-full bg-slate-200">
+                    <div
+                      className="h-2 rounded-full bg-indigo-600"
+                      style={{ width: `${percent(item.usersRegistered, stats.maxTrendValue)}%` }}
                     />
                   </div>
                 </div>
