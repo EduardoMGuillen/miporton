@@ -15,6 +15,8 @@ const VALIDITY_KEYS: Record<ValidityType, string> = {
   INFINITE: "invite.validityInfinite",
 };
 
+const fieldLabelClass = "text-xs font-semibold uppercase tracking-wide text-slate-600";
+
 export function CreateQrForm({ allowedValidityTypes }: { allowedValidityTypes: ValidityType[] }) {
   const { t } = useResidentT();
   const [message, formAction, isPending] = useActionState(createInviteQrAction, initialState);
@@ -24,34 +26,57 @@ export function CreateQrForm({ allowedValidityTypes }: { allowedValidityTypes: V
 
   return (
     <form action={formAction} className="grid gap-3 md:grid-cols-2">
-      <input
-        name="visitorName"
-        required
-        placeholder={t("invite.visitorPlaceholder")}
-        className="field-base"
-      />
-      <select
-        name="validityType"
-        defaultValue={options[0]}
-        className="field-base"
-        disabled={!hasAllowedValidity}
-      >
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {t(VALIDITY_KEYS[option])}
-          </option>
-        ))}
-      </select>
-      <input
-        name="description"
-        placeholder={t("invite.descPlaceholder")}
-        className="field-base md:col-span-2"
-        maxLength={180}
-      />
-      <select name="hasVehicle" defaultValue="no" className="field-base">
-        <option value="no">{t("invite.peaton")}</option>
-        <option value="yes">{t("invite.vehicle")}</option>
-      </select>
+      <div className="grid gap-1">
+        <label className={fieldLabelClass} htmlFor="visitorName">
+          {t("invite.labelVisitorName")}
+        </label>
+        <input
+          id="visitorName"
+          name="visitorName"
+          required
+          placeholder={t("invite.visitorPlaceholder")}
+          className="field-base"
+        />
+      </div>
+      <div className="grid gap-1">
+        <label className={fieldLabelClass} htmlFor="validityType">
+          {t("invite.labelQrDuration")}
+        </label>
+        <select
+          id="validityType"
+          name="validityType"
+          defaultValue={options[0]}
+          className="field-base"
+          disabled={!hasAllowedValidity}
+        >
+          {options.map((option) => (
+            <option key={option} value={option}>
+              {t(VALIDITY_KEYS[option])}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="grid gap-1 md:col-span-2">
+        <label className={fieldLabelClass} htmlFor="description">
+          {t("invite.labelDescription")}
+        </label>
+        <input
+          id="description"
+          name="description"
+          placeholder={t("invite.descPlaceholder")}
+          className="field-base"
+          maxLength={180}
+        />
+      </div>
+      <div className="grid gap-1">
+        <label className={fieldLabelClass} htmlFor="hasVehicle">
+          {t("invite.labelAccessType")}
+        </label>
+        <select id="hasVehicle" name="hasVehicle" defaultValue="yes" className="field-base">
+          <option value="no">{t("invite.peaton")}</option>
+          <option value="yes">{t("invite.vehicle")}</option>
+        </select>
+      </div>
       <button
         type="submit"
         disabled={isPending || !hasAllowedValidity}

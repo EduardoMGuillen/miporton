@@ -68,7 +68,7 @@ const createAdminQrSchema = z.object({
   visitorName: z.string().min(2, "Nombre de visita invalido."),
   validityType: z.enum(["SINGLE_USE", "ONE_DAY", "THREE_DAYS", "INFINITE"]),
   description: z.string().max(180).optional(),
-  hasVehicle: z.enum(["yes", "no"]).default("no"),
+  hasVehicle: z.enum(["yes", "no"]).default("yes"),
   qrMode: z.enum(["GENERAL", "RESIDENT"]),
   residentId: z.string().optional(),
 });
@@ -693,7 +693,7 @@ export async function createAdminQrAction(_prevState: string | null, formData: F
     visitorName: formData.get("visitorName"),
     validityType: formData.get("validityType"),
     description: formData.get("description") || undefined,
-    hasVehicle: formData.get("hasVehicle") || "no",
+    hasVehicle: formData.get("hasVehicle") || "yes",
     qrMode: formData.get("qrMode"),
     residentId: formData.get("residentId") || undefined,
   });

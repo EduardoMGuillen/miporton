@@ -32,7 +32,7 @@ const createInviteSchema = z.object({
   visitorName: z.string().min(2, "errors.invite.visitorName"),
   validityType: z.enum(["SINGLE_USE", "ONE_DAY", "THREE_DAYS", "INFINITE"]),
   description: z.string().max(180, "errors.invite.description").optional(),
-  hasVehicle: z.enum(["yes", "no"]).default("no"),
+  hasVehicle: z.enum(["yes", "no"]).default("yes"),
 });
 
 const createZoneReservationSchema = z.object({
@@ -122,7 +122,7 @@ export async function createInviteQrAction(_prevState: string | null, formData: 
     visitorName: formData.get("visitorName"),
     validityType: formData.get("validityType"),
     description: formData.get("description") || undefined,
-    hasVehicle: formData.get("hasVehicle") || "no",
+    hasVehicle: formData.get("hasVehicle") || "yes",
   });
 
   if (!parsed.success) return translateZodIssue(locale, parsed.error.issues[0]?.message);

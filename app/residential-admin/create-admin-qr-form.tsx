@@ -28,7 +28,7 @@ export function CreateAdminQrForm({
         className="field-base md:col-span-2"
         placeholder="Descripcion (opcional)"
       />
-      <select name="hasVehicle" defaultValue="no" className="field-base">
+      <select name="hasVehicle" defaultValue="yes" className="field-base">
         <option value="no">Acceso peatonal</option>
         <option value="yes">Vehiculo</option>
       </select>
