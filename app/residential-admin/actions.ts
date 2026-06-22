@@ -271,8 +271,25 @@ export async function toggleResidentialUserSuspensionAction(formData: FormData) 
     },
   });
 
+  if (shouldSuspend) {
+    await prisma.qrCode.updateMany({
+      where: {
+        residentId: parsed.data.userId,
+        residentialId: session.residentialId,
+        isRevoked: false,
+      },
+      data: {
+        isRevoked: true,
+        validUntil: new Date(),
+      },
+    });
+  }
+
   revalidatePath("/residential-admin");
   revalidatePath("/residential-admin/usuarios");
+  revalidatePath("/residential-admin/gestionar-qrs");
+  revalidatePath("/guard");
+  revalidatePath("/resident");
 }
 
 export async function generateResidentialOneTimePasswordAction(_prevState: string | null, formData: FormData) {
@@ -759,6 +776,37 @@ export async function revokeAdminQrAction(formData: FormData) {
 
   revalidatePath("/residential-admin");
   revalidatePath("/residential-admin/qr-admin");
+  revalidatePath("/guard");
+  revalidatePath("/resident");
+}
+
+export async function revokeResidentQrAction(formData: FormData) {
+  const session = await requireRole(["RESIDENTIAL_ADMIN"]);
+  if (!session.residentialId) return;
+
+  const qrId = String(formData.get("qrId") ?? "");
+  if (!qrId) return;
+
+  const qr = await prisma.qrCode.findFirst({
+    where: {
+      id: qrId,
+      residentialId: session.residentialId,
+      isRevoked: false,
+      resident: { role: "RESIDENT" },
+    },
+    select: { id: true },
+  });
+  if (!qr) return;
+
+  await prisma.qrCode.update({
+    where: { id: qr.id },
+    data: {
+      isRevoked: true,
+      validUntil: new Date(),
+    },
+  });
+
+  revalidatePath("/residential-admin/gestionar-qrs");
   revalidatePath("/guard");
   revalidatePath("/resident");
 }

@@ -46,8 +46,8 @@ export async function validateAndConsumeQr({
   const qr = await prisma.qrCode.findUnique({
     where: { code },
     include: {
-      resident: { select: { fullName: true } },
-      residential: { select: { name: true, id: true } },
+      resident: { select: { fullName: true, isSuspended: true } },
+      residential: { select: { name: true, id: true, isSuspended: true } },
     },
   });
 
@@ -59,6 +59,26 @@ export async function validateAndConsumeQr({
     return {
       valid: false,
       reason: "Este QR no pertenece a la residencial del guardia.",
+      visitorName: qr.visitorName,
+      residentialName: qr.residential.name,
+      residentName: qr.resident.fullName,
+    };
+  }
+
+  if (qr.residential.isSuspended) {
+    return {
+      valid: false,
+      reason: "Esta residencial esta suspendida temporalmente.",
+      visitorName: qr.visitorName,
+      residentialName: qr.residential.name,
+      residentName: qr.resident.fullName,
+    };
+  }
+
+  if (qr.resident.isSuspended) {
+    return {
+      valid: false,
+      reason: "La cuenta del residente que emitio este QR esta suspendida.",
       visitorName: qr.visitorName,
       residentialName: qr.residential.name,
       residentName: qr.resident.fullName,

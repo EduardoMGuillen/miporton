@@ -203,7 +203,23 @@ export async function toggleResidentialSuspensionAction(formData: FormData) {
     },
   });
 
+  if (shouldSuspend) {
+    await prisma.qrCode.updateMany({
+      where: {
+        residentialId: parsed.data.residentialId,
+        isRevoked: false,
+      },
+      data: {
+        isRevoked: true,
+        validUntil: new Date(),
+      },
+    });
+  }
+
   revalidatePath("/super-admin");
+  revalidatePath("/guard");
+  revalidatePath("/resident");
+  revalidatePath("/residential-admin/gestionar-qrs");
 }
 
 const updateSiteBannerSchema = z.object({

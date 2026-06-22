@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { href: "/residential-admin/comunicados", label: "Comunicados" },
   { href: "/residential-admin/sugerencias", label: "Sugerencias" },
   { href: "/residential-admin/qr-admin", label: "QR administracion" },
+  { href: "/residential-admin/gestionar-qrs", label: "Gestionar QRs" },
   { href: "/residential-admin/registros", label: "Registro y reportes" },
   { href: "/residential-admin/configuracion", label: "Configuracion" },
 ];
