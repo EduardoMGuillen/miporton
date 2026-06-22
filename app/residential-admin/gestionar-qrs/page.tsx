@@ -39,27 +39,43 @@ export default async function GestionarQrsPage({
     orderBy: { fullName: "asc" },
   });
 
-  const qrCodes = await prisma.qrCode.findMany({
-    where: {
-      residentialId: session.residentialId,
-      resident: { role: "RESIDENT" },
-      ...(residentFilter ? { residentId: residentFilter } : {}),
-    },
-    include: {
-      resident: {
-        select: { fullName: true, houseNumber: true },
-      },
-    },
-    orderBy: [{ validUntil: "asc" }, { createdAt: "desc" }],
-    take: 100,
-  });
-
   const now = new Date();
-  const activeQrCodes = qrCodes.filter(
-    (qr) => !qr.isRevoked && qr.validUntil >= now && qr.usedCount < qr.maxUses,
-  );
-  const inactiveQrCodes = qrCodes.filter(
-    (qr) => qr.isRevoked || qr.validUntil < now || qr.usedCount >= qr.maxUses,
+  const baseWhere = {
+    residentialId: session.residentialId,
+    resident: { role: "RESIDENT" as const },
+    ...(residentFilter ? { residentId: residentFilter } : {}),
+  };
+
+  const residentInclude = {
+    resident: {
+      select: { fullName: true, houseNumber: true },
+    },
+  } as const;
+
+  // Mismo criterio que /resident: ordenar por validUntil asc + take(N) dejaba fuera los activos recientes.
+  const [futureDated, expiredByDate] = await Promise.all([
+    prisma.qrCode.findMany({
+      where: { ...baseWhere, validUntil: { gte: now } },
+      include: residentInclude,
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    }),
+    prisma.qrCode.findMany({
+      where: { ...baseWhere, validUntil: { lt: now } },
+      include: residentInclude,
+      orderBy: { createdAt: "desc" },
+      take: 50,
+    }),
+  ]);
+
+  const activeQrCodes = futureDated.filter((qr) => !qr.isRevoked && qr.usedCount < qr.maxUses);
+  const inactiveFromFuture = futureDated.filter((qr) => qr.isRevoked || qr.usedCount >= qr.maxUses);
+  const inactiveById = new Map<string, (typeof futureDated)[number]>();
+  for (const row of [...inactiveFromFuture, ...expiredByDate]) {
+    inactiveById.set(row.id, row);
+  }
+  const inactiveQrCodes = Array.from(inactiveById.values()).sort(
+    (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
   );
 
   return (
