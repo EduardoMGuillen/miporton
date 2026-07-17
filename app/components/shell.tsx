@@ -59,5 +59,5 @@ export function DashboardShell({
 }
 
 export function Card({ children }: { children: ReactNode }) {
-  return <section className="surface-card p-5 md:p-6">{children}</section>;
+  return <section className="surface-card min-w-0 overflow-x-hidden p-5 md:p-6">{children}</section>;
 }

@@ -677,22 +677,15 @@ export async function createAdminZoneReservationAction(_prevState: string | null
     }
   }
 
-  const [existingReservations, existingBlocks] = await Promise.all([
-    prisma.zoneReservation.findMany({
-      where: { zoneId: zone.id, status: "APPROVED" },
-      select: { startsAt: true, endsAt: true },
-    }),
-    prisma.zoneBlock.findMany({
-      where: { zoneId: zone.id },
-      select: { startsAt: true, endsAt: true },
-    }),
-  ]);
+  // Admin puede reservar sobre bloqueos de horario; residentes no.
+  // Solo se impide solapar con otra reserva activa.
+  const existingReservations = await prisma.zoneReservation.findMany({
+    where: { zoneId: zone.id, status: "APPROVED" },
+    select: { startsAt: true, endsAt: true },
+  });
 
   if (existingReservations.some((item) => overlapRange(startsAt, endsAt, item.startsAt, item.endsAt))) {
     return "Ese horario ya esta reservado.";
-  }
-  if (existingBlocks.some((item) => overlapRange(startsAt, endsAt, item.startsAt, item.endsAt))) {
-    return "Ese horario esta bloqueado por administracion.";
   }
 
   await prisma.zoneReservation.create({

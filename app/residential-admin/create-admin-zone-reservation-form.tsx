@@ -123,13 +123,35 @@ export function CreateAdminZoneReservationForm({
       slotStart.setHours(hour, 0, 0, 0);
       const slotEnd = new Date(dayStart);
       slotEnd.setHours(hour + 1, 0, 0, 0);
-      const taken = slotRanges.some((slot) =>
-        overlapRange(slotStart, slotEnd, slot.startsAt, slot.endsAt),
+      // Admin puede reservar sobre bloqueos; solo se bloquean horas ya reservadas.
+      const taken = slotRanges.some(
+        (slot) =>
+          slot.source === "reservation" &&
+          overlapRange(slotStart, slotEnd, slot.startsAt, slot.endsAt),
       );
       if (taken) set.add(hour);
     });
     return set;
   }, [zoneId, reservationDate, slotRanges, selectedZone, isDateAllowed]);
+
+  const blockedHours = useMemo(() => {
+    if (!zoneId || !reservationDate || !isDateAllowed) return new Set<number>();
+    const dayStart = new Date(`${reservationDate}T00:00`);
+    const set = new Set<number>();
+    HOURS.forEach((hour) => {
+      const slotStart = new Date(dayStart);
+      slotStart.setHours(hour, 0, 0, 0);
+      const slotEnd = new Date(dayStart);
+      slotEnd.setHours(hour + 1, 0, 0, 0);
+      const blocked = slotRanges.some(
+        (slot) =>
+          slot.source === "block" &&
+          overlapRange(slotStart, slotEnd, slot.startsAt, slot.endsAt),
+      );
+      if (blocked) set.add(hour);
+    });
+    return set;
+  }, [zoneId, reservationDate, slotRanges, isDateAllowed]);
 
   const availableStartHours = useMemo(() => HOURS.filter((hour) => !occupiedHours.has(hour)), [occupiedHours]);
   const selectedStartHourNumberRaw = Number(startHour);
@@ -153,6 +175,16 @@ export function CreateAdminZoneReservationForm({
   endsAtDate.setHours(endsAtDate.getHours() + effectiveDurationHours);
   const endsAt = `${dateOnly(endsAtDate)}T${pad2(endsAtDate.getHours())}:00`;
 
+  const selectedOverlapsBlock = useMemo(() => {
+    const rangeStart = new Date(startsAt);
+    const rangeEnd = new Date(endsAt);
+    return slotRanges.some(
+      (slot) =>
+        slot.source === "block" &&
+        overlapRange(rangeStart, rangeEnd, slot.startsAt, slot.endsAt),
+    );
+  }, [startsAt, endsAt, slotRanges]);
+
   if (residents.length === 0) {
     return (
       <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
@@ -170,8 +202,8 @@ export function CreateAdminZoneReservationForm({
   }
 
   return (
-    <form action={formAction} className="grid w-full min-w-0 gap-3">
-      <div className="grid gap-3 sm:grid-cols-2">
+    <form action={formAction} className="grid w-full min-w-0 gap-3 overflow-x-hidden">
+      <div className="grid min-w-0 gap-3 sm:grid-cols-2">
         <div className="min-w-0">
           <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">
             Residente
@@ -209,15 +241,15 @@ export function CreateAdminZoneReservationForm({
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="min-w-0">
+      <div className="grid min-w-0 gap-3 overflow-x-hidden sm:grid-cols-3">
+        <div className="min-w-0 max-w-full overflow-hidden">
           <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Fecha</label>
           <input
             name="reservationDate"
             type="date"
             value={reservationDate}
             onChange={(event) => setReservationDate(event.target.value)}
-            className="field-base w-full min-w-0 text-sm"
+            className="field-base w-full max-w-full min-w-0 text-sm"
             required
           />
         </div>
@@ -288,20 +320,31 @@ export function CreateAdminZoneReservationForm({
         <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
           No hay horarios disponibles para la fecha seleccionada.
         </p>
+      ) : selectedOverlapsBlock ? (
+        <p className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-medium text-violet-900">
+          Este rango tiene un bloqueo de horario. Como admin puedes reservarlo de todos modos; los residentes
+          siguen sin poder hacerlo.
+        </p>
       ) : null}
 
       <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
         <p className="mb-2 text-xs font-semibold text-slate-800">Disponibilidad del dia</p>
+        <p className="mb-2 text-[11px] text-slate-500">
+          Verde: libre · Ambar: bloqueado (admin puede reservar) · Rojo: ya reservado
+        </p>
         <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-6 md:grid-cols-8">
           {HOURS.map((hour) => {
-            const occupied = occupiedHours.has(hour);
+            const reserved = occupiedHours.has(hour);
+            const blocked = !reserved && blockedHours.has(hour);
             return (
               <span
                 key={hour}
                 className={
-                  occupied
+                  reserved
                     ? "rounded border border-red-200 bg-red-50 px-1 py-1 text-center text-[10px] font-medium text-red-600 line-through sm:text-xs"
-                    : "rounded border border-emerald-200 bg-emerald-50 px-1 py-1 text-center text-[10px] font-medium text-emerald-700 sm:text-xs"
+                    : blocked
+                      ? "rounded border border-amber-200 bg-amber-50 px-1 py-1 text-center text-[10px] font-medium text-amber-800 sm:text-xs"
+                      : "rounded border border-emerald-200 bg-emerald-50 px-1 py-1 text-center text-[10px] font-medium text-emerald-700 sm:text-xs"
                 }
               >
                 {formatHourLabel(hour)}

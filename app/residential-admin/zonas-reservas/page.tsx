@@ -129,7 +129,8 @@ export default async function ResidentialAdminZonesPage({
       <Card>
         <h2 className="mb-1 text-lg font-semibold text-slate-900">Reservar en nombre de un residente</h2>
         <p className="mb-4 text-sm text-slate-600">
-          Registra una reserva con las mismas reglas de horario, disponibilidad y conflictos que usa el residente.
+          Registra una reserva con las reglas de horario de la zona. Como admin puedes reservar incluso en
+          rangos bloqueados; los residentes no.
         </p>
         <CreateAdminZoneReservationForm
           residents={residents}
@@ -148,14 +149,14 @@ export default async function ResidentialAdminZonesPage({
 
       <Card>
         <h2 className="mb-3 text-lg font-semibold text-slate-900">Calendario del mes</h2>
-        <form method="get" className="grid w-full min-w-0 gap-2 sm:grid-cols-[1fr_1fr_auto]">
-          <div className="min-w-0">
+        <form method="get" className="grid w-full min-w-0 gap-2 overflow-x-hidden sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+          <div className="min-w-0 max-w-full overflow-hidden">
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Mes</label>
             <input
               type="month"
               name="month"
               defaultValue={selectedMonth}
-              className="field-base min-w-0 w-full text-sm"
+              className="field-base min-w-0 w-full max-w-full text-sm"
             />
           </div>
           <div className="min-w-0">

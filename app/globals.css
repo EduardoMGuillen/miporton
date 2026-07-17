@@ -59,17 +59,24 @@ body {
   box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.14);
 }
 
-/* Prevent mobile overflow for native datetime controls inside cards/forms */
-input[type="datetime-local"].field-base {
+/* Prevent mobile overflow for native date/time controls inside cards/forms */
+input[type="date"].field-base,
+input[type="datetime-local"].field-base,
+input[type="month"].field-base,
+input[type="time"].field-base {
+  display: block;
   min-width: 0;
   max-width: 100%;
   width: 100%;
+  box-sizing: border-box;
 }
 
-input[type="month"].field-base {
+/* iOS/WebKit native pickers can force a wide intrinsic size */
+input[type="date"].field-base::-webkit-date-and-time-value,
+input[type="month"].field-base::-webkit-date-and-time-value,
+input[type="datetime-local"].field-base::-webkit-date-and-time-value {
+  text-align: left;
   min-width: 0;
-  max-width: 100%;
-  width: 100%;
 }
 
 .btn-primary {
