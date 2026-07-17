@@ -95,7 +95,6 @@ export function CreateAdminZoneReservationForm({
 
   const occupiedHours = useMemo(() => {
     if (!zoneId || !reservationDate) return new Set<number>();
-    if (!isDateAllowed) return new Set(HOURS);
 
     const dayStart = new Date(`${reservationDate}T00:00`);
     const startHourLimit = selectedZone?.scheduleStartHour ?? 0;
@@ -132,10 +131,10 @@ export function CreateAdminZoneReservationForm({
       if (taken) set.add(hour);
     });
     return set;
-  }, [zoneId, reservationDate, slotRanges, selectedZone, isDateAllowed]);
+  }, [zoneId, reservationDate, slotRanges, selectedZone]);
 
   const blockedHours = useMemo(() => {
-    if (!zoneId || !reservationDate || !isDateAllowed) return new Set<number>();
+    if (!zoneId || !reservationDate) return new Set<number>();
     const dayStart = new Date(`${reservationDate}T00:00`);
     const set = new Set<number>();
     HOURS.forEach((hour) => {
@@ -151,7 +150,7 @@ export function CreateAdminZoneReservationForm({
       if (blocked) set.add(hour);
     });
     return set;
-  }, [zoneId, reservationDate, slotRanges, isDateAllowed]);
+  }, [zoneId, reservationDate, slotRanges]);
 
   const availableStartHours = useMemo(() => HOURS.filter((hour) => !occupiedHours.has(hour)), [occupiedHours]);
   const selectedStartHourNumberRaw = Number(startHour);
@@ -307,8 +306,10 @@ export function CreateAdminZoneReservationForm({
       </div>
 
       {!isDateAllowed && selectedZone ? (
-        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
-          {selectedZone.name} no acepta reservas los {formatAllowedDaysLabel(selectedZone.reservationWeekdaysMask)}.
+        <p className="rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs font-medium text-violet-900">
+          {selectedZone.name} no acepta reservas los{" "}
+          {formatAllowedDaysLabel(selectedZone.reservationWeekdaysMask)}. Como admin puedes reservar de todos
+          modos; los residentes no.
         </p>
       ) : selectedZone?.oneReservationPerDay && dayReservationBlockingOnePerDay ? (
         <p className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-medium text-sky-950">
@@ -356,9 +357,7 @@ export function CreateAdminZoneReservationForm({
 
       <button
         type="submit"
-        disabled={
-          isPending || !isDateAllowed || availableStartHours.length === 0 || maxSelectableDuration <= 0
-        }
+        disabled={isPending || availableStartHours.length === 0 || maxSelectableDuration <= 0}
         className="btn-primary w-full sm:w-auto disabled:opacity-60"
       >
         {isPending ? "Reservando..." : "Reservar en nombre del residente"}

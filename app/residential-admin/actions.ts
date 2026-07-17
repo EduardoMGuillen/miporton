@@ -9,7 +9,7 @@ import { decryptOtp, encryptOtp } from "@/lib/otp-crypto";
 import { DEFAULT_RESIDENT_OTP } from "@/lib/otp-default";
 import { generateResidentOneTimePassword } from "@/lib/otp-generator";
 import { prisma } from "@/lib/prisma";
-import { maskFromFormEntries, isWeekdayAllowed, tegucigalpaWeekdayFromDatePart } from "@/lib/zone-weekdays";
+import { maskFromFormEntries } from "@/lib/zone-weekdays";
 import { calculateValidityWindow } from "@/lib/qr";
 import { notifyUser } from "@/lib/push";
 import {
@@ -631,13 +631,7 @@ export async function createAdminZoneReservationAction(_prevState: string | null
   });
   if (!zone) return "Zona no disponible.";
 
-  const localStartForDay = parseLocalDateTimeParts(parsed.data.startsAt);
-  if (localStartForDay) {
-    const weekday = tegucigalpaWeekdayFromDatePart(localStartForDay.datePart);
-    if (weekday !== null && !isWeekdayAllowed(zone.reservationWeekdaysMask, weekday)) {
-      return "Ese dia no esta habilitado para reservas en esta zona.";
-    }
-  }
+  // El admin puede reservar en dias no habilitados y horarios bloqueados; los residentes no.
 
   const hours = (endsAt.getTime() - startsAt.getTime()) / (1000 * 60 * 60);
   if (hours > zone.maxHoursPerReservation) {
