@@ -9,9 +9,14 @@ import { decryptOtp, encryptOtp } from "@/lib/otp-crypto";
 import { DEFAULT_RESIDENT_OTP } from "@/lib/otp-default";
 import { generateResidentOneTimePassword } from "@/lib/otp-generator";
 import { prisma } from "@/lib/prisma";
-import { maskFromFormEntries } from "@/lib/zone-weekdays";
+import { maskFromFormEntries, isWeekdayAllowed, tegucigalpaWeekdayFromDatePart } from "@/lib/zone-weekdays";
 import { calculateValidityWindow } from "@/lib/qr";
 import { notifyUser } from "@/lib/push";
+import {
+  overlapRange,
+  parseLocalDateTimeParts,
+  parseTegucigalpaDateTime,
+} from "@/lib/zone-reservation-datetime";
 
 const createUserSchema = z.object({
   fullName: z.string().min(3, "Nombre invalido."),
@@ -58,6 +63,14 @@ const blockZoneSchema = z.object({
   reason: z.string().max(180).optional(),
 });
 
+const createAdminZoneReservationSchema = z.object({
+  zoneId: z.string().min(1, "Selecciona una zona."),
+  residentId: z.string().min(1, "Selecciona un residente."),
+  startsAt: z.string().min(1, "Indica fecha y hora de inicio."),
+  endsAt: z.string().min(1, "Indica fecha y hora de fin."),
+  note: z.string().max(180, "La nota es demasiado larga.").optional(),
+});
+
 const createAnnouncementSchema = z.object({
   title: z.string().min(3, "Titulo invalido."),
   message: z.string().min(5, "Mensaje invalido.").max(500, "Mensaje demasiado largo."),
@@ -91,32 +104,6 @@ const updateZoneScheduleSchema = z.object({
   scheduleEndHour: z.coerce.number().int().min(1).max(24),
   oneReservationPerDay: z.enum(["on"]).optional(),
 });
-
-function overlapRange(startsAt: Date, endsAt: Date, otherStart: Date, otherEnd: Date) {
-  return startsAt < otherEnd && endsAt > otherStart;
-}
-
-function parseTegucigalpaDateTime(value: string) {
-  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
-  if (!match) return null;
-  const [, yearRaw, monthRaw, dayRaw, hourRaw, minuteRaw] = match;
-  const year = Number(yearRaw);
-  const month = Number(monthRaw);
-  const day = Number(dayRaw);
-  const hour = Number(hourRaw);
-  const minute = Number(minuteRaw);
-  if (
-    Number.isNaN(year) ||
-    Number.isNaN(month) ||
-    Number.isNaN(day) ||
-    Number.isNaN(hour) ||
-    Number.isNaN(minute)
-  ) {
-    return null;
-  }
-  // America/Tegucigalpa is UTC-6 (no DST). Convert local wall time to UTC.
-  return new Date(Date.UTC(year, month - 1, day, hour + 6, minute, 0, 0));
-}
 
 export async function createResidentialUserAction(_prevState: string | null, formData: FormData) {
   const session = await requireRole(["RESIDENTIAL_ADMIN"]);
@@ -493,6 +480,7 @@ export async function createZoneAction(_prevState: string | null, formData: Form
   });
 
   revalidatePath("/residential-admin");
+  revalidatePath("/residential-admin/zonas-reservas");
   revalidatePath("/resident");
   return "Zona creada correctamente.";
 }
@@ -588,8 +576,152 @@ export async function createZoneBlockAction(_prevState: string | null, formData:
   });
 
   revalidatePath("/residential-admin");
+  revalidatePath("/residential-admin/zonas-reservas");
   revalidatePath("/resident");
   return "Bloqueo creado correctamente.";
+}
+
+export async function createAdminZoneReservationAction(_prevState: string | null, formData: FormData) {
+  const session = await requireRole(["RESIDENTIAL_ADMIN"]);
+  if (!session.residentialId) return "Sesion invalida sin residencial asociada.";
+
+  const parsed = createAdminZoneReservationSchema.safeParse({
+    zoneId: formData.get("zoneId"),
+    residentId: formData.get("residentId"),
+    startsAt: formData.get("startsAt"),
+    endsAt: formData.get("endsAt"),
+    note: formData.get("note") || undefined,
+  });
+  if (!parsed.success) return parsed.error.issues[0]?.message ?? "Datos invalidos.";
+
+  const startsAt = parseTegucigalpaDateTime(parsed.data.startsAt);
+  const endsAt = parseTegucigalpaDateTime(parsed.data.endsAt);
+  if (!startsAt || !endsAt || Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
+    return "Fecha u hora invalida.";
+  }
+  if (startsAt >= endsAt) return "La hora final debe ser mayor que la hora inicial.";
+  if (startsAt < new Date()) return "No puedes reservar en el pasado.";
+
+  const resident = await prisma.user.findFirst({
+    where: {
+      id: parsed.data.residentId,
+      residentialId: session.residentialId,
+      role: "RESIDENT",
+      isSuspended: false,
+    },
+    select: { id: true, fullName: true },
+  });
+  if (!resident) return "Residente no valido o suspendido.";
+
+  const zone = await prisma.zone.findFirst({
+    where: {
+      id: parsed.data.zoneId,
+      residentialId: session.residentialId,
+      isActive: true,
+    },
+    select: {
+      id: true,
+      name: true,
+      maxHoursPerReservation: true,
+      oneReservationPerDay: true,
+      reservationWeekdaysMask: true,
+      scheduleStartHour: true,
+      scheduleEndHour: true,
+    },
+  });
+  if (!zone) return "Zona no disponible.";
+
+  const localStartForDay = parseLocalDateTimeParts(parsed.data.startsAt);
+  if (localStartForDay) {
+    const weekday = tegucigalpaWeekdayFromDatePart(localStartForDay.datePart);
+    if (weekday !== null && !isWeekdayAllowed(zone.reservationWeekdaysMask, weekday)) {
+      return "Ese dia no esta habilitado para reservas en esta zona.";
+    }
+  }
+
+  const hours = (endsAt.getTime() - startsAt.getTime()) / (1000 * 60 * 60);
+  if (hours > zone.maxHoursPerReservation) {
+    return `La reserva supera el maximo de ${zone.maxHoursPerReservation} hora(s) por reserva.`;
+  }
+
+  const localStart = parseLocalDateTimeParts(parsed.data.startsAt);
+  const localEnd = parseLocalDateTimeParts(parsed.data.endsAt);
+  if (!localStart || !localEnd) return "Fecha u hora invalida.";
+  if (localStart.datePart !== localEnd.datePart) {
+    return "La reserva debe iniciar y terminar el mismo dia.";
+  }
+  if (localStart.minute !== 0 || localEnd.minute !== 0) {
+    return "Las reservas deben usar bloques de hora en punto.";
+  }
+  if (localStart.hour < zone.scheduleStartHour || localEnd.hour > zone.scheduleEndHour) {
+    return `El horario debe estar entre ${String(zone.scheduleStartHour).padStart(2, "0")}:00 y ${String(zone.scheduleEndHour).padStart(2, "0")}:00.`;
+  }
+
+  if (zone.oneReservationPerDay) {
+    const [yearRaw, monthRaw, dayRaw] = localStart.datePart.split("-");
+    const year = Number(yearRaw);
+    const month = Number(monthRaw);
+    const day = Number(dayRaw);
+    const dayStartUtc = new Date(Date.UTC(year, month - 1, day, 6, 0, 0, 0));
+    const dayEndUtc = new Date(Date.UTC(year, month - 1, day + 1, 6, 0, 0, 0));
+    const reservationInDay = await prisma.zoneReservation.findFirst({
+      where: {
+        zoneId: zone.id,
+        status: "APPROVED",
+        startsAt: { gte: dayStartUtc, lt: dayEndUtc },
+      },
+      select: { id: true },
+    });
+    if (reservationInDay) {
+      return "Esta zona solo permite una reserva por dia y ya hay una activa.";
+    }
+  }
+
+  const [existingReservations, existingBlocks] = await Promise.all([
+    prisma.zoneReservation.findMany({
+      where: { zoneId: zone.id, status: "APPROVED" },
+      select: { startsAt: true, endsAt: true },
+    }),
+    prisma.zoneBlock.findMany({
+      where: { zoneId: zone.id },
+      select: { startsAt: true, endsAt: true },
+    }),
+  ]);
+
+  if (existingReservations.some((item) => overlapRange(startsAt, endsAt, item.startsAt, item.endsAt))) {
+    return "Ese horario ya esta reservado.";
+  }
+  if (existingBlocks.some((item) => overlapRange(startsAt, endsAt, item.startsAt, item.endsAt))) {
+    return "Ese horario esta bloqueado por administracion.";
+  }
+
+  await prisma.zoneReservation.create({
+    data: {
+      zoneId: zone.id,
+      residentId: resident.id,
+      residentialId: session.residentialId,
+      startsAt,
+      endsAt,
+      note: parsed.data.note?.trim() || null,
+      status: "APPROVED",
+    },
+  });
+
+  await notifyUser(resident.id, {
+    title: "Reserva de zona registrada",
+    body: `La administracion reservo ${zone.name} a tu nombre para ${startsAt.toLocaleTimeString("es-HN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+      timeZone: "America/Tegucigalpa",
+    })}.`,
+    url: "/resident",
+  });
+
+  revalidatePath("/residential-admin/zonas-reservas");
+  revalidatePath("/resident");
+  revalidatePath("/guard");
+  return `Reserva creada para ${resident.fullName} en ${zone.name}.`;
 }
 
 export async function cancelZoneReservationByAdminAction(formData: FormData) {
@@ -623,8 +755,9 @@ export async function cancelZoneReservationByAdminAction(formData: FormData) {
     url: "/resident",
   });
 
-  revalidatePath("/residential-admin");
+  revalidatePath("/residential-admin/zonas-reservas");
   revalidatePath("/resident");
+  revalidatePath("/guard");
 }
 
 export async function sendResidentialAnnouncementAction(_prevState: string | null, formData: FormData) {

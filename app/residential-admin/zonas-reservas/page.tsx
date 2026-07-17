@@ -1,13 +1,11 @@
 import { Card } from "@/app/components/shell";
+import { CreateAdminZoneReservationForm } from "@/app/residential-admin/create-admin-zone-reservation-form";
 import { CreateZoneForm } from "@/app/residential-admin/create-zone-form";
 import { CreateZoneBlockForm } from "@/app/residential-admin/create-zone-block-form";
-import {
-  cancelZoneReservationByAdminAction,
-  updateZoneScheduleAction,
-} from "@/app/residential-admin/actions";
+import { ZoneConfigCard } from "@/app/residential-admin/zone-config-card";
+import { ZonasReservasTabs } from "@/app/residential-admin/zonas-reservas-tabs";
+import { cancelZoneReservationByAdminAction } from "@/app/residential-admin/actions";
 import { formatDateTimeTegucigalpa } from "@/lib/datetime";
-import { formatAllowedDaysLabel } from "@/lib/zone-weekdays";
-import { ZoneWeekdayFields } from "@/app/residential-admin/zone-weekday-fields";
 import { requireRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
 
@@ -53,166 +51,191 @@ export default async function ResidentialAdminZonesPage({
   const reservationStatusFilter = getSingleParam(params.status).trim();
   const { start: monthStart, end: monthEnd } = monthRange(selectedMonth);
 
-  const zones = await prisma.zone.findMany({
-    where: { residentialId: session.residentialId },
-    orderBy: { name: "asc" },
-    take: 60,
-  });
+  const [zones, residents, zoneReservations, zoneBlocks, pickerReservations, pickerBlocks] = await Promise.all([
+    prisma.zone.findMany({
+      where: { residentialId: session.residentialId },
+      orderBy: { name: "asc" },
+      take: 60,
+    }),
+    prisma.user.findMany({
+      where: {
+        residentialId: session.residentialId,
+        role: "RESIDENT",
+        isSuspended: false,
+      },
+      select: { id: true, fullName: true, houseNumber: true },
+      orderBy: { fullName: "asc" },
+    }),
+    prisma.zoneReservation.findMany({
+      where: {
+        residentialId: session.residentialId,
+        startsAt: { gte: monthStart, lt: monthEnd },
+        ...(reservationStatusFilter ? { status: reservationStatusFilter as "APPROVED" | "CANCELLED" } : {}),
+      },
+      include: {
+        zone: { select: { name: true } },
+        resident: { select: { fullName: true, houseNumber: true } },
+      },
+      orderBy: { startsAt: "asc" },
+      take: 200,
+    }),
+    prisma.zoneBlock.findMany({
+      where: {
+        residentialId: session.residentialId,
+        startsAt: { gte: monthStart, lt: monthEnd },
+      },
+      include: {
+        zone: { select: { name: true } },
+        createdBy: { select: { fullName: true } },
+      },
+      orderBy: { startsAt: "asc" },
+      take: 200,
+    }),
+    prisma.zoneReservation.findMany({
+      where: {
+        residentialId: session.residentialId,
+        status: "APPROVED",
+      },
+      select: { id: true, zoneId: true, startsAt: true, endsAt: true },
+      orderBy: { startsAt: "asc" },
+      take: 800,
+    }),
+    prisma.zoneBlock.findMany({
+      where: { residentialId: session.residentialId },
+      select: { zoneId: true, startsAt: true, endsAt: true },
+      orderBy: { startsAt: "asc" },
+      take: 400,
+    }),
+  ]);
 
-  const zoneReservations = await prisma.zoneReservation.findMany({
-    where: {
-      residentialId: session.residentialId,
-      startsAt: { gte: monthStart, lt: monthEnd },
-      ...(reservationStatusFilter ? { status: reservationStatusFilter as "APPROVED" | "CANCELLED" } : {}),
-    },
-    include: {
-      zone: { select: { name: true } },
-      resident: { select: { fullName: true } },
-    },
-    orderBy: { startsAt: "asc" },
-    take: 200,
-  });
+  const activeZones = zones.filter((zone) => zone.isActive);
+  const zoneOccupiedSlots = [
+    ...pickerReservations.map((item) => ({
+      zoneId: item.zoneId,
+      startsAtIso: item.startsAt.toISOString(),
+      endsAtIso: item.endsAt.toISOString(),
+      source: "reservation" as const,
+    })),
+    ...pickerBlocks.map((item) => ({
+      zoneId: item.zoneId,
+      startsAtIso: item.startsAt.toISOString(),
+      endsAtIso: item.endsAt.toISOString(),
+      source: "block" as const,
+    })),
+  ];
 
-  const zoneBlocks = await prisma.zoneBlock.findMany({
-    where: {
-      residentialId: session.residentialId,
-      startsAt: { gte: monthStart, lt: monthEnd },
-    },
-    include: {
-      zone: { select: { name: true } },
-      createdBy: { select: { fullName: true } },
-    },
-    orderBy: { startsAt: "asc" },
-    take: 200,
-  });
-
-  return (
-    <>
+  const reservasPanel = (
+    <div className="space-y-4">
       <Card>
-        <h2 className="mb-4 text-lg font-semibold text-slate-900">Zonas y reservas</h2>
-        <CreateZoneForm />
-        <div className="mt-4">
-          <CreateZoneBlockForm zones={zones.map((zone) => ({ id: zone.id, name: zone.name }))} />
-        </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
-          {zones.map((zone) => (
-            <div key={zone.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-              <p className="text-sm font-semibold text-slate-900">{zone.name}</p>
-              <p className="text-xs text-slate-600">
-                Maximo por reserva: {zone.maxHoursPerReservation} hora(s) | Estado:{" "}
-                {zone.isActive ? "Activa" : "Inactiva"}
-              </p>
-              <p className="text-xs text-slate-600">
-                Horario habilitado: {String(zone.scheduleStartHour).padStart(2, "0")}:00 -{" "}
-                {String(zone.scheduleEndHour).padStart(2, "0")}:00
-              </p>
-              <p className="text-xs text-slate-600">
-                Limite diario: {zone.oneReservationPerDay ? "1 reserva por dia" : "Multiples reservas por dia"}
-              </p>
-              <p className="text-xs text-slate-600">
-                Dias habilitados: {formatAllowedDaysLabel(zone.reservationWeekdaysMask)}
-              </p>
-              {zone.description ? <p className="text-xs text-slate-500">{zone.description}</p> : null}
-              <form action={updateZoneScheduleAction} className="mt-2 grid gap-2 sm:grid-cols-2">
-                <input type="hidden" name="zoneId" value={zone.id} />
-                <input
-                  name="scheduleStartHour"
-                  type="number"
-                  min={0}
-                  max={23}
-                  defaultValue={zone.scheduleStartHour}
-                  className="field-base"
-                  required
-                />
-                <input
-                  name="scheduleEndHour"
-                  type="number"
-                  min={1}
-                  max={24}
-                  defaultValue={zone.scheduleEndHour}
-                  className="field-base"
-                  required
-                />
-                <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-2 text-xs text-slate-700 sm:col-span-2">
-                  <input
-                    type="checkbox"
-                    name="oneReservationPerDay"
-                    defaultChecked={zone.oneReservationPerDay}
-                    className="h-4 w-4 accent-blue-600"
-                  />
-                  Activar 1 reserva por dia
-                </label>
-                <ZoneWeekdayFields defaultMask={zone.reservationWeekdaysMask} />
-                <button className="rounded-lg border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 sm:col-span-2 sm:w-max">
-                  Guardar horario y dias
-                </button>
-              </form>
-            </div>
-          ))}
-        </div>
+        <h2 className="mb-1 text-lg font-semibold text-slate-900">Reservar en nombre de un residente</h2>
+        <p className="mb-4 text-sm text-slate-600">
+          Registra una reserva con las mismas reglas de horario, disponibilidad y conflictos que usa el residente.
+        </p>
+        <CreateAdminZoneReservationForm
+          residents={residents}
+          zones={activeZones.map((zone) => ({
+            id: zone.id,
+            name: zone.name,
+            maxHoursPerReservation: zone.maxHoursPerReservation,
+            oneReservationPerDay: zone.oneReservationPerDay,
+            reservationWeekdaysMask: zone.reservationWeekdaysMask,
+            scheduleStartHour: zone.scheduleStartHour,
+            scheduleEndHour: zone.scheduleEndHour,
+          }))}
+          occupiedSlots={zoneOccupiedSlots}
+        />
       </Card>
 
       <Card>
-        <h2 className="mb-3 text-lg font-semibold text-slate-900">Calendario de reservas y bloqueos</h2>
-        <form className="grid w-full min-w-0 gap-2 overflow-x-hidden md:grid-cols-3">
-          <input
-            type="month"
-            name="month"
-            defaultValue={selectedMonth}
-            className="field-base min-w-0 w-full max-w-full text-sm"
-          />
-          <select name="status" defaultValue={reservationStatusFilter} className="field-base min-w-0">
-            <option value="">Reservas: todas</option>
-            <option value="APPROVED">Solo activas</option>
-            <option value="CANCELLED">Solo canceladas</option>
-          </select>
-          <button className="btn-primary w-full min-w-0">Aplicar</button>
+        <h2 className="mb-3 text-lg font-semibold text-slate-900">Calendario del mes</h2>
+        <form method="get" className="grid w-full min-w-0 gap-2 sm:grid-cols-[1fr_1fr_auto]">
+          <div className="min-w-0">
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Mes</label>
+            <input
+              type="month"
+              name="month"
+              defaultValue={selectedMonth}
+              className="field-base min-w-0 w-full text-sm"
+            />
+          </div>
+          <div className="min-w-0">
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500">Estado</label>
+            <select name="status" defaultValue={reservationStatusFilter} className="field-base min-w-0 w-full">
+              <option value="">Todas las reservas</option>
+              <option value="APPROVED">Solo activas</option>
+              <option value="CANCELLED">Solo canceladas</option>
+            </select>
+          </div>
+          <div className="flex items-end">
+            <button type="submit" className="btn-primary w-full sm:w-auto">
+              Aplicar
+            </button>
+          </div>
         </form>
 
         <div className="mt-5">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-700">Reservas del mes</h3>
+          <h3 className="text-sm font-semibold text-slate-800">
+            Reservas ({zoneReservations.length})
+          </h3>
           <div className="mt-2 grid gap-2">
             {zoneReservations.map((reservation) => (
-              <div key={reservation.id} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                <p className="text-sm font-semibold text-slate-900">
-                  {reservation.zone.name} - {reservation.resident.fullName}
+              <article
+                key={reservation.id}
+                className="rounded-xl border border-slate-200 bg-slate-50/80 p-3 sm:p-4"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-slate-900">{reservation.zone.name}</p>
+                    <p className="text-xs text-slate-600">
+                      {reservation.resident.fullName}
+                      {reservation.resident.houseNumber ? ` · Casa ${reservation.resident.houseNumber}` : ""}
+                    </p>
+                  </div>
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                      reservation.status === "APPROVED"
+                        ? "bg-emerald-50 text-emerald-700"
+                        : "bg-slate-100 text-slate-600"
+                    }`}
+                  >
+                    {reservation.status === "APPROVED" ? "Activa" : "Cancelada"}
+                  </span>
+                </div>
+                <p className="mt-2 text-xs text-slate-600">
+                  {formatDateTimeTegucigalpa(reservation.startsAt)} — {formatDateTimeTegucigalpa(reservation.endsAt)}
                 </p>
-                <p className="text-xs text-slate-600">
-                  {formatDateTimeTegucigalpa(reservation.startsAt)} -{" "}
-                  {formatDateTimeTegucigalpa(reservation.endsAt)}
-                </p>
-                <p className="text-xs text-slate-500">
-                  Estado: {reservation.status === "APPROVED" ? "Activa" : "Cancelada"}
-                </p>
-                {reservation.note ? <p className="text-xs text-slate-500">{reservation.note}</p> : null}
+                {reservation.note ? <p className="mt-1 text-xs text-slate-500">{reservation.note}</p> : null}
                 {reservation.status === "APPROVED" ? (
-                  <form action={cancelZoneReservationByAdminAction} className="mt-2">
+                  <form action={cancelZoneReservationByAdminAction} className="mt-3">
                     <input type="hidden" name="reservationId" value={reservation.id} />
-                    <button className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-700">
-                      Cancelar reserva (admin)
+                    <button
+                      type="submit"
+                      className="w-full rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 sm:w-auto"
+                    >
+                      Cancelar reserva
                     </button>
                   </form>
                 ) : null}
-              </div>
+              </article>
             ))}
             {zoneReservations.length === 0 ? (
-              <p className="text-sm text-slate-600">No hay reservas en este mes/filtro.</p>
+              <p className="text-sm text-slate-600">No hay reservas en este mes o filtro.</p>
             ) : null}
           </div>
         </div>
 
-        <div className="mt-5">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-700">Bloqueos del mes</h3>
+        <div className="mt-6 border-t border-slate-200 pt-5">
+          <h3 className="text-sm font-semibold text-slate-800">Bloqueos del mes ({zoneBlocks.length})</h3>
           <div className="mt-2 grid gap-2">
             {zoneBlocks.map((block) => (
-              <div key={block.id} className="rounded-lg border border-slate-200 bg-red-50/70 p-3">
+              <article key={block.id} className="rounded-xl border border-red-200 bg-red-50/60 p-3 sm:p-4">
                 <p className="text-sm font-semibold text-slate-900">{block.zone.name}</p>
-                <p className="text-xs text-slate-600">
-                  {formatDateTimeTegucigalpa(block.startsAt)} - {formatDateTimeTegucigalpa(block.endsAt)}
+                <p className="mt-1 text-xs text-slate-600">
+                  {formatDateTimeTegucigalpa(block.startsAt)} — {formatDateTimeTegucigalpa(block.endsAt)}
                 </p>
-                <p className="text-xs text-slate-500">Creado por: {block.createdBy.fullName}</p>
-                {block.reason ? <p className="text-xs text-slate-500">{block.reason}</p> : null}
-              </div>
+                <p className="text-xs text-slate-500">Por: {block.createdBy.fullName}</p>
+                {block.reason ? <p className="mt-1 text-xs text-slate-500">{block.reason}</p> : null}
+              </article>
             ))}
             {zoneBlocks.length === 0 ? (
               <p className="text-sm text-slate-600">No hay bloqueos en este mes.</p>
@@ -220,6 +243,55 @@ export default async function ResidentialAdminZonesPage({
           </div>
         </div>
       </Card>
+    </div>
+  );
+
+  const zonasPanel = (
+    <div className="space-y-4">
+      <Card>
+        <h2 className="mb-1 text-lg font-semibold text-slate-900">Crear zona</h2>
+        <p className="mb-4 text-sm text-slate-600">Define zonas comunes disponibles para reservas de residentes.</p>
+        <CreateZoneForm />
+      </Card>
+
+      <Card>
+        <h2 className="mb-4 text-lg font-semibold text-slate-900">Zonas configuradas ({zones.length})</h2>
+        <div className="grid gap-3 lg:grid-cols-2">
+          {zones.map((zone) => (
+            <ZoneConfigCard key={zone.id} zone={zone} />
+          ))}
+          {zones.length === 0 ? (
+            <p className="text-sm text-slate-600">Aun no hay zonas creadas.</p>
+          ) : null}
+        </div>
+      </Card>
+    </div>
+  );
+
+  const bloqueosPanel = (
+    <Card>
+      <h2 className="mb-1 text-lg font-semibold text-slate-900">Bloquear horario</h2>
+      <p className="mb-4 text-sm text-slate-600">
+        Impide reservas en un rango de fecha y hora (mantenimiento, eventos, etc.).
+      </p>
+      <CreateZoneBlockForm zones={zones.map((zone) => ({ id: zone.id, name: zone.name }))} />
+    </Card>
+  );
+
+  return (
+    <>
+      <div className="surface-card border border-blue-100 bg-gradient-to-br from-blue-50/80 to-white p-4 sm:p-6">
+        <h1 className="text-lg font-semibold text-slate-900 sm:text-xl">Zonas y reservas</h1>
+        <p className="mt-1 text-sm text-slate-600">
+          Administra zonas comunes, reservas de residentes y bloqueos operativos.
+        </p>
+      </div>
+
+      <ZonasReservasTabs
+        reservasPanel={reservasPanel}
+        zonasPanel={zonasPanel}
+        bloqueosPanel={bloqueosPanel}
+      />
     </>
   );
 }

@@ -17,6 +17,11 @@ import { getResidentLocale } from "@/lib/get-resident-locale";
 import { RESIDENT_LOCALE_COOKIE, type ResidentLocale } from "@/lib/resident-locale";
 import { residentT } from "@/app/resident/resident-dictionary";
 import { isWeekdayAllowed, tegucigalpaWeekdayFromDatePart } from "@/lib/zone-weekdays";
+import {
+  overlapRange,
+  parseLocalDateTimeParts,
+  parseTegucigalpaDateTime,
+} from "@/lib/zone-reservation-datetime";
 
 function translateZodIssue(locale: ResidentLocale, message: string | undefined, fallbackKey?: string) {
   if (message && message.startsWith("errors.")) return residentT(locale, message);
@@ -71,47 +76,6 @@ const updateContactSchema = z.object({
     .optional()
     .transform((value) => value ?? ""),
 });
-
-function overlapRange(
-  startsAt: Date,
-  endsAt: Date,
-  otherStart: Date,
-  otherEnd: Date,
-) {
-  return startsAt < otherEnd && endsAt > otherStart;
-}
-
-function parseTegucigalpaDateTime(value: string) {
-  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
-  if (!match) return null;
-  const [, yearRaw, monthRaw, dayRaw, hourRaw, minuteRaw] = match;
-  const year = Number(yearRaw);
-  const month = Number(monthRaw);
-  const day = Number(dayRaw);
-  const hour = Number(hourRaw);
-  const minute = Number(minuteRaw);
-  if (
-    Number.isNaN(year) ||
-    Number.isNaN(month) ||
-    Number.isNaN(day) ||
-    Number.isNaN(hour) ||
-    Number.isNaN(minute)
-  ) {
-    return null;
-  }
-  // America/Tegucigalpa is UTC-6 (no DST). Convert local wall time to UTC.
-  return new Date(Date.UTC(year, month - 1, day, hour + 6, minute, 0, 0));
-}
-
-function parseLocalDateTimeParts(value: string) {
-  const match = value.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})/);
-  if (!match) return null;
-  const [, datePart, hourRaw, minuteRaw] = match;
-  const hour = Number(hourRaw);
-  const minute = Number(minuteRaw);
-  if (Number.isNaN(hour) || Number.isNaN(minute)) return null;
-  return { datePart, hour, minute };
-}
 
 export async function createInviteQrAction(_prevState: string | null, formData: FormData) {
   const locale = await getResidentLocale();
