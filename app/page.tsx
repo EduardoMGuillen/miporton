@@ -91,9 +91,12 @@ export const metadata: Metadata = {
     images: ["/logomivisita.png"],
   },
   icons: {
-    icon: [{ url: "/logomivisita.png", sizes: "any", type: "image/png" }],
-    shortcut: ["/logomivisita.png"],
-    apple: [{ url: "/logomivisita.png", sizes: "180x180", type: "image/png" }],
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    shortcut: ["/favicon.ico"],
+    apple: [{ url: "/icon-192.png", sizes: "180x180", type: "image/png" }],
   },
   other: {
     "geo.region": "HN",
