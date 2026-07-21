@@ -76,11 +76,19 @@ export const metadata: Metadata = {
     countryName: "Honduras",
     images: [
       {
-        url: "/logomivisita.png",
-        width: 1024,
-        height: 1024,
+        url: "/icon-512.png",
+        secureUrl: "/icon-512.png",
+        width: 512,
+        height: 512,
         alt: "MiVisita — administración y seguridad residencial en Honduras",
         type: "image/png",
+      },
+      {
+        url: "/logo.png",
+        type: "image/png",
+        width: 512,
+        height: 512,
+        alt: "MiVisita logo",
       },
     ],
   },
@@ -88,16 +96,17 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: PAGE_TITLE,
     description: OG_DESCRIPTION,
-    images: ["/logomivisita.png"],
+    images: ["/icon-512.png"],
   },
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },
-      { url: "/favicon-48.png", sizes: "48x48", type: "image/png" },
+      { url: "/icon-48.png", sizes: "48x48", type: "image/png" },
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
     shortcut: ["/favicon.ico"],
-    apple: [{ url: "/icon-192.png", sizes: "180x180", type: "image/png" }],
+    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
   },
   other: {
     "geo.region": "HN",
@@ -128,7 +137,8 @@ export default async function Home() {
         "@id": `${APP_URL}/#organization`,
         name: "MiVisita",
         url: APP_URL,
-        logo: `${APP_URL}/logomivisita.png`,
+        logo: `${APP_URL}/logo.png`,
+        image: `${APP_URL}/icon-512.png`,
         areaServed: {
           "@type": "Country",
           name: "Honduras",
