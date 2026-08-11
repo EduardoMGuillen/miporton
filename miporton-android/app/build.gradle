@@ -32,14 +32,14 @@ def twaManifest = [
 
 android {
     namespace twaManifest.applicationId
-    compileSdk 36
+    compileSdk 35
 
     defaultConfig {
         applicationId twaManifest.applicationId
         minSdk 23
         targetSdk 35
-        versionCode 5
-        versionName "1.0.4"
+        versionCode 6
+        versionName "1.0.5"
 
         resValue "string", "appName", twaManifest.name
 
@@ -136,6 +136,7 @@ task generateShorcutsFile {
 preBuild.dependsOn(generateShorcutsFile)
 
 dependencies {
-    // 2.7.0+: EdgeToEdge en LauncherActivity/splash (Android 15 / targetSdk 35)
-    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.7.0'
+    // 2.5.0: estable con Theme.Translucent. 2.7.0 + edge-to-edge puede cerrar el launcher al instante.
+    // Opt-out de edge-to-edge en values-v35 hasta migrar bien el tema.
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
 }

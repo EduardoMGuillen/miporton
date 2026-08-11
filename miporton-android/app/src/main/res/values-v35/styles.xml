@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+      Android 15 (API 35): opt-out temporal del edge-to-edge forzado.
+      Evita el aviso de Play Console sin romper el launcher TWA translúcido.
+      Remover cuando migremos a androidbrowserhelper 2.7+ con tema no translúcido.
+    -->
+    <style name="Theme.LauncherActivity" parent="@android:style/Theme.Translucent.NoTitleBar">
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
+    </style>
+</resources>
