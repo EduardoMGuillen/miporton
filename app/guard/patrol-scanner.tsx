@@ -147,7 +147,7 @@ export function GuardPatrolScanner() {
       </p>
       <button
         type="button"
-        className="btn-primary"
+        className="w-full rounded-2xl bg-violet-700 px-5 py-4 text-base font-bold text-white shadow-lg transition hover:bg-violet-800 disabled:opacity-60"
         disabled={isStarting}
         onClick={() => {
           isHandlingRef.current = false;

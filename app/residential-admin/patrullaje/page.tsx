@@ -60,44 +60,59 @@ export default async function ResidentialAdminPatrullajePage() {
       </Card>
 
       <Card>
-        <h2 className="mb-4 text-lg font-semibold text-slate-900">
-          Zonas activas ({zonesWithQr.length})
-        </h2>
-        <div className="grid gap-3 md:grid-cols-2">
-          {zonesWithQr.map((zone) => (
-            <article key={zone.id} className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
-              <p className="text-sm font-semibold text-slate-900">{zone.name}</p>
-              {zone.description ? (
-                <p className="text-xs text-slate-600">{zone.description}</p>
-              ) : null}
-              <p className="mt-2 break-all rounded-md bg-white px-2 py-1 text-[10px] text-slate-500">
-                {patrolPayloadFromCode(zone.code)}
+        <details>
+          <summary className="cursor-pointer list-none text-lg font-semibold text-slate-900">
+            Zonas activas ({zonesWithQr.length})
+          </summary>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {zonesWithQr.map((zone) => (
+              <article
+                key={zone.id}
+                className="flex h-full flex-col rounded-xl border border-slate-200 bg-slate-50/70 p-4"
+              >
+                <div className="min-h-[3.25rem]">
+                  <p className="line-clamp-1 text-sm font-semibold text-slate-900">{zone.name}</p>
+                  <p className="mt-0.5 line-clamp-2 min-h-[2rem] text-xs text-slate-600">
+                    {zone.description || "Sin descripcion"}
+                  </p>
+                </div>
+                <p className="mt-2 break-all rounded-md bg-white px-2 py-1 text-center text-[10px] text-slate-500">
+                  {patrolPayloadFromCode(zone.code)}
+                </p>
+                <div className="mt-3 flex flex-1 items-center justify-center">
+                  <div className="aspect-square w-full max-w-[11rem] rounded-lg border border-slate-200 bg-white p-2">
+                    {/* Data URL from QRCode.toDataURL — native img is intentional */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={zone.image}
+                      alt={`QR patrullaje ${zone.name}`}
+                      className="h-full w-full object-contain"
+                    />
+                  </div>
+                </div>
+                <div className="mt-auto pt-3">
+                  <PatrolQrShareActions
+                    qrDataUrl={zone.image}
+                    zoneName={zone.name}
+                    code={zone.code}
+                    residentialName={residential?.name ?? "Residencial"}
+                  />
+                  <form action={deactivatePatrolZoneAction} className="mt-3 text-center">
+                    <input type="hidden" name="zoneId" value={zone.id} />
+                    <button type="submit" className="text-xs font-medium text-red-700 hover:underline">
+                      Desactivar zona
+                    </button>
+                  </form>
+                </div>
+              </article>
+            ))}
+            {zonesWithQr.length === 0 ? (
+              <p className="text-sm text-slate-600 sm:col-span-2 xl:col-span-3">
+                Aun no hay zonas de patrullaje activas.
               </p>
-              {/* Data URL from QRCode.toDataURL — native img is intentional */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={zone.image}
-                alt={`QR patrullaje ${zone.name}`}
-                className="mt-3 h-40 w-40 rounded-lg border border-slate-200 bg-white p-2"
-              />
-              <PatrolQrShareActions
-                qrDataUrl={zone.image}
-                zoneName={zone.name}
-                code={zone.code}
-                residentialName={residential?.name ?? "Residencial"}
-              />
-              <form action={deactivatePatrolZoneAction} className="mt-3">
-                <input type="hidden" name="zoneId" value={zone.id} />
-                <button type="submit" className="text-xs font-medium text-red-700 hover:underline">
-                  Desactivar zona
-                </button>
-              </form>
-            </article>
-          ))}
-          {zonesWithQr.length === 0 ? (
-            <p className="text-sm text-slate-600">Aun no hay zonas de patrullaje activas.</p>
-          ) : null}
-        </div>
+            ) : null}
+          </div>
+        </details>
       </Card>
 
       <Card>
