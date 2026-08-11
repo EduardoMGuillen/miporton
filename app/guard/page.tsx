@@ -2,6 +2,7 @@ import { requireRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
 import { Card, DashboardShell } from "@/app/components/shell";
 import { GuardQrScanner } from "@/app/guard/qr-scanner";
+import { GuardPatrolScanner } from "@/app/guard/patrol-scanner";
 import { confirmManualExitAction } from "@/app/guard/actions";
 import { GuardPushSubscriptionCard } from "@/app/guard/push-subscription";
 import { GuardAutoRefresh } from "@/app/guard/guard-auto-refresh";
@@ -165,12 +166,12 @@ export default async function GuardPage() {
       </Card>
 
       <Card>
-        <h2 className="mb-4 text-lg font-semibold text-slate-900">Alertas de visitas</h2>
-        <GuardPushSubscriptionCard />
+        <h2 className="mb-4 text-lg font-semibold text-slate-900">Guardar Patrullaje</h2>
+        <GuardPatrolScanner />
       </Card>
 
       <Card>
-        <details open={pendingInvites.length > 0}>
+        <details>
           <summary className="cursor-pointer list-none text-lg font-semibold text-slate-900">
             Anuncios pendientes ({pendingInvites.length})
           </summary>
@@ -199,7 +200,7 @@ export default async function GuardPage() {
       </Card>
 
       <Card>
-        <details open={pendingExitEntries.length > 0}>
+        <details>
           <summary className="cursor-pointer list-none text-lg font-semibold text-slate-900">
             Confirmar salida manual ({pendingExitEntries.length})
           </summary>
@@ -255,6 +256,11 @@ export default async function GuardPage() {
             ) : null}
           </div>
         </details>
+      </Card>
+
+      <Card>
+        <h2 className="mb-4 text-lg font-semibold text-slate-900">Alertas de visitas</h2>
+        <GuardPushSubscriptionCard />
       </Card>
     </DashboardShell>
   );

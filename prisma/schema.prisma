@@ -69,6 +69,8 @@ model Residential {
   contracts     ServiceContract[]
   deliveries    DeliveryAnnouncement[]
   suggestions   ResidentSuggestion[]
+  patrolZones   PatrolZone[]
+  patrolChecks  PatrolCheck[]
 }
 
 model User {
@@ -104,6 +106,7 @@ model User {
   oneTimePasswordCreatedBy User?                      @relation("ResidentialOtpCreatedBy", fields: [oneTimePasswordCreatedById], references: [id], onDelete: SetNull)
   otpCreatedForUsers      User[]                      @relation("ResidentialOtpCreatedBy")
   passwordResetTokens     PasswordResetToken[]
+  patrolChecks            PatrolCheck[]
 
   @@index([residentialId, lastLoginAt])
 }
@@ -304,6 +307,37 @@ model ResidentSuggestion {
 
   @@index([residentialId, createdAt])
   @@index([residentId, createdAt])
+}
+
+/** Zona fija de patrullaje con QR permanente (sticker). Prefijo de payload: MPP: */
+model PatrolZone {
+  id            String        @id @default(cuid())
+  name          String
+  description   String?
+  code          String        @unique
+  isActive      Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  residentialId String
+  residential   Residential   @relation(fields: [residentialId], references: [id], onDelete: Cascade)
+  checks        PatrolCheck[]
+
+  @@index([residentialId, isActive])
+  @@unique([residentialId, name])
+}
+
+model PatrolCheck {
+  id            String      @id @default(cuid())
+  checkedAt     DateTime    @default(now())
+  zoneId        String
+  guardId       String
+  residentialId String
+  zone          PatrolZone  @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  guard         User        @relation(fields: [guardId], references: [id], onDelete: Cascade)
+  residential   Residential @relation(fields: [residentialId], references: [id], onDelete: Cascade)
+
+  @@index([residentialId, checkedAt])
+  @@index([zoneId, checkedAt])
+  @@index([guardId, checkedAt])
 }
 
 model SiteBanner {
