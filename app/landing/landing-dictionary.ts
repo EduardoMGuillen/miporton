@@ -10,8 +10,8 @@ const KEYS = {
     en: "Visits under control. Residents informed. Faster front desk.",
   },
   "hero.subtitle": {
-    es: "MiVisita une residentes, guardias y administración en una PWA moderna: QR con reglas claras, evidencia en ingreso, reservas de zonas, push en vivo y reportes PDF listos para auditoría.",
-    en: "MiVisita connects residents, guards, and management in a modern PWA: QR with clear rules, entry evidence, amenity bookings, live push alerts, and PDF reports ready for audits.",
+    es: "MiVisita une residentes, guardias y administración en una PWA moderna: QR con reglas claras, evidencia en ingreso, patrullaje con stickers QR, reservas de zonas, push en vivo y reportes PDF listos para auditoría.",
+    en: "MiVisita connects residents, guards, and management in a modern PWA: QR with clear rules, entry evidence, patrol check-ins with QR stickers, amenity bookings, live push alerts, and PDF reports ready for audits.",
   },
   "hero.ctaPrimary": { es: "Hablar por WhatsApp", en: "Message on WhatsApp" },
   "hero.ctaSecondary": { es: "Solicitar información", en: "Request information" },
@@ -32,13 +32,13 @@ const KEYS = {
   },
   "feat.guard.title": { es: "Guardia", en: "Guard" },
   "feat.guard.desc": {
-    es: "Escaneo de QR, evidencia de identificación, placa obligatoria si hay vehículo, confirmación manual de llegada, delivery en entrada con aviso inmediato al residente, reservas del día para caseta, salida manual, historial reciente y actualización automática de la vista, push.",
-    en: "QR scanning, ID evidence, plate capture when vehicle access applies, manual arrival confirmation, front-desk delivery with instant resident alert, today’s amenity bookings for the booth, manual exit, recent history with auto-refresh, push.",
+    es: "Escaneo de QR, evidencia de identificación, placa obligatoria si hay vehículo, confirmación manual de llegada, delivery en entrada con aviso inmediato al residente, reservas del día para caseta, patrullaje con escaneo de stickers QR por zona, salida manual, historial reciente y actualización automática de la vista, push.",
+    en: "QR scanning, ID evidence, plate capture when vehicle access applies, manual arrival confirmation, front-desk delivery with instant resident alert, today’s amenity bookings for the booth, patrol check-ins by scanning zone QR stickers, manual exit, recent history with auto-refresh, push.",
   },
   "feat.admin.title": { es: "Administración residencial", en: "Residential management" },
   "feat.admin.desc": {
-    es: "Usuarios (residentes e inquilinos/dueños, guardias), suspensión temporal, filtros, credenciales y OTP, zonas y bloqueos, reservas, comunicados (todos, solo dueños o seleccionados), sugerencias, QR de administración, registro con filtros, exportes PDF y reporte mensual, política de vigencias QR para residentes, teléfono de soporte, notificaciones.",
-    en: "Users (residents with owner/tenant category, guards), temporary suspension, filters, credentials and OTP, zones and blocks, bookings, announcements (all, owners only, or selected), suggestions, admin QR codes, entry log with filters, PDF exports and monthly report, resident QR duration policy, support phone, notifications.",
+    es: "Usuarios (residentes e inquilinos/dueños, guardias), suspensión temporal, filtros, credenciales y OTP, zonas y bloqueos, reservas, comunicados (todos, solo dueños o seleccionados), sugerencias, QR de administración, patrullaje (zonas con sticker QR e historial de marcajes), registro con filtros, exportes PDF y reporte mensual, política de vigencias QR para residentes, teléfono de soporte, notificaciones.",
+    en: "Users (residents with owner/tenant category, guards), temporary suspension, filters, credentials and OTP, zones and blocks, bookings, announcements (all, owners only, or selected), suggestions, admin QR codes, patrol zones with printable QR stickers and check-in history, entry log with filters, PDF exports and monthly report, resident QR duration policy, support phone, notifications.",
   },
   "how.title": { es: "Cómo funciona", en: "How it works" },
   "how.s1t": { es: "Residente anuncia", en: "Resident announces" },
@@ -48,7 +48,10 @@ const KEYS = {
   "how.s3t": { es: "Alertas al instante", en: "Instant alerts" },
   "how.s3d": { es: "Llegadas, delivery y comunicados llegan por push.", en: "Arrivals, deliveries, and announcements via push." },
   "how.s4t": { es: "Gestión y reportes", en: "Management & reports" },
-  "how.s4d": { es: "Administración revisa entradas, reservas y exporta PDF.", en: "Management reviews entries, bookings, and exports PDFs." },
+  "how.s4d": {
+    es: "Administración revisa entradas, reservas, patrullajes y exporta PDF.",
+    en: "Management reviews entries, bookings, patrol checks, and exports PDFs.",
+  },
   "trust.title": { es: "Seguridad y cumplimiento operativo", en: "Security and operational compliance" },
   "trust.t1": { es: "Evidencia de ID y placa almacenada con política de retención (purga automática de bytes sensibles a 60 días; el evento se conserva).", en: "ID and plate evidence stored with retention policy (automatic purge of sensitive bytes at 60 days; the event record remains)." },
   "trust.t2": { es: "PWA instalable: misma experiencia en web, Android e iOS.", en: "Installable PWA: same experience on web, Android, and iOS." },
@@ -117,6 +120,7 @@ export const LANDING_MARQUEE: Record<LandingLocale, string[]> = {
   es: [
     "QR con vigencia",
     "Evidencia ID / placa",
+    "Patrullaje con QR",
     "Reservas de zonas",
     "Push en vivo",
     "Delivery en entrada",
@@ -131,6 +135,7 @@ export const LANDING_MARQUEE: Record<LandingLocale, string[]> = {
   en: [
     "Time-bound QR",
     "ID / plate evidence",
+    "Patrol QR check-ins",
     "Amenity bookings",
     "Live push",
     "Front-desk delivery",

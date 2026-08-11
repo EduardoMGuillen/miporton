@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   title: "MiVisita",
   applicationName: "MiVisita",
   description:
-    "MiVisita: administración y seguridad residencial en Honduras — control de visitas con QR, portería digital, reservas y reportes (PWA).",
+    "MiVisita: administración y seguridad residencial en Honduras — control de visitas con QR, portería digital, patrullaje, reservas y reportes (PWA).",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,

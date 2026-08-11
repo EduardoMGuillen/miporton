@@ -11,9 +11,9 @@ const APP_URL = getPublicAppUrl();
 const PAGE_TITLE =
   "MiVisita | App #1 en Honduras para administración y seguridad residencial · QR y portería";
 const PAGE_DESCRIPTION =
-  "Plataforma líder en Honduras para conjuntos y residenciales: control de visitas con QR, portería digital, reservas de zonas comunes, notificaciones push, evidencias y reportes PDF. PWA para residentes, guardias y administración.";
+  "Plataforma líder en Honduras para conjuntos y residenciales: control de visitas con QR, portería digital, patrullaje con stickers QR, reservas de zonas comunes, notificaciones push, evidencias y reportes PDF. PWA para residentes, guardias y administración.";
 const OG_DESCRIPTION =
-  "Administración y seguridad residencial en Honduras con MiVisita: QR, portería, reservas, push y reportes. La referencia para conjuntos habitacionales.";
+  "Administración y seguridad residencial en Honduras con MiVisita: QR, portería, patrullaje, reservas, push y reportes. La referencia para conjuntos habitacionales.";
 
 const KEYWORDS = [
   "MiVisita",
@@ -30,6 +30,9 @@ const KEYWORDS = [
   "portero QR",
   "registro de visitas",
   "reservas zonas comunes",
+  "patrullaje residencial QR",
+  "rondas de seguridad QR",
+  "control de patrullaje guardia",
   "notificaciones push residencial",
   "reporte mensual portería",
   "evidencia ingreso visita",
@@ -164,6 +167,7 @@ export default async function Home() {
         featureList: [
           "Invitaciones QR con vigencia y control de usos",
           "Portería con evidencia de identificación y placa",
+          "Patrullaje con stickers QR permanentes e historial de marcajes",
           "Reservas de zonas comunes y bloqueos administrativos",
           "Notificaciones push a residentes y administración",
           "Comunicados y reportes PDF mensuales",
