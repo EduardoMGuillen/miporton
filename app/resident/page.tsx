@@ -268,6 +268,8 @@ export default async function ResidentPage() {
                 validUntilLabel={formatDateTimeTegucigalpa(invite.validUntil)}
                 residentialName={residential?.name ?? t("home.residentialFallback")}
                 residentName={session.fullName}
+                hasVehicle={invite.hasVehicle}
+                hasExpiration={invite.validityType !== "INFINITE"}
               />
               <form action={deleteInviteQrAction} className="mt-2">
                 <input type="hidden" name="qrId" value={invite.id} />

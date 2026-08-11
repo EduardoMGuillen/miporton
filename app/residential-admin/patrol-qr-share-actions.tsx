@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { jsPDF } from "jspdf";
+import QRCode from "qrcode";
 
 type Props = {
   qrDataUrl: string;
@@ -11,6 +12,7 @@ type Props = {
 };
 
 const LOGO_SRC = "/logo.png";
+const STICKER_SIZE = 1800;
 
 function safeFilePart(value: string) {
   return value
@@ -84,67 +86,84 @@ function roundRect(
   ctx.closePath();
 }
 
-/** Sticker cuadrado listo para imprimir / cortar. */
+/** Sticker HD: logo, ZONA, residencial y QR grande regenerado. */
 async function buildStickerPngBlob(props: Props): Promise<Blob> {
-  const size = 1200;
+  const size = STICKER_SIZE;
   const canvas = document.createElement("canvas");
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas no disponible");
 
+  const hdQrDataUrl = await QRCode.toDataURL(`MPP:${props.code}`, {
+    width: 1400,
+    margin: 1,
+    errorCorrectionLevel: "H",
+    color: { dark: "#0f172a", light: "#ffffff" },
+  });
+
   const [logo, qrImage] = await Promise.all([
     loadImage(LOGO_SRC).catch(() => null),
-    loadImage(props.qrDataUrl),
+    loadImage(hdQrDataUrl).catch(() => loadImage(props.qrDataUrl)),
   ]);
 
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, size, size);
 
-  // Logo pequeño
   if (logo) {
-    const logoSize = 96;
+    const logoSize = 120;
     const logoX = size / 2 - logoSize / 2;
-    const logoY = 48;
-    roundRect(ctx, logoX, logoY, logoSize, logoSize, 18);
+    const logoY = 56;
+    roundRect(ctx, logoX, logoY, logoSize, logoSize, 22);
     ctx.save();
     ctx.clip();
     ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
     ctx.restore();
   } else {
     ctx.fillStyle = "#1d4ed8";
-    ctx.font = "bold 36px Arial, Helvetica, sans-serif";
+    ctx.font = "bold 44px Arial, Helvetica, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("MiVisita", size / 2, 100);
+    ctx.fillText("MiVisita", size / 2, 120);
   }
 
-  // Nombre de zona
-  ctx.fillStyle = "#0f172a";
-  ctx.font = "bold 48px Arial, Helvetica, sans-serif";
+  ctx.fillStyle = "#6d28d9";
+  ctx.font = "700 28px Arial, Helvetica, sans-serif";
   ctx.textAlign = "center";
-  const zoneLines = wrapLines(ctx, props.zoneName, size - 120, 2);
-  const zoneStartY = 190;
+  ctx.fillText("ZONA", size / 2, 220);
+
+  ctx.fillStyle = "#0f172a";
+  ctx.font = "bold 56px Arial, Helvetica, sans-serif";
+  const zoneLines = wrapLines(ctx, props.zoneName, size - 140, 2);
+  const zoneStartY = 280;
   zoneLines.forEach((line, index) => {
-    ctx.fillText(line, size / 2, zoneStartY + index * 54);
+    ctx.fillText(line, size / 2, zoneStartY + index * 62);
   });
 
-  // QR grande, centrado
-  const headerBottom = zoneStartY + zoneLines.length * 54 + 20;
-  const bottomPad = 56;
-  const maxQr = size - headerBottom - bottomPad;
-  const qrOuter = Math.min(820, maxQr);
-  const qrX = (size - qrOuter) / 2;
-  const qrY = headerBottom + (maxQr - qrOuter) / 2;
-  const qrPad = 20;
+  ctx.fillStyle = "#64748b";
+  ctx.font = "500 30px Arial, Helvetica, sans-serif";
+  const residentialY = zoneStartY + zoneLines.length * 62 + 18;
+  const residentialLines = wrapLines(ctx, props.residentialName, size - 160, 1);
+  ctx.fillText(residentialLines[0] ?? "", size / 2, residentialY);
 
-  roundRect(ctx, qrX, qrY, qrOuter, qrOuter, 28);
+  const headerBottom = residentialY + 36;
+  const bottomPad = 64;
+  const maxQr = size - headerBottom - bottomPad;
+  const qrOuter = Math.min(1180, maxQr);
+  const qrX = (size - qrOuter) / 2;
+  const qrY = headerBottom + Math.max(0, (maxQr - qrOuter) / 2);
+  const qrPad = 18;
+
+  roundRect(ctx, qrX, qrY, qrOuter, qrOuter, 32);
   ctx.fillStyle = "#ffffff";
   ctx.fill();
   ctx.strokeStyle = "#e2e8f0";
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 4;
   ctx.stroke();
 
+  // imageSmoothingEnabled false keeps QR modules crisp when scaling
+  ctx.imageSmoothingEnabled = false;
   ctx.drawImage(qrImage, qrX + qrPad, qrY + qrPad, qrOuter - qrPad * 2, qrOuter - qrPad * 2);
+  ctx.imageSmoothingEnabled = true;
 
   const blob = await new Promise<Blob | null>((resolve) => {
     canvas.toBlob((result) => resolve(result), "image/png");
@@ -166,34 +185,14 @@ async function buildStickerPdfBlob(props: Props): Promise<Blob> {
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
 
-  // Guía de impresión
-  doc.setFillColor(248, 250, 252);
+  doc.setFillColor(255, 255, 255);
   doc.rect(0, 0, pageW, pageH, "F");
 
-  doc.setTextColor(15, 23, 42);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.text("Sticker de patrullaje — listo para imprimir", pageW / 2, 42, { align: "center" });
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.setTextColor(100, 116, 139);
-  doc.text("Recorta por el borde. Tamaño aproximado 9 × 9 cm.", pageW / 2, 60, { align: "center" });
-
-  const stickerPt = 280;
+  // Una sola copia, grande y centrada
+  const stickerPt = Math.min(480, pageW - 72, pageH - 72);
   const stickerX = (pageW - stickerPt) / 2;
-  const stickerY = 90;
-  doc.addImage(stickerDataUrl, "PNG", stickerX, stickerY, stickerPt, stickerPt);
-
-  // Segunda copia (mismo sticker) para imprimir dos
-  const stickerY2 = stickerY + stickerPt + 36;
-  if (stickerY2 + stickerPt < pageH - 40) {
-    doc.setDrawColor(226, 232, 240);
-    doc.setLineDashPattern([4, 4], 0);
-    doc.line(40, stickerY + stickerPt + 18, pageW - 40, stickerY + stickerPt + 18);
-    doc.setLineDashPattern([], 0);
-    doc.addImage(stickerDataUrl, "PNG", stickerX, stickerY2, stickerPt, stickerPt);
-  }
+  const stickerY = (pageH - stickerPt) / 2;
+  doc.addImage(stickerDataUrl, "PNG", stickerX, stickerY, stickerPt, stickerPt, undefined, "NONE");
 
   return doc.output("blob");
 }

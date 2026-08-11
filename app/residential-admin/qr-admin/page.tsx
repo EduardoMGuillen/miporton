@@ -94,6 +94,8 @@ export default async function ResidentialAdminQrPage() {
                 validUntilLabel={formatDateTimeTegucigalpa(qr.validUntil)}
                 residentialName={residential?.name ?? "Residencial"}
                 residentName={session.fullName}
+                hasVehicle={qr.hasVehicle}
+                hasExpiration={qr.validityType !== "INFINITE"}
               />
               <RevokeAdminQrButton qrId={qr.id} />
             </article>
