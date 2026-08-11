@@ -32,14 +32,14 @@ def twaManifest = [
 
 android {
     namespace twaManifest.applicationId
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         applicationId twaManifest.applicationId
         minSdk 23
         targetSdk 35
-        versionCode 4
-        versionName "1.0.3"
+        versionCode 5
+        versionName "1.0.4"
 
         resValue "string", "appName", twaManifest.name
 
@@ -136,5 +136,6 @@ task generateShorcutsFile {
 preBuild.dependsOn(generateShorcutsFile)
 
 dependencies {
-    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.5.0'
+    // 2.7.0+: EdgeToEdge en LauncherActivity/splash (Android 15 / targetSdk 35)
+    implementation 'com.google.androidbrowserhelper:androidbrowserhelper:2.7.0'
 }
