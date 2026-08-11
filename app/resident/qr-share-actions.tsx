@@ -155,6 +155,11 @@ async function buildVisitStickerPngBlob(props: Props): Promise<Blob> {
 
   ctx.drawImage(qrImage, qrX + qrPad, qrY + qrPad, qrOuter - qrPad * 2, qrOuter - qrPad * 2);
 
+  ctx.fillStyle = "#64748b";
+  ctx.font = "500 24px Arial, Helvetica, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("www.mivisita.app", size / 2, size - 36);
+
   const blob = await new Promise<Blob | null>((resolve) => {
     canvas.toBlob((result) => resolve(result), "image/png");
   });
