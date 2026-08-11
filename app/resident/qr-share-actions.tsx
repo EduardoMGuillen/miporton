@@ -15,16 +15,7 @@ type Props = {
   residentName: string;
 };
 
-type QrPdfFieldLabels = {
-  title: string;
-  residential: string;
-  resident: string;
-  visit: string;
-  validity: string;
-  expires: string;
-  code: string;
-  footer: string;
-};
+const LOGO_SRC = "/logo.png";
 
 function safeFilePart(value: string) {
   return value
@@ -34,97 +25,195 @@ function safeFilePart(value: string) {
     .replaceAll(/[^a-z0-9-]/g, "");
 }
 
-async function buildQrPdfBlob(props: Props, labels: QrPdfFieldLabels) {
-  const { qrDataUrl, visitorName, code, validityLabel, validUntilLabel, residentialName, residentName } = props;
-  const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
-
-  doc.setFillColor(29, 78, 216);
-  doc.rect(0, 0, 595, 96, "F");
-
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(22);
-  doc.text(labels.title, 40, 56);
-
-  doc.setTextColor(15, 23, 42);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(12);
-  doc.text(`${labels.residential}: ${residentialName}`, 40, 130);
-  doc.text(`${labels.resident}: ${residentName}`, 40, 154);
-  doc.text(`${labels.visit}: ${visitorName}`, 40, 178);
-  doc.text(`${labels.validity}: ${validityLabel}`, 40, 202);
-  doc.text(`${labels.expires}: ${validUntilLabel}`, 40, 226);
-  doc.text(`${labels.code}: MP:${code}`, 40, 250);
-
-  doc.setDrawColor(203, 213, 225);
-  doc.roundedRect(330, 126, 220, 220, 12, 12, "S");
-  doc.addImage(qrDataUrl, "PNG", 350, 146, 180, 180);
-
-  doc.setTextColor(71, 85, 105);
-  doc.setFontSize(10);
-  doc.text(labels.footer, 40, 308);
-
-  return doc.output("blob");
-}
-
-function loadImageFromDataUrl(dataUrl: string): Promise<HTMLImageElement> {
+function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error("QR load failed"));
-    image.src = dataUrl;
+    image.onerror = () => reject(new Error(`No se pudo cargar: ${src}`));
+    image.src = src;
   });
 }
 
-async function buildQrImageBlob(props: Props, labels: QrPdfFieldLabels) {
-  const { qrDataUrl, visitorName, code, validityLabel, validUntilLabel, residentialName, residentName } = props;
-  const width = 1200;
-  const height = 1600;
+function wrapLines(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+  maxLines: number,
+): string[] {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [""];
+
+  const lines: string[] = [];
+  let current = words[0]!;
+
+  for (let i = 1; i < words.length; i += 1) {
+    const word = words[i]!;
+    const candidate = `${current} ${word}`;
+    if (ctx.measureText(candidate).width <= maxWidth) {
+      current = candidate;
+    } else {
+      lines.push(current);
+      current = word;
+      if (lines.length >= maxLines - 1) break;
+    }
+  }
+
+  if (lines.length < maxLines) {
+    lines.push(current);
+  } else {
+    let last = lines[lines.length - 1] ?? current;
+    while (last.length > 1 && ctx.measureText(`${last}…`).width > maxWidth) {
+      last = last.slice(0, -1);
+    }
+    lines[lines.length - 1] = `${last}…`;
+  }
+
+  return lines;
+}
+
+function roundRect(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
+) {
+  const radius = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.arcTo(x + w, y, x + w, y + h, radius);
+  ctx.arcTo(x + w, y + h, x, y + h, radius);
+  ctx.arcTo(x, y + h, x, y, radius);
+  ctx.arcTo(x, y, x + w, y, radius);
+  ctx.closePath();
+}
+
+/** Sticker simple: logo + nombre visita + QR grande. */
+async function buildVisitStickerPngBlob(props: Props): Promise<Blob> {
+  const size = 1200;
   const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const context = canvas.getContext("2d");
-  if (!context) throw new Error("Canvas error");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas no disponible");
 
-  context.fillStyle = "#f8fafc";
-  context.fillRect(0, 0, width, height);
+  const [logo, qrImage] = await Promise.all([
+    loadImage(LOGO_SRC).catch(() => null),
+    loadImage(props.qrDataUrl),
+  ]);
 
-  context.fillStyle = "#1d4ed8";
-  context.fillRect(0, 0, width, 220);
-  context.fillStyle = "#ffffff";
-  context.font = "bold 62px Arial";
-  context.fillText(labels.title, 64, 132);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, size, size);
 
-  context.fillStyle = "#0f172a";
-  context.font = "500 40px Arial";
-  context.fillText(`${labels.residential}: ${residentialName}`, 64, 320);
-  context.fillText(`${labels.resident}: ${residentName}`, 64, 390);
-  context.fillText(`${labels.visit}: ${visitorName}`, 64, 460);
-  context.fillText(`${labels.validity}: ${validityLabel}`, 64, 530);
-  context.fillText(`${labels.expires}: ${validUntilLabel}`, 64, 600);
-  context.fillText(`${labels.code}: MP:${code}`, 64, 670);
+  if (logo) {
+    const logoSize = 96;
+    const logoX = size / 2 - logoSize / 2;
+    const logoY = 48;
+    roundRect(ctx, logoX, logoY, logoSize, logoSize, 18);
+    ctx.save();
+    ctx.clip();
+    ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
+    ctx.restore();
+  } else {
+    ctx.fillStyle = "#1d4ed8";
+    ctx.font = "bold 36px Arial, Helvetica, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("MiVisita", size / 2, 100);
+  }
 
-  context.strokeStyle = "#cbd5e1";
-  context.lineWidth = 4;
-  const qrCardX = 270;
-  const qrCardY = 760;
-  const qrCardSize = 660;
-  context.strokeRect(qrCardX, qrCardY, qrCardSize, qrCardSize);
-  context.fillStyle = "#ffffff";
-  context.fillRect(qrCardX + 16, qrCardY + 16, qrCardSize - 32, qrCardSize - 32);
+  ctx.fillStyle = "#0f172a";
+  ctx.font = "bold 48px Arial, Helvetica, sans-serif";
+  ctx.textAlign = "center";
+  const nameLines = wrapLines(ctx, props.visitorName || "Visita", size - 120, 2);
+  const nameStartY = 190;
+  nameLines.forEach((line, index) => {
+    ctx.fillText(line, size / 2, nameStartY + index * 54);
+  });
 
-  const qrImage = await loadImageFromDataUrl(qrDataUrl);
-  context.drawImage(qrImage, qrCardX + 40, qrCardY + 40, qrCardSize - 80, qrCardSize - 80);
+  // Una línea corta de vigencia (sin saturar el sticker)
+  ctx.fillStyle = "#64748b";
+  ctx.font = "500 26px Arial, Helvetica, sans-serif";
+  const validityY = nameStartY + nameLines.length * 54 + 28;
+  const validityLines = wrapLines(ctx, props.validityLabel, size - 160, 1);
+  ctx.fillText(validityLines[0] ?? "", size / 2, validityY);
 
-  context.fillStyle = "#475569";
-  context.font = "500 30px Arial";
-  context.fillText(labels.footer, 120, 1490);
+  const headerBottom = validityY + 24;
+  const bottomPad = 56;
+  const maxQr = size - headerBottom - bottomPad;
+  const qrOuter = Math.min(780, maxQr);
+  const qrX = (size - qrOuter) / 2;
+  const qrY = headerBottom + (maxQr - qrOuter) / 2;
+  const qrPad = 20;
+
+  roundRect(ctx, qrX, qrY, qrOuter, qrOuter, 28);
+  ctx.fillStyle = "#ffffff";
+  ctx.fill();
+  ctx.strokeStyle = "#e2e8f0";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  ctx.drawImage(qrImage, qrX + qrPad, qrY + qrPad, qrOuter - qrPad * 2, qrOuter - qrPad * 2);
 
   const blob = await new Promise<Blob | null>((resolve) => {
     canvas.toBlob((result) => resolve(result), "image/png");
   });
-  if (!blob) throw new Error("Export failed");
+  if (!blob) throw new Error("No se pudo generar el sticker PNG");
   return blob;
+}
+
+async function buildVisitStickerPdfBlob(props: Props, printTitle: string): Promise<Blob> {
+  const stickerBlob = await buildVisitStickerPngBlob(props);
+  const stickerDataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error("No se pudo leer el sticker"));
+    reader.readAsDataURL(stickerBlob);
+  });
+
+  const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+
+  doc.setFillColor(248, 250, 252);
+  doc.rect(0, 0, pageW, pageH, "F");
+
+  doc.setTextColor(15, 23, 42);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.text(printTitle, pageW / 2, 42, { align: "center" });
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor(100, 116, 139);
+  doc.text(`${props.residentialName} · ${props.residentName}`, pageW / 2, 60, { align: "center" });
+
+  const stickerPt = 320;
+  const stickerX = (pageW - stickerPt) / 2;
+  const stickerY = 90;
+  doc.addImage(stickerDataUrl, "PNG", stickerX, stickerY, stickerPt, stickerPt);
+
+  const stickerY2 = stickerY + stickerPt + 36;
+  if (stickerY2 + stickerPt < pageH - 40) {
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineDashPattern([4, 4], 0);
+    doc.line(40, stickerY + stickerPt + 18, pageW - 40, stickerY + stickerPt + 18);
+    doc.setLineDashPattern([], 0);
+    doc.addImage(stickerDataUrl, "PNG", stickerX, stickerY2, stickerPt, stickerPt);
+  }
+
+  return doc.output("blob");
+}
+
+function triggerDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 function useQrShareT() {
@@ -139,63 +228,39 @@ function useQrShareT() {
 
 export function QrShareActions(props: Props) {
   const t = useQrShareT();
-  const pdfLabels = useMemo<QrPdfFieldLabels>(
-    () => ({
-      title: t("qr.pdfTitle"),
-      residential: t("qr.pdfResidential"),
-      resident: t("qr.pdfResident"),
-      visit: t("qr.pdfVisit"),
-      validity: t("qr.pdfValidity"),
-      expires: t("qr.pdfExpires"),
-      code: t("qr.pdfCode"),
-      footer: t("qr.pdfFooter"),
-    }),
-    [t],
-  );
-
   const fileBaseName = `mivisita-pase-${safeFilePart(props.visitorName || "visita")}`;
+  const printTitle = t("qr.pdfTitle");
 
   async function downloadPdf() {
-    const blob = await buildQrPdfBlob(props, pdfLabels);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${fileBaseName}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }
-
-  async function shareToWhatsApp() {
-    const blob = await buildQrPdfBlob(props, pdfLabels);
-    const file = new File([blob], `${fileBaseName}.pdf`, { type: "application/pdf" });
-
-    const shareText = t("qr.shareText", { name: props.visitorName });
-    if (navigator.share && navigator.canShare?.({ files: [file] })) {
-      await navigator.share({
-        title: t("qr.shareTitle"),
-        text: shareText,
-        files: [file],
-      });
-      return;
-    }
-
-    await downloadPdf();
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(t("qr.shareFallback", { text: shareText }))}`;
-    window.location.href = whatsappUrl;
+    const blob = await buildVisitStickerPdfBlob(props, printTitle);
+    triggerDownload(blob, `${fileBaseName}.pdf`);
   }
 
   async function downloadImage() {
-    const blob = await buildQrImageBlob(props, pdfLabels);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${fileBaseName}.png`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const blob = await buildVisitStickerPngBlob(props);
+    triggerDownload(blob, `${fileBaseName}.png`);
+  }
+
+  async function shareToWhatsApp() {
+    const shareText = t("qr.shareText", { name: props.visitorName });
+    try {
+      const blob = await buildVisitStickerPngBlob(props);
+      const file = new File([blob], `${fileBaseName}.png`, { type: "image/png" });
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({
+          title: t("qr.shareTitle"),
+          text: shareText,
+          files: [file],
+        });
+        return;
+      }
+    } catch {
+      // fallback
+    }
+
+    await downloadImage();
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(t("qr.shareFallback", { text: shareText }))}`;
+    window.location.href = whatsappUrl;
   }
 
   return (

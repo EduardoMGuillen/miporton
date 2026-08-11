@@ -98,98 +98,53 @@ async function buildStickerPngBlob(props: Props): Promise<Blob> {
     loadImage(props.qrDataUrl),
   ]);
 
-  // Fondo
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, size, size);
 
-  // Marco exterior
-  roundRect(ctx, 28, 28, size - 56, size - 56, 48);
-  ctx.strokeStyle = "#c7d2fe";
-  ctx.lineWidth = 8;
-  ctx.stroke();
-
-  // Logo
+  // Logo pequeño
   if (logo) {
-    const logoSize = 150;
+    const logoSize = 96;
     const logoX = size / 2 - logoSize / 2;
-    const logoY = 64;
-    roundRect(ctx, logoX, logoY, logoSize, logoSize, 28);
+    const logoY = 48;
+    roundRect(ctx, logoX, logoY, logoSize, logoSize, 18);
     ctx.save();
     ctx.clip();
     ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
     ctx.restore();
-    // subtle ring
-    roundRect(ctx, logoX, logoY, logoSize, logoSize, 28);
-    ctx.strokeStyle = "#e2e8f0";
-    ctx.lineWidth = 3;
-    ctx.stroke();
   } else {
     ctx.fillStyle = "#1d4ed8";
-    ctx.font = "bold 48px Arial, Helvetica, sans-serif";
+    ctx.font = "bold 36px Arial, Helvetica, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("MiVisita", size / 2, 150);
+    ctx.fillText("MiVisita", size / 2, 100);
   }
-
-  ctx.fillStyle = "#6d28d9";
-  ctx.font = "700 26px Arial, Helvetica, sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText("PATRULLAJE", size / 2, 250);
 
   // Nombre de zona
   ctx.fillStyle = "#0f172a";
-  ctx.font = "bold 52px Arial, Helvetica, sans-serif";
+  ctx.font = "bold 48px Arial, Helvetica, sans-serif";
   ctx.textAlign = "center";
-  const zoneLines = wrapLines(ctx, props.zoneName, size - 160, 2);
-  const zoneStartY = 310;
+  const zoneLines = wrapLines(ctx, props.zoneName, size - 120, 2);
+  const zoneStartY = 190;
   zoneLines.forEach((line, index) => {
-    ctx.fillText(line, size / 2, zoneStartY + index * 58);
+    ctx.fillText(line, size / 2, zoneStartY + index * 54);
   });
 
-  // Residencial
-  ctx.fillStyle = "#64748b";
-  ctx.font = "500 26px Arial, Helvetica, sans-serif";
-  const residentialY = zoneStartY + zoneLines.length * 58 + 12;
-  const residentialLines = wrapLines(ctx, props.residentialName, size - 180, 1);
-  ctx.fillText(residentialLines[0] ?? "", size / 2, residentialY);
-
-  // QR card
-  const qrOuter = 540;
-  const qrInnerPad = 26;
+  // QR grande, centrado
+  const headerBottom = zoneStartY + zoneLines.length * 54 + 20;
+  const bottomPad = 56;
+  const maxQr = size - headerBottom - bottomPad;
+  const qrOuter = Math.min(820, maxQr);
   const qrX = (size - qrOuter) / 2;
-  const qrY = Math.max(residentialY + 28, 430);
-  roundRect(ctx, qrX, qrY, qrOuter, qrOuter, 36);
-  ctx.fillStyle = "#f8fafc";
+  const qrY = headerBottom + (maxQr - qrOuter) / 2;
+  const qrPad = 20;
+
+  roundRect(ctx, qrX, qrY, qrOuter, qrOuter, 28);
+  ctx.fillStyle = "#ffffff";
   ctx.fill();
   ctx.strokeStyle = "#e2e8f0";
-  ctx.lineWidth = 4;
+  ctx.lineWidth = 3;
   ctx.stroke();
 
-  ctx.fillStyle = "#ffffff";
-  roundRect(
-    ctx,
-    qrX + qrInnerPad,
-    qrY + qrInnerPad,
-    qrOuter - qrInnerPad * 2,
-    qrOuter - qrInnerPad * 2,
-    20,
-  );
-  ctx.fill();
-
-  const qrDraw = qrOuter - qrInnerPad * 2 - 24;
-  ctx.drawImage(
-    qrImage,
-    qrX + qrInnerPad + 12,
-    qrY + qrInnerPad + 12,
-    qrDraw,
-    qrDraw,
-  );
-
-  // Pie
-  const footerY = Math.min(qrY + qrOuter + 48, size - 48);
-  ctx.fillStyle = "#475569";
-  ctx.font = "500 24px Arial, Helvetica, sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText("Escanea en Guardar Patrullaje", size / 2, footerY);
+  ctx.drawImage(qrImage, qrX + qrPad, qrY + qrPad, qrOuter - qrPad * 2, qrOuter - qrPad * 2);
 
   const blob = await new Promise<Blob | null>((resolve) => {
     canvas.toBlob((result) => resolve(result), "image/png");
