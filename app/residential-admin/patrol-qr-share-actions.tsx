@@ -86,7 +86,7 @@ function roundRect(
   ctx.closePath();
 }
 
-/** Sticker HD: logo, ZONA, residencial y QR grande regenerado. */
+/** Sticker HD: logo, PATRULLAJE, zona, residencial y QR regenerado. */
 async function buildStickerPngBlob(props: Props): Promise<Blob> {
   const size = STICKER_SIZE;
   const canvas = document.createElement("canvas");
@@ -111,47 +111,49 @@ async function buildStickerPngBlob(props: Props): Promise<Blob> {
   ctx.fillRect(0, 0, size, size);
 
   if (logo) {
-    const logoSize = 120;
+    const logoSize = 200;
     const logoX = size / 2 - logoSize / 2;
-    const logoY = 56;
-    roundRect(ctx, logoX, logoY, logoSize, logoSize, 22);
+    const logoY = 48;
+    roundRect(ctx, logoX, logoY, logoSize, logoSize, 36);
     ctx.save();
     ctx.clip();
     ctx.drawImage(logo, logoX, logoY, logoSize, logoSize);
     ctx.restore();
   } else {
     ctx.fillStyle = "#1d4ed8";
-    ctx.font = "bold 44px Arial, Helvetica, sans-serif";
+    ctx.font = "bold 64px Arial, Helvetica, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("MiVisita", size / 2, 120);
+    ctx.fillText("MiVisita", size / 2, 160);
   }
 
   ctx.fillStyle = "#6d28d9";
-  ctx.font = "700 28px Arial, Helvetica, sans-serif";
+  ctx.font = "700 42px Arial, Helvetica, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("ZONA", size / 2, 220);
+  ctx.fillText("PATRULLAJE", size / 2, 300);
 
   ctx.fillStyle = "#0f172a";
-  ctx.font = "bold 56px Arial, Helvetica, sans-serif";
-  const zoneLines = wrapLines(ctx, props.zoneName, size - 140, 2);
-  const zoneStartY = 280;
+  ctx.font = "bold 72px Arial, Helvetica, sans-serif";
+  const zoneLines = wrapLines(ctx, props.zoneName, size - 120, 2);
+  const zoneStartY = 380;
   zoneLines.forEach((line, index) => {
-    ctx.fillText(line, size / 2, zoneStartY + index * 62);
+    ctx.fillText(line, size / 2, zoneStartY + index * 78);
   });
 
-  ctx.fillStyle = "#64748b";
-  ctx.font = "500 30px Arial, Helvetica, sans-serif";
-  const residentialY = zoneStartY + zoneLines.length * 62 + 18;
-  const residentialLines = wrapLines(ctx, props.residentialName, size - 160, 1);
-  ctx.fillText(residentialLines[0] ?? "", size / 2, residentialY);
+  ctx.fillStyle = "#475569";
+  ctx.font = "600 42px Arial, Helvetica, sans-serif";
+  const residentialY = zoneStartY + zoneLines.length * 78 + 28;
+  const residentialLines = wrapLines(ctx, props.residentialName, size - 140, 2);
+  residentialLines.forEach((line, index) => {
+    ctx.fillText(line, size / 2, residentialY + index * 48);
+  });
 
-  const headerBottom = residentialY + 36;
-  const bottomPad = 64;
+  const headerBottom = residentialY + residentialLines.length * 48 + 28;
+  const bottomPad = 56;
   const maxQr = size - headerBottom - bottomPad;
-  const qrOuter = Math.min(1180, maxQr);
+  const qrOuter = Math.min(980, maxQr);
   const qrX = (size - qrOuter) / 2;
   const qrY = headerBottom + Math.max(0, (maxQr - qrOuter) / 2);
-  const qrPad = 18;
+  const qrPad = 16;
 
   roundRect(ctx, qrX, qrY, qrOuter, qrOuter, 32);
   ctx.fillStyle = "#ffffff";
