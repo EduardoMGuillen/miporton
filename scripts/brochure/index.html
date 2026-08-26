@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>MiVisita · Brochure comercial</title>
+  <style>
+    @font-face {
+      font-family: "Outfit";
+      font-style: normal;
+      font-weight: 500 800;
+      font-display: block;
+      src: url("fonts/outfit-latin-ext.woff2") format("woff2");
+      unicode-range: U+0100-024F, U+1E00-1EFF;
+    }
+    @font-face {
+      font-family: "Outfit";
+      font-style: normal;
+      font-weight: 500 800;
+      font-display: block;
+      src: url("fonts/outfit-latin.woff2") format("woff2");
+      unicode-range: U+0000-00FF;
+    }
+    @font-face {
+      font-family: "Plus Jakarta Sans";
+      font-style: normal;
+      font-weight: 400 800;
+      font-display: block;
+      src: url("fonts/jakarta-latin-ext.woff2") format("woff2");
+      unicode-range: U+0100-024F, U+1E00-1EFF;
+    }
+    @font-face {
+      font-family: "Plus Jakarta Sans";
+      font-style: normal;
+      font-weight: 400 800;
+      font-display: block;
+      src: url("fonts/jakarta-latin.woff2") format("woff2");
+      unicode-range: U+0000-00FF;
+    }
+
+    :root {
+      --navy: #061428;
+      --navy-2: #0a1f44;
+      --blue: #1d4ed8;
+      --blue-2: #2563eb;
+      --cyan: #38bdf8;
+      --orange: #f97316;
+      --green: #16a34a;
+      --ink: #0f172a;
+      --muted: #475569;
+      --line: #e2e8f0;
+      --paper: #f4f7fb;
+      --white: #ffffff;
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #fff;
+      color: var(--ink);
+      font-family: "Plus Jakarta Sans", "Segoe UI", sans-serif;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    @page {
+      size: A4 portrait;
+      margin: 0;
+    }
+
+    .page {
+      width: 210mm;
+      height: 297mm;
+      position: relative;
+      overflow: hidden;
+      page-break-after: always;
+      break-after: page;
+    }
+    .page:last-child {
+      page-break-after: auto;
+      break-after: auto;
+    }
+
+    h1, h2, h3, h4 { font-family: "Outfit", "Plus Jakarta Sans", sans-serif; margin: 0; }
+    p { margin: 0; }
+
+    .kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.08);
+      color: #dbeafe;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      padding: 7px 12px;
+      border-radius: 999px;
+    }
+    .kicker-light {
+      border-color: #dbeafe;
+      background: #eff6ff;
+      color: var(--blue);
+    }
+    .dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--orange);
+      box-shadow: 0 0 0 3px rgba(249,115,22,.22);
+    }
+
+    /* ===== COVER ===== */
+    .cover {
+      background:
+        radial-gradient(900px 420px at -10% -10%, rgba(37,99,235,.55), transparent 55%),
+        radial-gradient(700px 380px at 110% 8%, rgba(56,189,248,.28), transparent 50%),
+        radial-gradient(800px 500px at 70% 120%, rgba(249,115,22,.18), transparent 48%),
+        linear-gradient(165deg, #04101f 0%, #0b1f44 48%, #123066 100%);
+      color: #fff;
+    }
+    .cover::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
+      background-size: 22px 22px;
+      mask-image: radial-gradient(ellipse at 40% 30%, #000 20%, transparent 75%);
+      pointer-events: none;
+    }
+    .cover-inner {
+      position: relative;
+      height: 100%;
+      padding: 16mm 16mm 14mm;
+      display: flex;
+      flex-direction: column;
+      z-index: 1;
+    }
+    .cover-watermark {
+      position: absolute;
+      right: -22mm;
+      bottom: 38mm;
+      width: 108mm;
+      opacity: .13;
+      pointer-events: none;
+      transform: rotate(-8deg);
+    }
+    .cover-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand img.logo {
+      width: 58px;
+      height: 58px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.28);
+    }
+    .brand-name { font-family: Outfit, sans-serif; font-weight: 800; font-size: 22px; letter-spacing: -.02em; }
+    .brand-sub { font-size: 11px; color: #93c5fd; margin-top: 2px; }
+    .nexus {
+      height: 28px;
+      opacity: .92;
+      filter: brightness(10);
+    }
+    .cover-hero { margin-top: 28mm; max-width: 168mm; }
+    .cover h1 {
+      margin-top: 14px;
+      font-size: 42px;
+      line-height: 1.08;
+      font-weight: 800;
+      letter-spacing: -.035em;
+      background: linear-gradient(90deg, #fff 0%, #dbeafe 55%, #bae6fd 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .cover-lead {
+      margin-top: 8mm;
+      font-size: 14.5px;
+      line-height: 1.55;
+      color: #c7d7f5;
+      max-width: 162mm;
+    }
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 11mm;
+    }
+    .chip {
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.08);
+      color: #e0f2fe;
+      font-size: 11.5px;
+      font-weight: 650;
+      padding: 8px 12px;
+      border-radius: 999px;
+    }
+    .cover-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      margin-top: auto;
+      margin-bottom: 12mm;
+    }
+    .stat {
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      border-radius: 18px;
+      padding: 14px 14px 12px;
+    }
+    .stat b {
+      display: block;
+      font-family: Outfit, sans-serif;
+      font-size: 15px;
+      font-weight: 750;
+      margin-bottom: 4px;
+    }
+    .stat span { font-size: 11px; color: #9fb4d9; line-height: 1.4; }
+    .cover-foot {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid rgba(255,255,255,.12);
+      padding-top: 10px;
+      font-size: 11px;
+      color: #93c5fd;
+    }
+    .cover-foot strong { color: #fff; }
+
+    /* ===== INNER PAGES ===== */
+    .sheet { background: #fff; }
+    .accent-bar {
+      height: 8px;
+      background: linear-gradient(90deg, var(--blue) 0%, #38bdf8 45%, var(--orange) 100%);
+    }
+    .inner {
+      padding: 10mm 14mm 12mm;
+      height: calc(297mm - 8px);
+      display: flex;
+      flex-direction: column;
+    }
+    .page-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 8mm;
+    }
+    .page-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .page-brand img {
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+    }
+    .page-brand span {
+      font-family: Outfit, sans-serif;
+      font-size: 12px;
+      font-weight: 750;
+      color: #1e3a8a;
+    }
+    .page-head h2 {
+      font-size: 26px;
+      letter-spacing: -.03em;
+      margin-top: 6px;
+    }
+    .page-num {
+      font-size: 11px;
+      color: #94a3b8;
+      font-weight: 650;
+    }
+    .subhead {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.5;
+      max-width: 150mm;
+      margin-top: 3px;
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 8px;
+    }
+    .step {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 12px 12px 14px;
+      min-height: 46mm;
+    }
+    .n {
+      width: 28px; height: 28px;
+      border-radius: 10px;
+      background: var(--blue);
+      color: #fff;
+      font-family: Outfit, sans-serif;
+      font-weight: 800;
+      font-size: 14px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 10px;
+    }
+    .step h3 { font-size: 13.5px; margin-bottom: 6px; }
+    .step p { font-size: 11.2px; color: var(--muted); line-height: 1.45; }
+
+    .benefits {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 8mm;
+    }
+    .benefit {
+      display: flex;
+      gap: 10px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 12px;
+      background: #fff;
+    }
+    .ico {
+      width: 34px; height: 34px; flex: 0 0 34px;
+      border-radius: 11px;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff;
+    }
+    .ico svg { width: 18px; height: 18px; }
+    .b-blue { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+    .b-cyan { background: linear-gradient(135deg, #0ea5e9, #0284c7); }
+    .b-orange { background: linear-gradient(135deg, #fb923c, #ea580c); }
+    .b-green { background: linear-gradient(135deg, #34d399, #059669); }
+    .b-violet { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
+    .b-navy { background: linear-gradient(135deg, #1e3a8a, #0f172a); }
+    .benefit h3 { font-size: 13px; margin-bottom: 3px; }
+    .benefit p { font-size: 11px; color: var(--muted); line-height: 1.4; }
+
+    .pain {
+      margin-top: auto;
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 10px;
+    }
+    .pain-box, .quote-box {
+      border-radius: 18px;
+      padding: 14px 16px;
+    }
+    .pain-box {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+    }
+    .quote-box {
+      background: linear-gradient(145deg, #0b1f44, #1d4ed8);
+      color: #fff;
+    }
+    .pain-box h3, .quote-box h3 { font-size: 13.5px; margin-bottom: 6px; }
+    .pain-box p { font-size: 11.2px; color: #9a3412; line-height: 1.45; }
+    .quote-box p { font-size: 12.5px; line-height: 1.45; color: #dbeafe; }
+
+    /* roles */
+    .roles {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+    .role {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: 42mm 1fr;
+      min-height: 68mm;
+    }
+    .role-side {
+      color: #fff;
+      padding: 14px 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .r-res { background: linear-gradient(180deg, #2563eb, #1e3a8a); }
+    .r-guard { background: linear-gradient(180deg, #059669, #065f46); }
+    .r-admin { background: linear-gradient(180deg, #7c3aed, #4c1d95); }
+    .role-side h3 { font-size: 16px; }
+    .role-side p { font-size: 10.5px; color: rgba(255,255,255,.82); line-height: 1.4; margin-top: 6px; }
+    .pill {
+      align-self: flex-start;
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      background: rgba(255,255,255,.16);
+      padding: 4px 8px;
+      border-radius: 999px;
+    }
+    .role ul {
+      margin: 0;
+      padding: 12px 14px 12px 28px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5px 12px;
+    }
+    .role li {
+      font-size: 11px;
+      color: #334155;
+      line-height: 1.35;
+    }
+    .role li::marker { color: var(--blue); }
+
+    .note {
+      margin-top: auto;
+      font-size: 11px;
+      color: var(--muted);
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px 12px;
+    }
+
+    /* page 4 */
+    .mods {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .mod {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 12px 13px;
+      background: #fff;
+    }
+    .mod h3 { font-size: 13px; margin-bottom: 4px; display: flex; align-items: center; gap: 7px; }
+    .mod p { font-size: 11px; color: var(--muted); line-height: 1.4; }
+    .tag {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--blue);
+    }
+    .t-orange { background: var(--orange); }
+    .t-green { background: var(--green); }
+    .t-cyan { background: #0284c7; }
+    .t-violet { background: #7c3aed; }
+
+    .trust {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+      margin-top: 8mm;
+    }
+    .trust-item {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      font-size: 11px;
+      color: #334155;
+      line-height: 1.4;
+    }
+    .check {
+      width: 18px; height: 18px; flex: 0 0 18px;
+      border-radius: 50%;
+      background: #dbeafe;
+      color: var(--blue);
+      display: flex; align-items: center; justify-content: center;
+      margin-top: 1px;
+    }
+    .check svg { width: 11px; height: 11px; }
+
+    .cta {
+      margin-top: auto;
+      background: linear-gradient(135deg, #061428 0%, #1d4ed8 58%, #0ea5e9 130%);
+      color: #fff;
+      border-radius: 20px;
+      padding: 16px 18px 14px;
+      display: grid;
+      grid-template-columns: 1.35fr .9fr;
+      gap: 12px;
+      position: relative;
+      overflow: hidden;
+    }
+    .cta::after {
+      content: "";
+      position: absolute;
+      right: -20px; bottom: -30px;
+      width: 140px; height: 140px;
+      background: url("assets/icon.png") center/cover no-repeat;
+      opacity: .14;
+      transform: rotate(-8deg);
+    }
+    .cta h3 { font-size: 20px; letter-spacing: -.02em; }
+    .cta p { margin-top: 6px; font-size: 12px; color: #dbeafe; line-height: 1.45; }
+    .cta-side { position: relative; z-index: 1; }
+    .cta-row { font-size: 12px; margin-top: 7px; color: #fff; }
+    .cta-row b { display: inline-block; min-width: 78px; color: #93c5fd; font-weight: 650; }
+    .fine {
+      margin-top: 8px;
+      font-size: 9.5px;
+      color: #94a3b8;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <!-- PAGE 1 COVER -->
+  <section class="page cover">
+    <img class="cover-watermark" src="assets/icon.png" alt="" />
+    <div class="cover-inner">
+      <div class="cover-top">
+        <div class="brand">
+          <img class="logo" src="assets/logo.png" alt="MiVisita" />
+          <div>
+            <div class="brand-name">MiVisita</div>
+            <div class="brand-sub">Control de acceso residencial</div>
+          </div>
+        </div>
+        <img class="nexus" src="assets/nexus.png" alt="Nexus Global" />
+      </div>
+
+      <div class="cover-hero">
+        <div class="kicker"><span class="dot"></span> Brochure comercial · Honduras</div>
+        <h1>Visitas bajo control.<br />Residentes informados.<br />Portería ágil.</h1>
+        <p class="cover-lead">
+          MiVisita une residentes, guardias y administración en una sola app instalable:
+          invitaciones con QR y reglas claras, evidencia fotográfica en ingreso, patrullaje
+          con stickers, reservas de zonas comunes, alertas push y reportes PDF listos para auditoría.
+        </p>
+        <div class="chips">
+          <span class="chip">QR con vigencia y usos</span>
+          <span class="chip">Evidencia ID / placa</span>
+          <span class="chip">Patrullaje con stickers</span>
+          <span class="chip">Push en vivo</span>
+          <span class="chip">Reportes PDF</span>
+          <span class="chip">PWA web, Android e iOS</span>
+        </div>
+      </div>
+
+      <div class="cover-stats">
+        <div class="stat">
+          <b>Tres paneles</b>
+          <span>Residente, caseta y administración. Cada rol ve solo lo que necesita.</span>
+        </div>
+        <div class="stat">
+          <b>Trazabilidad real</b>
+          <span>Entradas, salidas, evidencias y comunicados quedan registrados.</span>
+        </div>
+        <div class="stat">
+          <b>Operación diaria</b>
+          <span>Menos llamadas a portería. Más control, menos papel.</span>
+        </div>
+      </div>
+
+      <div class="cover-foot">
+        <span><strong>mivisita.app</strong> · Plataforma líder para conjuntos en Honduras</span>
+        <span>WhatsApp <strong>+504 9882-3627</strong></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- PAGE 2 FLOW -->
+  <section class="page sheet">
+    <div class="accent-bar"></div>
+    <div class="inner">
+      <div class="page-head">
+        <div>
+          <div class="page-brand"><img src="assets/logo.png" alt="" /><span>MiVisita</span></div>
+          <div class="kicker kicker-light"><span class="dot"></span> Cómo funciona</div>
+          <h2>Un flujo, cuatro momentos</h2>
+          <p class="subhead">De la invitación al reporte: la residencial opera con el mismo estándar, sin listas en papel ni chats sueltos.</p>
+        </div>
+        <div class="page-num">02 / 04</div>
+      </div>
+
+      <div class="steps">
+        <article class="step">
+          <div class="n">1</div>
+          <h3>El residente anuncia</h3>
+          <p>Crea un QR con nombre, vigencia y tipo de acceso (peatonal o vehículo) y lo comparte como imagen o PDF.</p>
+        </article>
+        <article class="step">
+          <div class="n">2</div>
+          <h3>La caseta valida</h3>
+          <p>El guardia escanea, captura evidencia de ID y placa cuando aplica, y deja el ingreso registrado al instante.</p>
+        </article>
+        <article class="step">
+          <div class="n">3</div>
+          <h3>Llegan las alertas</h3>
+          <p>Visitas, delivery en entrada y comunicados de administración llegan por notificación push al dispositivo.</p>
+        </article>
+        <article class="step">
+          <div class="n">4</div>
+          <h3>Se audita y reporta</h3>
+          <p>La administración filtra el registro, revisa patrullajes y reservas, y exporta PDF individual o mensual.</p>
+        </article>
+      </div>
+
+      <div class="benefits">
+        <article class="benefit">
+          <div class="ico b-blue">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M4 4h6v6H4V4Zm10 0h6v6h-6V4ZM4 14h6v6H4v-6Zm10 4h2v2h-2v-2Zm4-4h2v2h-2v-2Zm-4 0h2v2h-2v-2Zm4 4h2v2h-2v-2Z" fill="currentColor"/></svg>
+          </div>
+          <div>
+            <h3>QR con reglas, no un código suelto</h3>
+            <p>Uso único, un día, tres días o vigencia extendida, según lo que habilite la administración.</p>
+          </div>
+        </article>
+        <article class="benefit">
+          <div class="ico b-orange">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M4 7h16v12H4V7Zm3-3h10v3H7V4Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="13" r="2.4" fill="currentColor"/></svg>
+          </div>
+          <div>
+            <h3>Evidencia en el ingreso</h3>
+            <p>Foto de identificación y placa obligatoria si el acceso es vehicular. El evento queda en el registro.</p>
+          </div>
+        </article>
+        <article class="benefit">
+          <div class="ico b-green">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 22a2 2 0 0 0 2-2H10a2 2 0 0 0 2 2Zm6-6V11a6 6 0 1 0-12 0v5l-2 2V19h16v-1l-2-2Z" fill="currentColor"/></svg>
+          </div>
+          <div>
+            <h3>Push en tiempo real</h3>
+            <p>Llegadas, paquetería en caseta y comunicados llegan al teléfono del residente o del puesto de guardia.</p>
+          </div>
+        </article>
+        <article class="benefit">
+          <div class="ico b-violet">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 3 4 9v12h16V9l-8-6Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+          </div>
+          <div>
+            <h3>Patrullaje con stickers QR</h3>
+            <p>Zonas con QR permanente. El guardia marca la ronda; la administración ve el historial de check-ins.</p>
+          </div>
+        </article>
+        <article class="benefit">
+          <div class="ico b-cyan">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M7 4h10v16H7V4Z" stroke="currentColor" stroke-width="1.7"/><path d="M9 8h6M9 12h6M9 16h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          </div>
+          <div>
+            <h3>Zonas comunes con reglas</h3>
+            <p>Horarios, duración máxima, un reserva por día y bloqueos administrativos. El residente reserva en la app.</p>
+          </div>
+        </article>
+        <article class="benefit">
+          <div class="ico b-navy">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M6 2h9l3 3v17H6V2Z" stroke="currentColor" stroke-width="1.7"/><path d="M9 12h6M9 16h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          </div>
+          <div>
+            <h3>Reportes listos para junta</h3>
+            <p>Exportación PDF por registro y reporte mensual de entradas y delivery, con referencia a evidencia.</p>
+          </div>
+        </article>
+      </div>
+
+      <div class="pain">
+        <div class="pain-box">
+          <h3>El problema que resolvemos</h3>
+          <p>Listas en papel, llamadas a caseta, visitas no anunciadas, WhatsApp de vecinos como “comunicado oficial” y cero historial cuando hay un incidente. MiVisita digitaliza portería y comunicación sin cambiar la operación de la residencial.</p>
+        </div>
+        <div class="quote-box">
+          <h3>La promesa</h3>
+          <p>Tres paneles, un mismo estándar. Cada rol ve lo que necesita —sin ruido— para que haya menos llamadas a caseta y más trazabilidad.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PAGE 3 ROLES -->
+  <section class="page sheet">
+    <div class="accent-bar"></div>
+    <div class="inner">
+      <div class="page-head">
+        <div>
+          <div class="page-brand"><img src="assets/logo.png" alt="" /><span>MiVisita</span></div>
+          <div class="kicker kicker-light"><span class="dot"></span> Capacidades por rol</div>
+          <h2>Tres paneles, un mismo estándar</h2>
+          <p class="subhead">Todo lo que un potencial cliente necesita ver: qué gana el residente, qué gana la caseta y qué controla la administración.</p>
+        </div>
+        <div class="page-num">03 / 04</div>
+      </div>
+
+      <div class="roles">
+        <article class="role">
+          <div class="role-side r-res">
+            <div>
+              <div class="pill">App residente</div>
+              <h3>Residente</h3>
+              <p>Invita, reserva y se entera —sin pasar por la caseta para cada detalle.</p>
+            </div>
+          </div>
+          <ul>
+            <li>Invitación QR con nombre, nota y acceso peatonal o vehicular</li>
+            <li>Vigencias según política de la residencial</li>
+            <li>Compartir / exportar el pase en imagen o PDF</li>
+            <li>QRs activos y vencidos a la vista</li>
+            <li>Reservas de zonas: crear, editar y cancelar</li>
+            <li>Anuncios de la administración</li>
+            <li>Sugerencias al equipo administrativo</li>
+            <li>Soporte por WhatsApp de la residencial</li>
+            <li>Perfil y datos de contacto personal</li>
+            <li>Notificaciones push en el dispositivo</li>
+            <li>Interfaz en español e inglés</li>
+            <li>Instalable como app (PWA)</li>
+          </ul>
+        </article>
+
+        <article class="role">
+          <div class="role-side r-guard">
+            <div>
+              <div class="pill">Caseta / portería</div>
+              <h3>Guardia</h3>
+              <p>Escanea, evidencia y cierra el ciclo de entrada y salida en segundos.</p>
+            </div>
+          </div>
+          <ul>
+            <li>Escaneo de QR validado contra la residencial</li>
+            <li>Foto de identificación en el ingreso</li>
+            <li>Placa obligatoria si el QR es vehicular</li>
+            <li>Confirmación manual de llegada pendiente</li>
+            <li>Salida por re-escaneo o confirmación manual</li>
+            <li>Delivery en entrada con aviso inmediato al residente</li>
+            <li>Reservas del día visibles en caseta</li>
+            <li>Patrullaje: escaneo de stickers QR por zona</li>
+            <li>Historial reciente y refresco automático</li>
+            <li>Push al puesto de guardia</li>
+            <li>Visitas anunciadas pendientes de primer escaneo</li>
+            <li>Flujo pensado para uso en teléfono o tablet</li>
+          </ul>
+        </article>
+
+        <article class="role">
+          <div class="role-side r-admin">
+            <div>
+              <div class="pill">Administración</div>
+              <h3>Residencial</h3>
+              <p>Usuarios, políticas, comunicados y reportes —sin depender de una hoja de cálculo.</p>
+            </div>
+          </div>
+          <ul>
+            <li>Alta de residentes (dueño / inquilino) y guardias</li>
+            <li>Suspensión y reactivación de cuentas</li>
+            <li>Credenciales, copia al portapapeles y OTP de un uso</li>
+            <li>Zonas comunes con horario, duración y días</li>
+            <li>Bloqueos de fecha/hora y cancelación de reservas</li>
+            <li>Comunicados: todos, solo dueños o seleccionados</li>
+            <li>Lectura de sugerencias de residentes</li>
+            <li>QR de administración (visita / vigencia / vehículo)</li>
+            <li>Patrullaje: zonas, stickers e historial de marcajes</li>
+            <li>Registro con filtros y PDF por evento</li>
+            <li>Reporte mensual PDF de entradas y delivery</li>
+            <li>Política de vigencias QR y teléfono de soporte</li>
+          </ul>
+        </article>
+      </div>
+
+      <p class="note">
+        El servicio contratado cubre residente, guardia y administración residencial. MiVisita complementa la vigilancia física de la caseta: no la sustituye. Las funciones de operación global multi-residencial quedan fuera del alcance del cliente.
+      </p>
+    </div>
+  </section>
+
+  <!-- PAGE 4 PLATFORM + CTA -->
+  <section class="page sheet">
+    <div class="accent-bar"></div>
+    <div class="inner">
+      <div class="page-head">
+        <div>
+          <div class="page-brand"><img src="assets/logo.png" alt="" /><span>MiVisita</span></div>
+          <div class="kicker kicker-light"><span class="dot"></span> Plataforma y confianza</div>
+          <h2>Pensada para operar todos los días</h2>
+          <p class="subhead">Seguridad por residencial, evidencias con retención y la misma experiencia en el teléfono del residente o en la caseta.</p>
+        </div>
+        <div class="page-num">04 / 04</div>
+      </div>
+
+      <div class="mods">
+        <article class="mod">
+          <h3><span class="tag"></span> PWA instalable</h3>
+          <p>Misma app en web, Android e iOS. Se instala en el teléfono como aplicación, con página offline si no hay red.</p>
+        </article>
+        <article class="mod">
+          <h3><span class="tag t-orange"></span> Acceso acotado</h3>
+          <p>Cada usuario entra con su rol. Escaneos y consultas quedan limitados a su residencial. Cuentas se pueden suspender.</p>
+        </article>
+        <article class="mod">
+          <h3><span class="tag t-green"></span> Evidencia con retención</h3>
+          <p>Fotos de ID y placa se guardan; a los 60 días se purgan los bytes sensibles. El registro del evento se conserva.</p>
+        </article>
+        <article class="mod">
+          <h3><span class="tag t-cyan"></span> Recuperación de acceso</h3>
+          <p>Restablecimiento de contraseña por correo. Contraseña de un solo uso para entregar credenciales con control.</p>
+        </article>
+        <article class="mod">
+          <h3><span class="tag t-violet"></span> Comunicados masivos</h3>
+          <p>Título y mensaje (hasta 500 caracteres) con push: a todos, solo propietarios o a residentes seleccionados.</p>
+        </article>
+        <article class="mod">
+          <h3><span class="tag t-orange"></span> Delivery en caseta</h3>
+          <p>El guardia elige al residente y este recibe aviso inmediato. Queda en el historial operativo del día.</p>
+        </article>
+      </div>
+
+      <div class="trust" style="margin-top: 7mm;">
+        <div class="trust-item">
+          <span class="check"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          Políticas de privacidad y términos de uso integrados en la app.
+        </div>
+        <div class="trust-item">
+          <span class="check"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          Idioma español e inglés en el módulo del residente.
+        </div>
+        <div class="trust-item">
+          <span class="check"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          Reportes mensuales para archivo de la administración y auditorías internas.
+        </div>
+        <div class="trust-item">
+          <span class="check"><svg viewBox="0 0 24 24" fill="none"><path d="M20 6 9 17l-5-5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          Capacitación inicial de portería y administración como parte del arranque.
+        </div>
+      </div>
+
+      <div class="cta">
+        <div>
+          <h3>¿Tu residencial aún usa listas en papel?</h3>
+          <p>Digitaliza portería y comunicación con residentes. Te respondemos con alcance, tiempos y siguiente paso —sin compromiso.</p>
+        </div>
+        <div class="cta-side">
+          <div class="cta-row"><b>Web</b> mivisita.app</div>
+          <div class="cta-row"><b>WhatsApp</b> +504 9882-3627</div>
+          <div class="cta-row"><b>Empresa</b> Nexus Global</div>
+          <div class="cta-row"><b>Sitio</b> nexusglobalsuministros.com</div>
+        </div>
+      </div>
+      <p class="fine">Documento comercial de MiVisita · Powered by Nexus Global · No constituye oferta ni contrato. El alcance formal se detalla en cotización y contrato de servicio.</p>
+    </div>
+  </section>
+</body>
+</html>

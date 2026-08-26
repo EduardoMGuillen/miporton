@@ -185,6 +185,13 @@ export function MarketingHome({
                 EN
               </button>
             </div>
+            <a
+              href="/mivisita-brochure-comercial.pdf"
+              download="MiVisita-Brochure-Comercial.pdf"
+              className="hidden rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50 sm:inline-flex sm:text-sm"
+            >
+              {t("nav.brochure")}
+            </a>
             <Link
               href="/login?install=1"
               className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 shadow-sm transition hover:bg-slate-50 sm:text-sm"
@@ -249,6 +256,13 @@ export function MarketingHome({
               className="inline-flex items-center justify-center rounded-2xl border border-white/25 bg-white/10 px-6 py-3.5 text-base font-semibold text-white backdrop-blur transition hover:bg-white/20"
             >
               {t("hero.ctaSecondary")}
+            </a>
+            <a
+              href="/mivisita-brochure-comercial.pdf"
+              download="MiVisita-Brochure-Comercial.pdf"
+              className="inline-flex items-center justify-center rounded-2xl border border-white/40 bg-white/5 px-6 py-3.5 text-base font-semibold text-white/95 transition hover:bg-white/10"
+            >
+              {t("hero.ctaBrochure")}
             </a>
             <Link
               href="/login"
@@ -414,6 +428,13 @@ export function MarketingHome({
             >
               {t("hero.ctaSecondary")}
             </a>
+            <a
+              href="/mivisita-brochure-comercial.pdf"
+              download="MiVisita-Brochure-Comercial.pdf"
+              className="inline-flex w-full items-center justify-center rounded-2xl border-2 border-white/70 px-8 py-3.5 text-base font-semibold text-white transition hover:bg-white/10 sm:w-auto"
+            >
+              {t("hero.ctaBrochure")}
+            </a>
           </div>
         </div>
       </section>
@@ -460,6 +481,13 @@ export function MarketingHome({
             <p className="mt-1 text-sm text-slate-600">{t("bottom.readySub")}</p>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-3">
+            <a
+              href="/mivisita-brochure-comercial.pdf"
+              download="MiVisita-Brochure-Comercial.pdf"
+              className="rounded-2xl border border-slate-300 bg-slate-50 px-6 py-3 text-sm font-bold text-slate-800 transition hover:bg-slate-100"
+            >
+              {t("hero.ctaBrochure")}
+            </a>
             <Link href="/login?install=1" className="rounded-2xl border border-slate-300 bg-slate-50 px-6 py-3 text-sm font-bold text-slate-800 transition hover:bg-slate-100">
               {t("bottom.install")}
             </Link>
