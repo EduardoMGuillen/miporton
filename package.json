@@ -12,7 +12,8 @@
     "prisma:push": "prisma db push",
     "build:vercel": "prisma generate && prisma db push && next build",
     "backup:db": "tsx scripts/database-backup.ts",
-    "backup:db:metadata": "tsx scripts/database-backup.ts --skip-evidence"
+    "backup:db:metadata": "tsx scripts/database-backup.ts --skip-evidence",
+    "brochure:pdf": "node scripts/generate-sales-brochure.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.19.2",

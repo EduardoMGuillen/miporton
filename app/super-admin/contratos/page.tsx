@@ -24,6 +24,20 @@ export default async function SuperAdminContractsPage() {
   return (
     <>
       <Card>
+        <h2 className="mb-2 text-lg font-semibold text-slate-900">Brochure comercial</h2>
+        <p className="mb-4 text-sm text-slate-600">
+          PDF de ventas con las capacidades de MiVisita para enviar a un residencial o junta.
+        </p>
+        <a
+          href="/mivisita-brochure-comercial.pdf"
+          download="MiVisita-Brochure-Comercial.pdf"
+          className="btn-primary inline-flex w-max items-center justify-center px-4 py-2 text-sm"
+        >
+          Descargar brochure PDF
+        </a>
+      </Card>
+
+      <Card>
         <h2 className="mb-2 text-lg font-semibold text-slate-900">Crear cotizacion</h2>
         <p className="mb-4 text-sm text-slate-600">
           Genera una cotizacion PDF a nombre de Nexus Global para el servicio MiVisita - Seguridad

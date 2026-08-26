@@ -2,6 +2,7 @@ import type { LandingLocale } from "@/lib/landing-locale";
 
 const KEYS = {
   "nav.install": { es: "Instalar app", en: "Install app" },
+  "nav.brochure": { es: "Brochure PDF", en: "PDF brochure" },
   "nav.login": { es: "Iniciar sesión", en: "Log in" },
   "nav.langHint": { es: "Idioma (solo esta página)", en: "Language (this page only)" },
   "hero.badge": { es: "Control de acceso residencial", en: "Residential access control" },
@@ -15,6 +16,7 @@ const KEYS = {
   },
   "hero.ctaPrimary": { es: "Hablar por WhatsApp", en: "Message on WhatsApp" },
   "hero.ctaSecondary": { es: "Solicitar información", en: "Request information" },
+  "hero.ctaBrochure": { es: "Descargar brochure", en: "Download brochure" },
   "hero.ctaLogin": { es: "Entrar a la app", en: "Open the app" },
   "stats.qr": { es: "QR con vigencia y uso", en: "QR with time & use limits" },
   "stats.push": { es: "Push en tiempo real", en: "Real-time push" },
