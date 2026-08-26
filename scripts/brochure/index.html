@@ -123,10 +123,10 @@
       position: absolute;
       inset: 0;
       background-image:
-        linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
+        linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px);
       background-size: 22px 22px;
-      mask-image: radial-gradient(ellipse at 40% 30%, #000 20%, transparent 75%);
+      opacity: .55;
       pointer-events: none;
     }
     .cover-inner {
@@ -136,15 +136,6 @@
       display: flex;
       flex-direction: column;
       z-index: 1;
-    }
-    .cover-watermark {
-      position: absolute;
-      right: -22mm;
-      bottom: 38mm;
-      width: 108mm;
-      opacity: .13;
-      pointer-events: none;
-      transform: rotate(-8deg);
     }
     .cover-top {
       display: flex;
@@ -164,10 +155,13 @@
     }
     .brand-name { font-family: Outfit, sans-serif; font-weight: 800; font-size: 22px; letter-spacing: -.02em; }
     .brand-sub { font-size: 11px; color: #93c5fd; margin-top: 2px; }
-    .nexus {
-      height: 28px;
-      opacity: .92;
-      filter: brightness(10);
+    .nexus-label {
+      font-family: Outfit, sans-serif;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: #dbeafe;
     }
     .cover-hero { margin-top: 28mm; max-width: 168mm; }
     .cover h1 {
@@ -176,10 +170,9 @@
       line-height: 1.08;
       font-weight: 800;
       letter-spacing: -.035em;
-      background: linear-gradient(90deg, #fff 0%, #dbeafe 55%, #bae6fd 100%);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
+      color: #ffffff;
+      -webkit-text-fill-color: #ffffff;
+      background: none;
     }
     .cover-lead {
       margin-top: 8mm;
@@ -359,7 +352,7 @@
       border: 1px solid #fed7aa;
     }
     .quote-box {
-      background: linear-gradient(145deg, #0b1f44, #1d4ed8);
+      background: #0b1f44;
       color: #fff;
     }
     .pain-box h3, .quote-box h3 { font-size: 13.5px; margin-bottom: 6px; }
@@ -475,7 +468,7 @@
 
     .cta {
       margin-top: auto;
-      background: linear-gradient(135deg, #061428 0%, #1d4ed8 58%, #0ea5e9 130%);
+      background: #0b1f44;
       color: #fff;
       border-radius: 20px;
       padding: 16px 18px 14px;
@@ -484,15 +477,6 @@
       gap: 12px;
       position: relative;
       overflow: hidden;
-    }
-    .cta::after {
-      content: "";
-      position: absolute;
-      right: -20px; bottom: -30px;
-      width: 140px; height: 140px;
-      background: url("assets/icon.png") center/cover no-repeat;
-      opacity: .14;
-      transform: rotate(-8deg);
     }
     .cta h3 { font-size: 20px; letter-spacing: -.02em; }
     .cta p { margin-top: 6px; font-size: 12px; color: #dbeafe; line-height: 1.45; }
@@ -510,7 +494,6 @@
 <body>
   <!-- PAGE 1 COVER -->
   <section class="page cover">
-    <img class="cover-watermark" src="assets/icon.png" alt="" />
     <div class="cover-inner">
       <div class="cover-top">
         <div class="brand">
@@ -520,7 +503,7 @@
             <div class="brand-sub">Control de acceso residencial</div>
           </div>
         </div>
-        <img class="nexus" src="assets/nexus.png" alt="Nexus Global" />
+        <div class="nexus-label">Nexus Global</div>
       </div>
 
       <div class="cover-hero">
