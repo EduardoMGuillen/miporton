@@ -1,9 +1,12 @@
 import webpush from "web-push";
 import { prisma } from "@/lib/prisma";
 
-const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
-const privateKey = process.env.VAPID_PRIVATE_KEY ?? "";
-const contact = process.env.VAPID_CONTACT_EMAIL ?? "mailto:admin@mivisita.app";
+const publicKey =
+  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim() ||
+  process.env.VAPID_PUBLIC_KEY?.trim() ||
+  "";
+const privateKey = process.env.VAPID_PRIVATE_KEY?.trim() || "";
+const contact = process.env.VAPID_CONTACT_EMAIL?.trim() || "mailto:admin@mivisita.app";
 
 if (publicKey && privateKey) {
   webpush.setVapidDetails(contact, publicKey, privateKey);
