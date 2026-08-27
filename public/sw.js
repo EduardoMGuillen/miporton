@@ -1,5 +1,19 @@
-/* Service Worker - Push Notifications (flujo VAPID que ya funcionaba) */
+/* Service Worker - Push Notifications (VAPID) */
 self.addEventListener("fetch", function () {});
+
+self.addEventListener("install", function (event) {
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", function (event) {
+  event.waitUntil(self.clients.claim());
+});
+
+self.addEventListener("message", function (event) {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
 
 self.addEventListener("push", (event) => {
   let title = "MiVisita";

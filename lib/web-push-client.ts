@@ -1,9 +1,9 @@
 "use client";
 
 /**
- * Flujo de activación push que YA funcionaba (gcbmesas + iOS PWA):
- * permiso → SW → pushManager.subscribe → POST /api/push/subscribe
- * Sin FCM, sin timeouts agresivos (rompían Android PWA/TWA).
+ * Push VAPID:
+ * - iOS: flujo que ya funciona (reusa suscripción, sin cambios agresivos)
+ * - Android PWA/TWA: suscripción fresca + ArrayBuffer VAPID limpio + SW con control
  */
 
 export type EnablePushResult =
@@ -14,17 +14,6 @@ export type TestPushResult =
   | { ok: true; message: string; sent?: number }
   | { ok: false; message: string };
 
-function urlBase64ToUint8Array(base64String: string) {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
-}
-
 function isIosDevice() {
   if (typeof navigator === "undefined") return false;
   const ua = navigator.userAgent;
@@ -34,15 +23,35 @@ function isIosDevice() {
   );
 }
 
+function isAndroidDevice() {
+  return typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
+}
+
 function isStandalonePwa() {
   if (typeof window === "undefined") return false;
   const nav = window.navigator as Navigator & { standalone?: boolean };
   return (
     window.matchMedia("(display-mode: standalone)").matches ||
     window.matchMedia("(display-mode: fullscreen)").matches ||
-    // Chrome Android TWA / standalone display
     window.matchMedia("(display-mode: minimal-ui)").matches ||
-    Boolean(nav.standalone)
+    Boolean(nav.standalone) ||
+    // TWA / Android Browser Helper a veces no reporta display-mode standalone
+    document.referrer.includes("android-app://")
+  );
+}
+
+/** Chrome Android es exquisito: necesita ArrayBuffer exacto, no un Uint8Array “vista”. */
+function vapidKeyToArrayBuffer(base64String: string): ArrayBuffer {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray.buffer.slice(
+    outputArray.byteOffset,
+    outputArray.byteOffset + outputArray.byteLength,
   );
 }
 
@@ -64,6 +73,22 @@ async function waitUntilActivated(worker: ServiceWorker | null | undefined) {
   });
 }
 
+/** En Android/TWA el SW debe controlar la página antes de subscribe. */
+async function waitForServiceWorkerController(ms = 8000) {
+  if (navigator.serviceWorker.controller) return;
+  await new Promise<void>((resolve) => {
+    const timer = window.setTimeout(resolve, ms);
+    navigator.serviceWorker.addEventListener(
+      "controllerchange",
+      () => {
+        window.clearTimeout(timer);
+        resolve();
+      },
+      { once: true },
+    );
+  });
+}
+
 async function ensureServiceWorker() {
   let reg = await navigator.serviceWorker.getRegistration("/");
   if (!reg || !reg.active) {
@@ -75,6 +100,15 @@ async function ensureServiceWorker() {
   const swWorker = reg.installing || reg.waiting || reg.active;
   await waitUntilActivated(swWorker);
   await navigator.serviceWorker.ready;
+
+  if (isAndroidDevice()) {
+    // Si hay SW waiting, forzar activación (skipWaiting está en sw.js).
+    if (reg.waiting) {
+      reg.waiting.postMessage?.({ type: "SKIP_WAITING" });
+    }
+    await waitForServiceWorkerController(8000);
+  }
+
   return reg;
 }
 
@@ -98,6 +132,93 @@ async function showLocalNotification(
   }
 }
 
+async function postSubscription(sub: PushSubscription) {
+  const subscription = sub.toJSON();
+  const p256dh = subscription.keys?.p256dh;
+  const auth = subscription.keys?.auth;
+  if (!subscription.endpoint || !p256dh || !auth) {
+    return {
+      ok: false as const,
+      message: "Suscripcion push invalida (keys vacias en el navegador).",
+    };
+  }
+
+  const res = await fetch("/api/push/subscribe", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      endpoint: subscription.endpoint,
+      keys: { p256dh, auth },
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    return {
+      ok: false as const,
+      message: (err as { error?: string }).error || "Error al registrar",
+    };
+  }
+  return { ok: true as const };
+}
+
+async function subscribeFresh(
+  reg: ServiceWorkerRegistration,
+  vapidPublicKey: string,
+): Promise<PushSubscription> {
+  const applicationServerKey = vapidKeyToArrayBuffer(vapidPublicKey);
+
+  // Android: tirar suscripción vieja (a menudo rota tras experimentos FCM / dominio).
+  const existing = await reg.pushManager.getSubscription();
+  if (existing) {
+    try {
+      await existing.unsubscribe();
+    } catch {
+      // seguir
+    }
+  }
+
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 1500 * attempt));
+      return await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey,
+      });
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("No se pudo suscribir a push");
+}
+
+async function subscribeIosOrDesktop(
+  reg: ServiceWorkerRegistration,
+  vapidPublicKey: string,
+): Promise<PushSubscription> {
+  const applicationServerKey = vapidKeyToArrayBuffer(vapidPublicKey);
+
+  // iOS: reutilizar si existe (ya funciona).
+  const existing = await reg.pushManager.getSubscription();
+  if (existing) return existing;
+
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 1500 * attempt));
+      return await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey,
+      });
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("No se pudo suscribir a push");
+}
+
 export async function sendTestPush(): Promise<TestPushResult> {
   try {
     if (!("Notification" in window) || Notification.permission !== "granted") {
@@ -118,7 +239,7 @@ export async function sendTestPush(): Promise<TestPushResult> {
           "mivisita-push-test-local",
         );
       } catch {
-        // continuar con servidor
+        // continuar
       }
     }
 
@@ -133,13 +254,15 @@ export async function sendTestPush(): Promise<TestPushResult> {
     };
 
     if (!res.ok) {
+      const hintAndroid = isAndroidDevice()
+        ? " En Android: pulsa Activar otra vez (crea suscripcion nueva) y vuelve a Probar."
+        : "";
       return {
         ok: false,
         message:
           (data.error || data.message || "El push del servidor fallo.") +
-          (localOk
-            ? " (La prueba local si se mostro; vuelve a Activar y reintenta Probar.)"
-            : ""),
+          (localOk ? " (Prueba local OK.)" : "") +
+          hintAndroid,
       };
     }
 
@@ -159,6 +282,7 @@ export async function sendTestPush(): Promise<TestPushResult> {
 }
 
 export async function enableWebPush(vapidPublicKey?: string): Promise<EnablePushResult> {
+  // —— iOS: mismas reglas que ya funcionan ——
   if (isIosDevice() && !isStandalonePwa()) {
     return {
       ok: false,
@@ -184,7 +308,7 @@ export async function enableWebPush(vapidPublicKey?: string): Promise<EnablePush
       denied: true,
       message: isIosDevice()
         ? IOS_DENIED_RESET_MESSAGE
-        : "Permiso denegado. Activa notificaciones en Ajustes del sitio o dispositivo.",
+        : "Permiso denegado. Activa notificaciones en Ajustes → Apps → Chrome o MiVisita.",
     };
   }
 
@@ -198,7 +322,7 @@ export async function enableWebPush(vapidPublicKey?: string): Promise<EnablePush
           permFirst === "denied"
             ? isIosDevice()
               ? IOS_DENIED_RESET_MESSAGE
-              : "Permiso denegado. Activa notificaciones en Ajustes del sitio o dispositivo."
+              : "Permiso denegado. Activa notificaciones en Ajustes del dispositivo."
             : "Permiso denegado",
       };
     }
@@ -210,7 +334,7 @@ export async function enableWebPush(vapidPublicKey?: string): Promise<EnablePush
       unsupported: true,
       message: isIosDevice()
         ? "Este iPhone no expone Push. Necesitas iOS 16.4+ y abrir MiVisita desde el icono de Inicio (PWA)."
-        : "Tu navegador no soporta notificaciones push. Usa Chrome en el movil (y anade la web a pantalla de inicio) para recibirlas.",
+        : "Tu navegador no soporta notificaciones push. Usa Chrome (PWA o APK) y permite notificaciones.",
     };
   }
 
@@ -226,52 +350,13 @@ export async function enableWebPush(vapidPublicKey?: string): Promise<EnablePush
     }
     if (!publicKey) return { ok: false, message: "Clave VAPID vacia" };
 
-    const key = urlBase64ToUint8Array(publicKey);
+    const android = isAndroidDevice();
+    const sub = android
+      ? await subscribeFresh(reg, publicKey)
+      : await subscribeIosOrDesktop(reg, publicKey);
 
-    // Reusar suscripcion existente si hay (reactivar / resync).
-    let sub = await reg.pushManager.getSubscription();
-    if (!sub) {
-      const maxRetries = 3;
-      for (let attempt = 0; attempt < maxRetries; attempt++) {
-        try {
-          if (attempt > 0) await new Promise((r) => setTimeout(r, 1500 * attempt));
-          sub = await reg.pushManager.subscribe({
-            userVisibleOnly: true,
-            applicationServerKey: key as BufferSource,
-          });
-          break;
-        } catch (e) {
-          if (attempt === maxRetries - 1) throw e;
-        }
-      }
-    }
-
-    if (!sub) return { ok: false, message: "No se pudo suscribir a push" };
-
-    const subscription = sub.toJSON();
-    const p256dh = subscription.keys?.p256dh;
-    const auth = subscription.keys?.auth;
-    if (!subscription.endpoint || !p256dh || !auth) {
-      return { ok: false, message: "Suscripcion push invalida (keys vacias en el navegador)." };
-    }
-
-    const res = await fetch("/api/push/subscribe", {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        endpoint: subscription.endpoint,
-        keys: { p256dh, auth },
-      }),
-    });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      return {
-        ok: false,
-        message: (err as { error?: string }).error || "Error al registrar",
-      };
-    }
+    const saved = await postSubscription(sub);
+    if (!saved.ok) return saved;
 
     await showLocalNotification(
       reg,
@@ -280,26 +365,49 @@ export async function enableWebPush(vapidPublicKey?: string): Promise<EnablePush
       "mivisita-push-enabled",
     );
 
+    // Android: verificar envío real; si falla, una segunda suscripción limpia.
+    if (android) {
+      const testRes = await fetch("/api/push/test", {
+        method: "POST",
+        credentials: "same-origin",
+      });
+      if (!testRes.ok) {
+        try {
+          const again = await subscribeFresh(reg, publicKey);
+          const savedAgain = await postSubscription(again);
+          if (savedAgain.ok) {
+            await fetch("/api/push/test", {
+              method: "POST",
+              credentials: "same-origin",
+            }).catch(() => null);
+          }
+        } catch {
+          // ya quedó guardada la primera; el usuario puede Probar
+        }
+      }
+    }
+
     return {
       ok: true,
-      message: "Notificaciones activadas. Si no ves el aviso, pulsa Probar notificaciones.",
+      message: android
+        ? "Notificaciones activadas en Android. Minimiza la app y pulsa Probar si no viste el push."
+        : "Notificaciones activadas. Si no ves el aviso, pulsa Probar notificaciones.",
     };
   } catch (err: unknown) {
     const errMsg = err instanceof Error ? err.message : String(err);
-    const isAndroid = /Android/i.test(navigator.userAgent);
     const isPushServiceError = /push service|Registration failed.*push/i.test(errMsg);
 
     let hint = "";
     if (isIosDevice()) {
       hint =
         " Si sigue fallando: borra el icono, limpia datos del sitio en Safari y vuelve a agregar a Inicio.";
-    } else if (isAndroid) {
+    } else if (isAndroidDevice()) {
       if (isPushServiceError) {
         hint =
-          " Prueba: 1) Abrir desde icono PWA/APK 2) WiFi 3) Actualizar Chrome 4) Reintentar.";
+          " Prueba: 1) Abrir desde icono PWA/APK 2) WiFi 3) Actualizar Chrome y Google Play Services 4) Ajustes → Apps → Chrome/MiVisita → Notificaciones ON 5) Reintentar Activar.";
       } else {
         hint =
-          " En Android: abre desde el icono de la PWA o el APK. Revisa que las notificaciones esten permitidas.";
+          " En Android abre desde el icono de la PWA o el APK (TWA), no solo una pestana de Chrome.";
       }
     }
     return { ok: false, message: errMsg + hint };
