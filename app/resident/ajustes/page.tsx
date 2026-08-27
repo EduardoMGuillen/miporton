@@ -4,6 +4,7 @@ import { Card } from "@/app/components/shell";
 import { PushSubscriptionCard } from "@/app/resident/push-subscription";
 import { getResidentLocale } from "@/lib/get-resident-locale";
 import { residentT } from "@/app/resident/resident-dictionary";
+import { getVapidPublicKey } from "@/lib/vapid-public-key";
 
 export default async function ResidentSettingsPage() {
   const locale = await getResidentLocale();
@@ -24,6 +25,7 @@ export default async function ResidentSettingsPage() {
       <PushSubscriptionCard
         initialPersonalEmail={residentContact?.personalEmail ?? ""}
         initialPhoneNumber={residentContact?.phoneNumber ?? ""}
+        vapidPublicKey={getVapidPublicKey()}
       />
     </Card>
   );

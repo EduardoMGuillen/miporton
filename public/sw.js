@@ -1,11 +1,18 @@
-const CACHE_NAME = "mivisita-v1";
+const CACHE_NAME = "mivisita-v2";
 const OFFLINE_URL = "/offline";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll([OFFLINE_URL, "/login"])),
+    (async () => {
+      try {
+        const cache = await caches.open(CACHE_NAME);
+        await cache.add(new Request(OFFLINE_URL, { cache: "reload", credentials: "omit" }));
+      } catch {
+        // Precache is optional. Push subscribe must not depend on it.
+      }
+      await self.skipWaiting();
+    })(),
   );
-  self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
@@ -16,17 +23,19 @@ self.addEventListener("activate", (event) => {
         Promise.all(
           keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)),
         ),
-      ),
+      )
+      .then(() => self.clients.claim()),
   );
-  self.clients.claim();
 });
 
 self.addEventListener("fetch", (event) => {
-  if (event.request.mode === "navigate") {
-    event.respondWith(
-      fetch(event.request).catch(() => caches.match(OFFLINE_URL)),
-    );
+  if (event.request.mode !== "navigate" || event.request.method !== "GET") {
+    return;
   }
+
+  event.respondWith(
+    fetch(event.request).catch(() => caches.match(OFFLINE_URL)),
+  );
 });
 
 self.addEventListener("push", (event) => {
