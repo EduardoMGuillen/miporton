@@ -155,7 +155,6 @@ async function showLocalNotification(
       icon: "/icon-192.png",
       badge: "/icon-48.png",
       tag,
-      renotify: true,
       data: { url: "/" },
     });
     return true;
