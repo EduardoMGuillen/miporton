@@ -102,7 +102,6 @@ async function showLocalSmokeTest(reg: ServiceWorkerRegistration) {
       icon: "/icon-192.png",
       badge: "/icon-48.png",
       tag: "mivisita-push-enabled",
-      vibrate: [200, 100, 200],
       data: { url: "/" },
     });
   } catch {
