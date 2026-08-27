@@ -1,8 +1,9 @@
 "use client";
 
 /**
- * Activación Web Push (VAPID) — iOS PWA, Android Chrome/PWA, desktop.
- * Sin FCM en el cliente (getToken colgaba Android). Timeouts en cada paso.
+ * Flujo de activación push que YA funcionaba (gcbmesas + iOS PWA):
+ * permiso → SW → pushManager.subscribe → POST /api/push/subscribe
+ * Sin FCM, sin timeouts agresivos (rompían Android PWA/TWA).
  */
 
 export type EnablePushResult =
@@ -24,35 +25,6 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray;
 }
 
-function arrayBufferToBase64Url(buffer: ArrayBuffer) {
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]!);
-  }
-  return window
-    .btoa(binary)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-}
-
-function subscriptionPayload(sub: PushSubscription) {
-  const json = sub.toJSON();
-  let p256dh = json.keys?.p256dh;
-  let auth = json.keys?.auth;
-  if (!p256dh || !auth) {
-    const p256 = sub.getKey("p256dh");
-    const a = sub.getKey("auth");
-    if (p256) p256dh = arrayBufferToBase64Url(p256);
-    if (a) auth = arrayBufferToBase64Url(a);
-  }
-  return {
-    endpoint: json.endpoint || sub.endpoint,
-    keys: { p256dh, auth },
-  };
-}
-
 function isIosDevice() {
   if (typeof navigator === "undefined") return false;
   const ua = navigator.userAgent;
@@ -62,16 +34,14 @@ function isIosDevice() {
   );
 }
 
-function isAndroidDevice() {
-  return typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
-}
-
 function isStandalonePwa() {
   if (typeof window === "undefined") return false;
   const nav = window.navigator as Navigator & { standalone?: boolean };
   return (
     window.matchMedia("(display-mode: standalone)").matches ||
     window.matchMedia("(display-mode: fullscreen)").matches ||
+    // Chrome Android TWA / standalone display
+    window.matchMedia("(display-mode: minimal-ui)").matches ||
     Boolean(nav.standalone)
   );
 }
@@ -80,25 +50,7 @@ const IOS_INSTALL_MESSAGE =
   "En iPhone las notificaciones solo funcionan desde la app en Inicio (no Safari). Safari → Compartir → Agregar a pantalla de inicio → abre MiVisita desde ese icono → Activar notificaciones → Permitir.";
 
 const IOS_DENIED_RESET_MESSAGE =
-  "iOS ya bloqueó las notificaciones de MiVisita. Ajustes → Notificaciones → MiVisita → permitir. Si no aparece: borra el icono, limpia datos del sitio en Safari y vuelve a Agregar a Inicio.";
-
-function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = window.setTimeout(() => {
-      reject(new Error(`${label} (timeout ${ms / 1000}s)`));
-    }, ms);
-    promise.then(
-      (value) => {
-        window.clearTimeout(timer);
-        resolve(value);
-      },
-      (err) => {
-        window.clearTimeout(timer);
-        reject(err);
-      },
-    );
-  });
-}
+  "iOS ya bloqueó las notificaciones de MiVisita (aunque estés en la PWA; un No permitir anterior queda guardado). Para resetear: 1) Ajustes → Notificaciones → busca MiVisita → permitir. Si no aparece o sigue fallando: 2) Borra el icono de Inicio. 3) Ajustes → Apps → Safari → Avanzado → Datos de sitios web → elimina mivisita / mivisita.app. 4) Safari → Agregar a Inicio. 5) Abre desde el icono nuevo → Activar notificaciones → Permitir.";
 
 async function waitUntilActivated(worker: ServiceWorker | null | undefined) {
   if (!worker) return;
@@ -108,39 +60,22 @@ async function waitUntilActivated(worker: ServiceWorker | null | undefined) {
     worker.addEventListener("statechange", () => {
       if (worker.state === "activated") done();
     });
-    setTimeout(done, 5000);
+    setTimeout(done, 8000);
   });
 }
 
 async function ensureServiceWorker() {
   let reg = await navigator.serviceWorker.getRegistration("/");
   if (!reg || !reg.active) {
-    reg = await withTimeout(
-      navigator.serviceWorker.register("/sw.js", {
-        scope: "/",
-        updateViaCache: "none",
-      }),
-      12000,
-      "Registrar service worker",
-    );
+    reg = await navigator.serviceWorker.register("/sw.js", {
+      scope: "/",
+      updateViaCache: "none",
+    });
   }
   const swWorker = reg.installing || reg.waiting || reg.active;
   await waitUntilActivated(swWorker);
-  await withTimeout(navigator.serviceWorker.ready, 10000, "Service worker listo");
+  await navigator.serviceWorker.ready;
   return reg;
-}
-
-async function fetchVapidPublicKey(passed?: string) {
-  const fromProp = passed?.trim();
-  if (fromProp) return fromProp;
-  const vapidRes = await withTimeout(
-    fetch("/api/push/public-key", { cache: "no-store" }),
-    10000,
-    "Clave VAPID",
-  );
-  if (!vapidRes.ok) return "";
-  const { publicKey } = (await vapidRes.json()) as { publicKey?: string };
-  return publicKey?.trim() || "";
 }
 
 async function showLocalNotification(
@@ -159,97 +94,8 @@ async function showLocalNotification(
     });
     return true;
   } catch {
-    try {
-      if (Notification.permission === "granted") {
-        new Notification(title, { body, tag });
-        return true;
-      }
-    } catch {
-      // ignore
-    }
     return false;
   }
-}
-
-async function postWebSubscription(sub: PushSubscription) {
-  const payload = subscriptionPayload(sub);
-  if (!payload.endpoint || !payload.keys.p256dh || !payload.keys.auth) {
-    return {
-      ok: false as const,
-      message: "Suscripcion push invalida (faltan keys en el navegador).",
-    };
-  }
-
-  const res = await withTimeout(
-    fetch("/api/push/subscribe", {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        endpoint: payload.endpoint,
-        keys: {
-          p256dh: payload.keys.p256dh,
-          auth: payload.keys.auth,
-        },
-      }),
-    }),
-    15000,
-    "Guardar suscripcion",
-  );
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    const msg =
-      (err as { error?: string }).error ||
-      (res.status === 401
-        ? "Sesion expirada. Vuelve a iniciar sesion e intenta de nuevo."
-        : `Error al registrar (${res.status})`);
-    return { ok: false as const, message: msg };
-  }
-  return { ok: true as const };
-}
-
-async function getOrCreateSubscription(
-  reg: ServiceWorkerRegistration,
-  vapidPublicKey: string,
-) {
-  const key = urlBase64ToUint8Array(vapidPublicKey);
-
-  // Reusar si ya existe (iOS / Android).
-  const existing = await reg.pushManager.getSubscription();
-  if (existing) {
-    return existing;
-  }
-
-  const maxRetries = 3;
-  let lastError: unknown;
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      if (attempt > 0) await new Promise((r) => setTimeout(r, 1200 * attempt));
-      return await withTimeout(
-        reg.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: key as BufferSource,
-        }),
-        15000,
-        "Suscribir push",
-      );
-    } catch (e) {
-      lastError = e;
-      const msg = e instanceof Error ? e.message : String(e);
-      // Si hay conflicto de applicationServerKey, limpiar y reintentar una vez.
-      if (/applicationServerKey|already subscribed/i.test(msg) || attempt === 1) {
-        try {
-          const stale = await reg.pushManager.getSubscription();
-          if (stale) await stale.unsubscribe();
-        } catch {
-          // continue
-        }
-      }
-      if (attempt === maxRetries - 1) throw lastError;
-    }
-  }
-  throw lastError instanceof Error ? lastError : new Error("No se pudo suscribir a push");
 }
 
 export async function sendTestPush(): Promise<TestPushResult> {
@@ -264,45 +110,36 @@ export async function sendTestPush(): Promise<TestPushResult> {
     let localOk = false;
     if ("serviceWorker" in navigator) {
       try {
-        const reg = await withTimeout(ensureServiceWorker(), 12000, "Service worker");
+        const reg = await ensureServiceWorker();
         localOk = await showLocalNotification(
           reg,
           "MiVisita — Prueba local",
-          "Si ves esto, el permiso y el service worker funcionan en este telefono.",
+          "Permiso y service worker OK en este telefono.",
           "mivisita-push-test-local",
         );
       } catch {
-        // seguir con prueba de servidor
+        // continuar con servidor
       }
     }
 
-    const res = await withTimeout(
-      fetch("/api/push/test", {
-        method: "POST",
-        credentials: "same-origin",
-      }),
-      20000,
-      "Prueba push servidor",
-    );
+    const res = await fetch("/api/push/test", {
+      method: "POST",
+      credentials: "same-origin",
+    });
     const data = (await res.json().catch(() => ({}))) as {
       error?: string;
       message?: string;
       sent?: number;
-      total?: number;
     };
 
     if (!res.ok) {
-      if (localOk) {
-        return {
-          ok: false,
-          message:
-            (data.error || data.message || "El push del servidor fallo.") +
-            " Se mostro una prueba local; vuelve a Activar notificaciones y reintenta.",
-        };
-      }
       return {
         ok: false,
-        message: data.error || data.message || "No se pudo enviar la notificacion de prueba.",
+        message:
+          (data.error || data.message || "El push del servidor fallo.") +
+          (localOk
+            ? " (La prueba local si se mostro; vuelve a Activar y reintenta Probar.)"
+            : ""),
       };
     }
 
@@ -311,82 +148,130 @@ export async function sendTestPush(): Promise<TestPushResult> {
       sent: data.sent,
       message:
         data.message ||
-        (localOk
-          ? "Prueba local y push del servidor enviados. Revisa la bandeja (minimiza la app)."
-          : "Push del servidor enviado. Revisa la bandeja del sistema."),
+        "Push del servidor enviado. Minimiza la app y revisa la bandeja del sistema.",
     };
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : "Error al probar notificaciones.";
-    return { ok: false, message: msg };
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : "Error al probar notificaciones.",
+    };
   }
 }
 
 export async function enableWebPush(vapidPublicKey?: string): Promise<EnablePushResult> {
-  const run = async (): Promise<EnablePushResult> => {
-    if (isIosDevice() && !isStandalonePwa()) {
+  if (isIosDevice() && !isStandalonePwa()) {
+    return {
+      ok: false,
+      denied: true,
+      unsupported: true,
+      message: IOS_INSTALL_MESSAGE,
+    };
+  }
+
+  if (!("Notification" in window)) {
+    return {
+      ok: false,
+      unsupported: true,
+      message: isIosDevice()
+        ? IOS_INSTALL_MESSAGE
+        : "Tu navegador no soporta notificaciones. Usa Chrome en el movil y anade la web a pantalla de inicio.",
+    };
+  }
+
+  if (Notification.permission === "denied") {
+    return {
+      ok: false,
+      denied: true,
+      message: isIosDevice()
+        ? IOS_DENIED_RESET_MESSAGE
+        : "Permiso denegado. Activa notificaciones en Ajustes del sitio o dispositivo.",
+    };
+  }
+
+  if (Notification.permission !== "granted") {
+    const permFirst = await Notification.requestPermission();
+    if (permFirst !== "granted") {
       return {
         ok: false,
         denied: true,
-        unsupported: true,
-        message: IOS_INSTALL_MESSAGE,
+        message:
+          permFirst === "denied"
+            ? isIosDevice()
+              ? IOS_DENIED_RESET_MESSAGE
+              : "Permiso denegado. Activa notificaciones en Ajustes del sitio o dispositivo."
+            : "Permiso denegado",
       };
     }
+  }
 
-    if (!("Notification" in window)) {
-      return {
-        ok: false,
-        unsupported: true,
-        message: isIosDevice()
-          ? IOS_INSTALL_MESSAGE
-          : "Tu navegador no soporta notificaciones. Usa Chrome y anade la web a pantalla de inicio.",
-      };
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    return {
+      ok: false,
+      unsupported: true,
+      message: isIosDevice()
+        ? "Este iPhone no expone Push. Necesitas iOS 16.4+ y abrir MiVisita desde el icono de Inicio (PWA)."
+        : "Tu navegador no soporta notificaciones push. Usa Chrome en el movil (y anade la web a pantalla de inicio) para recibirlas.",
+    };
+  }
+
+  try {
+    const reg = await ensureServiceWorker();
+
+    let publicKey = vapidPublicKey?.trim() || "";
+    if (!publicKey) {
+      const vapidRes = await fetch("/api/push/public-key", { cache: "no-store" });
+      if (!vapidRes.ok) return { ok: false, message: "Push no disponible (servidor)" };
+      const data = (await vapidRes.json()) as { publicKey?: string };
+      publicKey = data.publicKey?.trim() || "";
     }
+    if (!publicKey) return { ok: false, message: "Clave VAPID vacia" };
 
-    if (Notification.permission === "denied") {
-      return {
-        ok: false,
-        denied: true,
-        message: isIosDevice()
-          ? IOS_DENIED_RESET_MESSAGE
-          : "Permiso denegado. Ajustes → Apps → Chrome (o MiVisita) → Notificaciones → permitir.",
-      };
-    }
+    const key = urlBase64ToUint8Array(publicKey);
 
-    if (Notification.permission !== "granted") {
-      const permFirst = await Notification.requestPermission();
-      if (permFirst !== "granted") {
-        return {
-          ok: false,
-          denied: true,
-          message:
-            permFirst === "denied"
-              ? isIosDevice()
-                ? IOS_DENIED_RESET_MESSAGE
-                : "Permiso denegado. Activa notificaciones en Ajustes del telefono."
-              : "Permiso denegado",
-        };
+    // Reusar suscripcion existente si hay (reactivar / resync).
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      const maxRetries = 3;
+      for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+          if (attempt > 0) await new Promise((r) => setTimeout(r, 1500 * attempt));
+          sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: key as BufferSource,
+          });
+          break;
+        } catch (e) {
+          if (attempt === maxRetries - 1) throw e;
+        }
       }
     }
 
-    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    if (!sub) return { ok: false, message: "No se pudo suscribir a push" };
+
+    const subscription = sub.toJSON();
+    const p256dh = subscription.keys?.p256dh;
+    const auth = subscription.keys?.auth;
+    if (!subscription.endpoint || !p256dh || !auth) {
+      return { ok: false, message: "Suscripcion push invalida (keys vacias en el navegador)." };
+    }
+
+    const res = await fetch("/api/push/subscribe", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        endpoint: subscription.endpoint,
+        keys: { p256dh, auth },
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
       return {
         ok: false,
-        unsupported: true,
-        message: isIosDevice()
-          ? "Este iPhone no expone Push. Necesitas iOS 16.4+ y abrir MiVisita desde el icono de Inicio (PWA)."
-          : "Tu navegador no soporta notificaciones push. Usa Chrome (PWA) y permite notificaciones.",
+        message: (err as { error?: string }).error || "Error al registrar",
       };
     }
-
-    const reg = await ensureServiceWorker();
-    const publicKey = await fetchVapidPublicKey(vapidPublicKey);
-    if (!publicKey) {
-      return { ok: false, message: "Push no disponible (servidor / clave VAPID)." };
-    }
-
-    const sub = await getOrCreateSubscription(reg, publicKey);
-    const saved = await postWebSubscription(sub);
-    if (!saved.ok) return saved;
 
     await showLocalNotification(
       reg,
@@ -395,31 +280,26 @@ export async function enableWebPush(vapidPublicKey?: string): Promise<EnablePush
       "mivisita-push-enabled",
     );
 
-    // Prueba de servidor en background (no bloquea el exito de activacion).
-    void sendTestPush().catch(() => {});
-
     return {
       ok: true,
-      message: "Notificaciones activadas. Deberias ver un aviso ahora; si no, pulsa Probar.",
+      message: "Notificaciones activadas. Si no ves el aviso, pulsa Probar notificaciones.",
     };
-  };
-
-  try {
-    return await withTimeout(run(), 28000, "Activar notificaciones");
   } catch (err: unknown) {
     const errMsg = err instanceof Error ? err.message : String(err);
+    const isAndroid = /Android/i.test(navigator.userAgent);
     const isPushServiceError = /push service|Registration failed.*push/i.test(errMsg);
 
     let hint = "";
     if (isIosDevice()) {
       hint =
         " Si sigue fallando: borra el icono, limpia datos del sitio en Safari y vuelve a agregar a Inicio.";
-    } else if (isAndroidDevice()) {
+    } else if (isAndroid) {
       if (isPushServiceError) {
         hint =
-          " Prueba: abrir desde el icono PWA, WiFi, actualizar Chrome/Play Services, Notificaciones ON, reintentar.";
+          " Prueba: 1) Abrir desde icono PWA/APK 2) WiFi 3) Actualizar Chrome 4) Reintentar.";
       } else {
-        hint = " En Android abre desde el icono de la PWA (no solo una pestana).";
+        hint =
+          " En Android: abre desde el icono de la PWA o el APK. Revisa que las notificaciones esten permitidas.";
       }
     }
     return { ok: false, message: errMsg + hint };
