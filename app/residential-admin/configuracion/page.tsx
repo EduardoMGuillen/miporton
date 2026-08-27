@@ -3,6 +3,7 @@ import { requireRole } from "@/lib/authorization";
 import { prisma } from "@/lib/prisma";
 import { ResidentialAdminNotificationsButton } from "@/app/residential-admin/notifications-button";
 import { UpdateResidentialSettingsForm } from "@/app/residential-admin/update-residential-settings-form";
+import { getVapidPublicKey } from "@/lib/vapid-public-key";
 
 export default async function ResidentialAdminConfigurationPage() {
   const session = await requireRole(["RESIDENTIAL_ADMIN"]);
@@ -35,7 +36,7 @@ export default async function ResidentialAdminConfigurationPage() {
       </Card>
       <Card>
         <h2 className="mb-4 text-lg font-semibold text-slate-900">Notificaciones</h2>
-        <ResidentialAdminNotificationsButton />
+        <ResidentialAdminNotificationsButton vapidPublicKey={getVapidPublicKey()} />
       </Card>
     </>
   );

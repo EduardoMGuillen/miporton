@@ -1,20 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import { enableWebPush, type EnablePushFailureCode } from "@/lib/web-push-client";
 
-function base64ToUint8Array(base64String: string) {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replaceAll("-", "+").replaceAll("_", "/");
-  const raw = atob(base64);
-  const output = new Uint8Array(raw.length);
+const PUSH_ERROR_MESSAGES: Record<EnablePushFailureCode, string> = {
+  unsupported: "Este navegador no soporta notificaciones push.",
+  denied: "Debes permitir notificaciones para recibir alertas.",
+  missing_vapid: "Falta configurar NEXT_PUBLIC_VAPID_PUBLIC_KEY.",
+  register_fail: "No se pudo registrar el dispositivo.",
+  sw_fail: "No se pudo activar el servicio de notificaciones. Recarga la pagina e intenta de nuevo.",
+  ios_install: "En iPhone, agrega MiVisita a inicio para activar notificaciones.",
+  error: "Ocurrio un error activando las notificaciones.",
+};
 
-  for (let i = 0; i < raw.length; ++i) {
-    output[i] = raw.charCodeAt(i);
-  }
-  return output;
-}
-
-export function ResidentialAdminNotificationsButton() {
+export function ResidentialAdminNotificationsButton({ vapidPublicKey }: { vapidPublicKey?: string }) {
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -22,43 +21,8 @@ export function ResidentialAdminNotificationsButton() {
     setPending(true);
     setMessage(null);
     try {
-      if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
-        setMessage("Este navegador no soporta notificaciones push.");
-        return;
-      }
-
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") {
-        setMessage("Debes permitir notificaciones para recibir alertas.");
-        return;
-      }
-
-      const registration = await navigator.serviceWorker.register("/sw.js");
-      const publicVapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-      if (!publicVapidKey) {
-        setMessage("Falta configurar NEXT_PUBLIC_VAPID_PUBLIC_KEY.");
-        return;
-      }
-
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: base64ToUint8Array(publicVapidKey),
-      });
-
-      const response = await fetch("/api/push/subscribe", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(subscription),
-      });
-
-      if (!response.ok) {
-        setMessage("No se pudo registrar el dispositivo.");
-        return;
-      }
-
-      setMessage("Notificaciones activadas correctamente.");
-    } catch {
-      setMessage("Ocurrio un error activando las notificaciones.");
+      const result = await enableWebPush(vapidPublicKey);
+      setMessage(result.ok ? "Notificaciones activadas correctamente." : PUSH_ERROR_MESSAGES[result.code]);
     } finally {
       setPending(false);
     }
@@ -67,7 +31,8 @@ export function ResidentialAdminNotificationsButton() {
   return (
     <div>
       <button
-        onClick={enablePush}
+        type="button"
+        onClick={() => void enablePush()}
         disabled={pending}
         className="btn-primary disabled:opacity-60"
       >

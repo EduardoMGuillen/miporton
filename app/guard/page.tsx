@@ -10,6 +10,7 @@ import { GuardDeliveryAnnouncementForm } from "@/app/guard/delivery-announcement
 import { ManualConfirmStartButton } from "@/app/guard/manual-confirm-start-button";
 import { ManualExitSubmitButton } from "@/app/guard/manual-exit-submit-button";
 import { formatDateTimeTegucigalpa } from "@/lib/datetime";
+import { getVapidPublicKey } from "@/lib/vapid-public-key";
 
 function tegucigalpaTodayRange(now = new Date()) {
   const tegucigalpaOffsetHours = 6;
@@ -260,7 +261,7 @@ export default async function GuardPage() {
 
       <Card>
         <h2 className="mb-4 text-lg font-semibold text-slate-900">Alertas de visitas</h2>
-        <GuardPushSubscriptionCard />
+        <GuardPushSubscriptionCard vapidPublicKey={getVapidPublicKey()} />
       </Card>
     </DashboardShell>
   );
