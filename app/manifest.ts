@@ -5,7 +5,9 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "MiVisita",
     short_name: "MiVisita",
     description: "Control de visitas, patrullaje y accesos residenciales con QR.",
-    start_url: "/login",
+    // Igual que gcbmesas: start en "/" + scope "/" (la landing redirige a /login en standalone).
+    start_url: "/",
+    scope: "/",
     display: "standalone",
     background_color: "#f4f7fb",
     theme_color: "#1d4ed8",

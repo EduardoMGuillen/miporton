@@ -1,11 +1,12 @@
 "use client";
 
 /**
- * Flujo de activación push copiado de gcbmesas (lib/client-push-subscribe.ts, ruta Web VAPID):
- * 1) pedir permiso
- * 2) registrar / esperar SW
- * 3) subscribe con reintentos
- * 4) POST al servidor
+ * Flujo de activación push (gcbmesas + reglas iOS):
+ * 1) en iPhone solo desde PWA instalada (Inicio)
+ * 2) pedir permiso
+ * 3) registrar / esperar SW
+ * 4) subscribe con reintentos
+ * 5) POST al servidor
  */
 
 export type EnablePushResult =
@@ -23,6 +24,32 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray;
 }
 
+function isIosDevice() {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  // iPadOS 13+ se reporta como MacIntel con touch
+  return (
+    /iPad|iPhone|iPod/.test(ua) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+  );
+}
+
+function isStandalonePwa() {
+  if (typeof window === "undefined") return false;
+  const nav = window.navigator as Navigator & { standalone?: boolean };
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    window.matchMedia("(display-mode: fullscreen)").matches ||
+    Boolean(nav.standalone)
+  );
+}
+
+const IOS_INSTALL_MESSAGE =
+  "En iPhone las notificaciones solo funcionan desde la app en Inicio (no Safari). Safari → Compartir → Agregar a pantalla de inicio → abre MiVisita desde ese icono → Activar notificaciones → Permitir.";
+
+const IOS_DENIED_RESET_MESSAGE =
+  "iOS ya bloqueó las notificaciones de MiVisita (aunque estés en la PWA; un No permitir anterior queda guardado). Para resetear: 1) Ajustes → Notificaciones → busca MiVisita → permitir. Si no aparece o sigue fallando: 2) Borra el icono de Inicio. 3) Ajustes → Apps → Safari → Avanzado → Datos de sitios web → elimina mivisita / mivisita.app. 4) Safari → Agregar a Inicio. 5) Abre desde el icono nuevo → Activar notificaciones → Permitir.";
+
 async function waitUntilActivated(worker: ServiceWorker | null | undefined) {
   if (!worker) return;
   if (worker.state === "activated") return;
@@ -36,7 +63,39 @@ async function waitUntilActivated(worker: ServiceWorker | null | undefined) {
 }
 
 export async function enableWebPush(_vapidPublicKey?: string): Promise<EnablePushResult> {
-  if ("Notification" in window) {
+  // iOS: requestPermission en Safari suele devolver "denied" sin diálogo y bloquea el origen.
+  // gcbmesas funciona porque se activa desde la PWA instalada.
+  if (isIosDevice() && !isStandalonePwa()) {
+    return {
+      ok: false,
+      denied: true,
+      unsupported: true,
+      message: IOS_INSTALL_MESSAGE,
+    };
+  }
+
+  if (!("Notification" in window)) {
+    return {
+      ok: false,
+      unsupported: true,
+      message: isIosDevice()
+        ? IOS_INSTALL_MESSAGE
+        : "Tu navegador no soporta notificaciones. Usa Chrome en el movil y anade la web a pantalla de inicio.",
+    };
+  }
+
+  // Ya bloqueado: no volver a llamar requestPermission (en iOS no muestra el diálogo otra vez).
+  if (Notification.permission === "denied") {
+    return {
+      ok: false,
+      denied: true,
+      message: isIosDevice()
+        ? IOS_DENIED_RESET_MESSAGE
+        : "Permiso denegado. Activa notificaciones en Ajustes del sitio o dispositivo.",
+    };
+  }
+
+  if (Notification.permission !== "granted") {
     const permFirst = await Notification.requestPermission();
     if (permFirst !== "granted") {
       return {
@@ -44,7 +103,9 @@ export async function enableWebPush(_vapidPublicKey?: string): Promise<EnablePus
         denied: true,
         message:
           permFirst === "denied"
-            ? "Permiso denegado. Activa notificaciones en Ajustes del sitio o dispositivo."
+            ? isIosDevice()
+              ? IOS_DENIED_RESET_MESSAGE
+              : "Permiso denegado. Activa notificaciones en Ajustes del sitio o dispositivo."
             : "Permiso denegado",
       };
     }
@@ -54,8 +115,9 @@ export async function enableWebPush(_vapidPublicKey?: string): Promise<EnablePus
     return {
       ok: false,
       unsupported: true,
-      message:
-        "Tu navegador no soporta notificaciones push. Usa Chrome en el movil (y anade la web a pantalla de inicio) para recibirlas.",
+      message: isIosDevice()
+        ? "Este iPhone no expone Push. Necesitas iOS 16.4+ y abrir MiVisita desde el icono de Inicio (PWA)."
+        : "Tu navegador no soporta notificaciones push. Usa Chrome en el movil (y anade la web a pantalla de inicio) para recibirlas.",
     };
   }
 
@@ -121,7 +183,10 @@ export async function enableWebPush(_vapidPublicKey?: string): Promise<EnablePus
     const isPushServiceError = /push service|Registration failed.*push/i.test(errMsg);
 
     let hint = "";
-    if (isAndroid) {
+    if (isIosDevice()) {
+      hint =
+        " Si sigue fallando: borra el icono, limpia datos del sitio en Safari y vuelve a agregar a Inicio.";
+    } else if (isAndroid) {
       if (isPushServiceError) {
         hint =
           " Prueba: 1) Agregar la app a pantalla de inicio y abrir desde ahi 2) Usar WiFi 3) Actualizar Chrome 4) Reintentar.";
@@ -137,6 +202,15 @@ export async function enableWebPush(_vapidPublicKey?: string): Promise<EnablePus
 /** @deprecated alias — el botón pide permiso dentro de enableWebPush, como en gcbmesas */
 export function requestNotificationPermissionFromGesture() {
   if (!("Notification" in window)) return Promise.resolve("denied" as NotificationPermission);
+  if (isIosDevice() && !isStandalonePwa()) {
+    return Promise.resolve("denied" as NotificationPermission);
+  }
+  if (Notification.permission === "denied") {
+    return Promise.resolve("denied" as NotificationPermission);
+  }
+  if (Notification.permission === "granted") {
+    return Promise.resolve("granted" as NotificationPermission);
+  }
   return Notification.requestPermission();
 }
 

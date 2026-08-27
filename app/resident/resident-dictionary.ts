@@ -168,7 +168,7 @@ const MESSAGES: Record<ResidentLocale, Record<string, string>> = {
     "push.accountHeading": "Configuracion de cuenta",
     "push.enable": "Activar notificaciones",
     "push.enabling": "Activando...",
-    "push.help": "Activa las alertas en este telefono para visitas, delivery y comunicados.",
+    "push.help": "Activa las alertas en este telefono para visitas, delivery y comunicados. En iPhone: abre MiVisita desde el icono de Inicio y, si dice permiso denegado, reinicia el permiso (borra icono + datos del sitio en Safari y vuelve a agregar).",
     "push.contactToggle": "Datos de contacto",
     "push.browserUnsupported": "Este navegador no soporta notificaciones push.",
     "push.permissionDenied": "Debes permitir notificaciones para recibir alertas. Si ya las bloqueaste, activalas en Ajustes del telefono para MiVisita.",
