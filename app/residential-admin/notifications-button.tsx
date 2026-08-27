@@ -12,27 +12,37 @@ export function ResidentialAdminNotificationsButton({ vapidPublicKey }: { vapidP
   async function subscribe() {
     setStatus("loading");
     setMessage("");
-    const result = await enableWebPush(vapidPublicKey);
-    if (result.ok) {
-      setMessage(result.message || "Notificaciones activadas");
-      setStatus("success");
-      return;
+    try {
+      const result = await enableWebPush(vapidPublicKey);
+      if (result.ok) {
+        setMessage(result.message || "Notificaciones activadas");
+        setStatus("success");
+        return;
+      }
+      setMessage(result.message);
+      setStatus("error");
+    } catch (err: unknown) {
+      setMessage(err instanceof Error ? err.message : "Error al activar.");
+      setStatus("error");
     }
-    setMessage(result.message);
-    setStatus("error");
   }
 
   async function test() {
     setStatus("testing");
     setMessage("");
-    const result = await sendTestPush();
-    if (result.ok) {
+    try {
+      const result = await sendTestPush();
+      if (result.ok) {
+        setMessage(result.message);
+        setStatus("success");
+        return;
+      }
       setMessage(result.message);
-      setStatus("success");
-      return;
+      setStatus("error");
+    } catch (err: unknown) {
+      setMessage(err instanceof Error ? err.message : "Error al probar.");
+      setStatus("error");
     }
-    setMessage(result.message);
-    setStatus("error");
   }
 
   const busy = status === "loading" || status === "testing";

@@ -6,7 +6,8 @@ const publicKey =
   process.env.VAPID_PUBLIC_KEY?.trim() ||
   "";
 const privateKey = process.env.VAPID_PRIVATE_KEY?.trim() || "";
-const contact = process.env.VAPID_CONTACT_EMAIL?.trim() || "mailto:admin@mivisita.app";
+const contactRaw = process.env.VAPID_CONTACT_EMAIL?.trim() || "mailto:admin@mivisita.app";
+const contact = contactRaw.startsWith("mailto:") ? contactRaw : `mailto:${contactRaw}`;
 
 if (publicKey && privateKey) {
   webpush.setVapidDetails(contact, publicKey, privateKey);
@@ -164,7 +165,7 @@ export async function notifyUser(
             },
           },
           JSON.stringify(payload),
-          { TTL: 3600, urgency: "high", contentEncoding: "aes128gcm" },
+          { TTL: 86400, urgency: "high" },
         );
         sent += 1;
       } catch (err: unknown) {

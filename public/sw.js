@@ -1,5 +1,4 @@
-/* Service Worker - Push Notifications (VAPID + payload FCM estilo gcbmesas) */
-// Chrome Android exige un fetch handler para que el SW controle la PWA
+/* Service Worker - Push Notifications (Web Push VAPID) */
 self.addEventListener("fetch", function () {});
 
 self.addEventListener("install", (event) => {
@@ -36,24 +35,20 @@ self.addEventListener("push", (event) => {
     body: body || "Tienes una nueva alerta de MiVisita.",
     icon: "/icon-192.png",
     badge: "/icon-48.png",
-    tag: data.url ? String(data.url) : data.type ? String(data.type) : "mivisita-default",
+    tag: data.type ? String(data.type) : data.url ? String(data.url) : "mivisita-default",
     renotify: true,
-    requireInteraction: false,
-    silent: false,
-    vibrate: [200, 100, 200],
     data: data || {},
   };
-  const promise = Promise.all([
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
-      for (const client of windowClients) {
-        client.postMessage({ type: "MI_VISITA_NEW_VISIT" });
-      }
-    }),
-    self.registration.showNotification(title, options).catch(function (err) {
-      console.error("[sw] showNotification failed", err);
-    }),
-  ]);
-  event.waitUntil(promise);
+  event.waitUntil(
+    Promise.all([
+      self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
+        for (const client of windowClients) {
+          client.postMessage({ type: "MI_VISITA_NEW_VISIT" });
+        }
+      }),
+      self.registration.showNotification(title, options),
+    ]),
+  );
 });
 
 self.addEventListener("notificationclick", (event) => {
@@ -63,7 +58,9 @@ self.addEventListener("notificationclick", (event) => {
     clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
         if ("focus" in client) {
-          client.navigate(targetUrl);
+          try {
+            client.navigate(targetUrl);
+          } catch (_) {}
           return client.focus();
         }
       }
