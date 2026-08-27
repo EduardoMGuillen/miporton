@@ -2,22 +2,17 @@
 
 import { useEffect } from "react";
 
+/**
+ * Igual que gcbmesas ServiceWorkerRegister:
+ * el SW debe estar activo antes de pedir permiso / subscribe (PWA en inicio).
+ */
 export function PwaBootstrap() {
   useEffect(() => {
-    if (!("serviceWorker" in navigator)) return;
-
-    const register = () =>
-      navigator.serviceWorker
-        .register("/sw.js", { scope: "/", updateViaCache: "none" })
-        .then((registration) => registration.update().catch(() => registration))
-        .catch(() => {});
-
-    // Avoid competing with first paint, but keep push ready soon.
-    if (document.readyState === "complete") {
-      void register();
-    } else {
-      window.addEventListener("load", () => void register(), { once: true });
-    }
+    if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+    navigator.serviceWorker
+      .register("/sw.js", { scope: "/", updateViaCache: "none" })
+      .then(() => {})
+      .catch(() => {});
   }, []);
 
   return null;
