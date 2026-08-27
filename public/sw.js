@@ -2,6 +2,14 @@
 // Chrome Android exige un fetch handler para que el SW controle la PWA
 self.addEventListener("fetch", function () {});
 
+self.addEventListener("install", (event) => {
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
 self.addEventListener("push", (event) => {
   let title = "MiVisita";
   let body = "";
@@ -25,13 +33,14 @@ self.addEventListener("push", (event) => {
     }
   }
   const options = {
-    body: body || " ",
+    body: body || "Tienes una nueva alerta de MiVisita.",
     icon: "/icon-192.png",
     badge: "/icon-48.png",
     tag: data.url ? String(data.url) : data.type ? String(data.type) : "mivisita-default",
     renotify: true,
     requireInteraction: false,
     silent: false,
+    vibrate: [200, 100, 200],
     data: data || {},
   };
   const promise = Promise.all([

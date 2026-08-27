@@ -71,10 +71,27 @@ export function isPushConfigured() {
   return Boolean((publicKey && privateKey) || isFirebaseAdminConfigured());
 }
 
-export async function notifyUser(userId: string, payload: PushPayload) {
+export type NotifyUserResult = {
+  total: number;
+  sent: number;
+  failed: number;
+  removed: number;
+};
+
+function isFcmTokenSubscription(subscription: { endpoint: string }) {
+  // Solo tokens guardados como `fcm:...`.
+  // Endpoints web `https://fcm.googleapis.com/fcm/send/...` van por web-push + VAPID.
+  return subscription.endpoint.startsWith("fcm:");
+}
+
+export async function notifyUser(
+  userId: string,
+  payload: PushPayload,
+): Promise<NotifyUserResult> {
+  const empty: NotifyUserResult = { total: 0, sent: 0, failed: 0, removed: 0 };
   if (!isPushConfigured()) {
     console.warn("[Push] Sin VAPID ni Firebase Admin; no se envia a", userId);
-    return;
+    return empty;
   }
 
   const subscriptions = await prisma.pushSubscription.findMany({
@@ -82,9 +99,11 @@ export async function notifyUser(userId: string, payload: PushPayload) {
     select: { id: true, endpoint: true, p256dh: true, auth: true, platform: true },
   });
 
-  if (subscriptions.length === 0) return;
+  if (subscriptions.length === 0) return empty;
 
   const toRemove: string[] = [];
+  let sent = 0;
+  let failed = 0;
   const messaging = await getFirebaseMessaging().catch((err) => {
     console.error("[Push FCM] init failed", err);
     return null;
@@ -92,12 +111,13 @@ export async function notifyUser(userId: string, payload: PushPayload) {
 
   await Promise.all(
     subscriptions.map(async (subscription) => {
-      if (subscription.endpoint.startsWith("fcm:") || subscription.platform === "android") {
+      if (isFcmTokenSubscription(subscription)) {
         const token = subscription.endpoint.startsWith("fcm:")
           ? subscription.endpoint.slice(4)
           : subscription.endpoint;
         if (!messaging) {
           console.warn("[Push FCM] Firebase Admin no configurado; se omite token");
+          failed += 1;
           return;
         }
         try {
@@ -115,12 +135,14 @@ export async function notifyUser(userId: string, payload: PushPayload) {
               fcmOptions: payload.url ? { link: payload.url } : undefined,
             },
           });
+          sent += 1;
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : String(err);
           if (/invalid-registration-token|registration-token-not-registered|not-found/i.test(msg)) {
             toRemove.push(subscription.id);
           } else {
             console.error("[Push FCM] Error", msg);
+            failed += 1;
           }
         }
         return;
@@ -128,6 +150,7 @@ export async function notifyUser(userId: string, payload: PushPayload) {
 
       if (!publicKey || !privateKey || !subscription.p256dh || !subscription.auth) {
         console.warn("[Push Web] Omitida suscripcion: faltan VAPID o keys");
+        failed += 1;
         return;
       }
 
@@ -141,8 +164,9 @@ export async function notifyUser(userId: string, payload: PushPayload) {
             },
           },
           JSON.stringify(payload),
-          { TTL: 3600, contentEncoding: "aes128gcm" },
+          { TTL: 3600, urgency: "high", contentEncoding: "aes128gcm" },
         );
+        sent += 1;
       } catch (err: unknown) {
         const statusCode =
           typeof err === "object" && err && "statusCode" in err
@@ -151,6 +175,7 @@ export async function notifyUser(userId: string, payload: PushPayload) {
         if (statusCode === 410 || statusCode === 404) {
           toRemove.push(subscription.id);
         } else {
+          failed += 1;
           console.error(
             "[Push Web] Error",
             statusCode ?? "",
@@ -165,6 +190,13 @@ export async function notifyUser(userId: string, payload: PushPayload) {
   if (toRemove.length > 0) {
     await prisma.pushSubscription.deleteMany({ where: { id: { in: toRemove } } });
   }
+
+  return {
+    total: subscriptions.length,
+    sent,
+    failed,
+    removed: toRemove.length,
+  };
 }
 
 export async function notifyGuardsInResidential(

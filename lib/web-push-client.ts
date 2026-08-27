@@ -2,14 +2,17 @@
 
 /**
  * Activación push:
- * - iPhone: solo PWA instalada + VAPID
- * - Android: FCM si hay Firebase web config (como gcbmesas); si no, VAPID reforzado
- * - Desktop: VAPID
+ * - Primario: Web Push VAPID (iOS PWA, Android Chrome/PWA, desktop)
+ * - Opcional Android: FCM adicional si hay Firebase web config (no reemplaza VAPID)
  */
 
 export type EnablePushResult =
-  | { ok: true }
+  | { ok: true; message?: string }
   | { ok: false; message: string; denied?: boolean; unsupported?: boolean };
+
+export type TestPushResult =
+  | { ok: true; message: string; sent?: number }
+  | { ok: false; message: string };
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -99,6 +102,7 @@ async function showLocalSmokeTest(reg: ServiceWorkerRegistration) {
       icon: "/icon-192.png",
       badge: "/icon-48.png",
       tag: "mivisita-push-enabled",
+      vibrate: [200, 100, 200],
       data: { url: "/" },
     });
   } catch {
@@ -106,23 +110,40 @@ async function showLocalSmokeTest(reg: ServiceWorkerRegistration) {
   }
 }
 
-async function sendServerTestPush() {
-  try {
-    await fetch("/api/push/test", { method: "POST", credentials: "same-origin" });
-  } catch {
-    // La suscripción ya quedó; el test es best-effort.
+async function postWebSubscription(subscription: PushSubscriptionJSON) {
+  const res = await fetch("/api/push/subscribe", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      endpoint: subscription.endpoint,
+      keys: {
+        p256dh: subscription.keys?.p256dh,
+        auth: subscription.keys?.auth,
+      },
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    return {
+      ok: false as const,
+      message: (err as { error?: string }).error || "Error al registrar",
+    };
   }
+  return { ok: true as const };
 }
 
-async function subscribeAndroidFcm(
+/** FCM opcional en Android: se suma a VAPID, no lo sustituye. */
+async function tryRegisterAndroidFcmOptional(
   reg: ServiceWorkerRegistration,
   vapidPublicKey: string,
-): Promise<EnablePushResult | null> {
-  const { getFirebaseWebConfig } = await import("@/lib/firebase-web-config");
-  const firebaseWebConfig = getFirebaseWebConfig();
-  if (!firebaseWebConfig) return null;
-
+): Promise<void> {
+  if (!isAndroidDevice()) return;
   try {
+    const { getFirebaseWebConfig } = await import("@/lib/firebase-web-config");
+    const firebaseWebConfig = getFirebaseWebConfig();
+    if (!firebaseWebConfig) return;
+
     const { getApp, initializeApp } = await import("firebase/app");
     const { getMessaging, getToken } = await import("firebase/messaging");
     let app;
@@ -136,26 +157,17 @@ async function subscribeAndroidFcm(
       vapidKey: vapidPublicKey,
       serviceWorkerRegistration: reg,
     });
-    if (!token) return { ok: false, message: "No se obtuvo token FCM" };
+    if (!token) return;
 
-    const res = await fetch("/api/push/subscribe", {
+    await fetch("/api/push/subscribe", {
       method: "POST",
+      credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ platform: "android", token }),
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      return { ok: false, message: (err as { error?: string }).error || "Error al registrar FCM" };
-    }
-
-    await showLocalSmokeTest(reg);
-    await sendServerTestPush();
-    return { ok: true };
   } catch (err: unknown) {
     const errMsg = err instanceof Error ? err.message : String(err);
-    // Si FCM falla, el caller puede caer a VAPID.
-    console.warn("[push] FCM Android falló, se intenta VAPID:", errMsg);
-    return null;
+    console.warn("[push] FCM Android opcional omitido:", errMsg);
   }
 }
 
@@ -165,58 +177,93 @@ async function subscribeWebVapid(
 ): Promise<EnablePushResult> {
   const key = urlBase64ToUint8Array(vapidPublicKey);
 
-  const existing = await reg.pushManager.getSubscription();
-  if (existing) {
-    try {
-      await existing.unsubscribe();
-    } catch {
-      // continuar con subscribe fresco
-    }
-  }
-
-  const maxRetries = 3;
-  let sub: PushSubscription | null = null;
-  let lastError: unknown;
-
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      if (attempt > 0) await new Promise((r) => setTimeout(r, 1500 * attempt));
-      sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: key as BufferSource,
-      });
-      break;
-    } catch (e) {
-      lastError = e;
-      if (attempt === maxRetries - 1) throw e;
+  // Reutilizar suscripción existente (resync). Evita unsubscribe+subscribe que
+  // en Chrome Android suele fallar con "Registration failed - push service error".
+  let sub = await reg.pushManager.getSubscription();
+  if (!sub) {
+    const maxRetries = 3;
+    let lastError: unknown;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        if (attempt > 0) await new Promise((r) => setTimeout(r, 1500 * attempt));
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: key as BufferSource,
+        });
+        break;
+      } catch (e) {
+        lastError = e;
+        if (attempt === maxRetries - 1) throw e;
+      }
     }
   }
 
   if (!sub) {
-    throw lastError instanceof Error ? lastError : new Error("No se pudo suscribir a push");
+    return { ok: false, message: "No se pudo suscribir a push" };
   }
 
-  const subscription = sub.toJSON();
-  const res = await fetch("/api/push/subscribe", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      endpoint: subscription.endpoint,
-      keys: {
-        p256dh: subscription.keys?.p256dh,
-        auth: subscription.keys?.auth,
-      },
-    }),
-  });
+  const saved = await postWebSubscription(sub.toJSON());
+  if (!saved.ok) return saved;
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    return { ok: false, message: (err as { error?: string }).error || "Error al registrar" };
+  // Canal extra en Android si Firebase está configurado (no bloquea el éxito VAPID).
+  // Tras getToken, re-sincronizar la suscripción web por si el PushManager cambió keys.
+  await tryRegisterAndroidFcmOptional(reg, vapidPublicKey);
+  const afterFcm = await reg.pushManager.getSubscription();
+  if (afterFcm) {
+    await postWebSubscription(afterFcm.toJSON());
   }
 
   await showLocalSmokeTest(reg);
-  await sendServerTestPush();
-  return { ok: true };
+  const test = await sendTestPush();
+  if (test.ok) {
+    return {
+      ok: true,
+      message: "Notificaciones activadas. Deberías ver una de prueba ahora.",
+    };
+  }
+  return {
+    ok: true,
+    message:
+      "Suscripción guardada, pero la prueba de push falló: " +
+      test.message +
+      " Pulsa «Probar notificaciones» o reintenta en unos segundos.",
+  };
+}
+
+export async function sendTestPush(): Promise<TestPushResult> {
+  try {
+    const res = await fetch("/api/push/test", {
+      method: "POST",
+      credentials: "same-origin",
+    });
+    const data = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      message?: string;
+      sent?: number;
+      total?: number;
+    };
+    if (!res.ok) {
+      return {
+        ok: false,
+        message: data.error || data.message || "No se pudo enviar la notificación de prueba.",
+      };
+    }
+    if (typeof data.sent === "number" && data.sent <= 0) {
+      return {
+        ok: false,
+        message:
+          data.message ||
+          "No hay suscripción activa en el servidor. Pulsa Activar notificaciones primero.",
+      };
+    }
+    return {
+      ok: true,
+      sent: data.sent,
+      message: data.message || "Notificación de prueba enviada. Revisa la bandeja del sistema.",
+    };
+  } catch {
+    return { ok: false, message: "Error de red al probar notificaciones." };
+  }
 }
 
 export async function enableWebPush(vapidPublicKey?: string): Promise<EnablePushResult> {
@@ -280,11 +327,7 @@ export async function enableWebPush(vapidPublicKey?: string): Promise<EnablePush
     const publicKey = await fetchVapidPublicKey(vapidPublicKey);
     if (!publicKey) return { ok: false, message: "Push no disponible (servidor / clave VAPID)" };
 
-    if (isAndroidDevice()) {
-      const fcmResult = await subscribeAndroidFcm(reg, publicKey);
-      if (fcmResult) return fcmResult;
-    }
-
+    // VAPID primero en todas las plataformas (incluye Android). FCM es opcional extra.
     return await subscribeWebVapid(reg, publicKey);
   } catch (err: unknown) {
     const errMsg = err instanceof Error ? err.message : String(err);
