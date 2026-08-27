@@ -1,7 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { enableWebPush, type EnablePushFailureCode } from "@/lib/web-push-client";
+import { useState, type MouseEvent } from "react";
+import {
+  enableWebPush,
+  requestNotificationPermissionFromGesture,
+  type EnablePushFailureCode,
+} from "@/lib/web-push-client";
 
 const PUSH_ERROR_MESSAGES: Record<EnablePushFailureCode, string> = {
   unsupported: "Este navegador no soporta notificaciones push.",
@@ -17,15 +21,19 @@ export function GuardPushSubscriptionCard({ vapidPublicKey }: { vapidPublicKey?:
   const [message, setMessage] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
-  async function enablePush() {
+  function onEnableClick(event: MouseEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    const permissionPromise = requestNotificationPermissionFromGesture();
     setPending(true);
     setMessage(null);
-    try {
-      const result = await enableWebPush(vapidPublicKey);
-      setMessage(result.ok ? "Notificaciones activadas para anuncios de visitas." : PUSH_ERROR_MESSAGES[result.code]);
-    } finally {
-      setPending(false);
-    }
+    void enableWebPush(vapidPublicKey, permissionPromise)
+      .then((result) => {
+        setMessage(result.ok ? "Notificaciones activadas para anuncios de visitas." : PUSH_ERROR_MESSAGES[result.code]);
+      })
+      .finally(() => {
+        setPending(false);
+      });
   }
 
   return (
@@ -36,9 +44,9 @@ export function GuardPushSubscriptionCard({ vapidPublicKey }: { vapidPublicKey?:
       </p>
       <button
         type="button"
-        onClick={() => void enablePush()}
+        onClick={onEnableClick}
         disabled={pending}
-        className="mt-3 rounded-lg bg-blue-700 px-3 py-2 text-xs font-semibold text-white transition hover:bg-blue-800 disabled:opacity-60"
+        className="mt-3 w-full touch-manipulation rounded-lg bg-blue-700 px-3 py-2 text-xs font-semibold text-white transition hover:bg-blue-800 disabled:opacity-60 sm:w-auto"
       >
         {pending ? "Activando..." : "Activar alertas"}
       </button>
