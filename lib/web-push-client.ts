@@ -25,6 +25,19 @@ function isStandaloneDisplay() {
   return mediaStandalone || navigatorStandalone;
 }
 
+export function requestNotificationPermissionFromGesture(): Promise<NotificationPermission> {
+  if (typeof window === "undefined" || !("Notification" in window)) {
+    return Promise.resolve("denied");
+  }
+  if (Notification.permission === "granted") {
+    return Promise.resolve("granted");
+  }
+  if (Notification.permission === "denied") {
+    return Promise.resolve("denied");
+  }
+  return Notification.requestPermission();
+}
+
 function urlBase64ToUint8Array(base64String: string) {
   const trimmed = base64String.trim().replace(/\s+/g, "");
   const padding = "=".repeat((4 - (trimmed.length % 4)) % 4);
@@ -45,7 +58,7 @@ async function resolveVapidPublicKey(passed?: string) {
   if (fromEnv) return fromEnv;
 
   try {
-    const response = await fetch("/api/push/public-key", { credentials: "same-origin" });
+    const response = await fetch("/api/push/public-key", { credentials: "include" });
     if (!response.ok) return "";
     const data = (await response.json()) as { publicKey?: string };
     return data.publicKey?.trim() ?? "";
@@ -54,30 +67,17 @@ async function resolveVapidPublicKey(passed?: string) {
   }
 }
 
-function waitForWorker(worker: ServiceWorker, timeoutMs = 12000) {
-  if (worker.state === "activated") return Promise.resolve();
-  return new Promise<void>((resolve, reject) => {
-    const timeout = window.setTimeout(() => reject(new Error("sw-timeout")), timeoutMs);
-    worker.addEventListener("statechange", () => {
-      if (worker.state === "activated") {
-        window.clearTimeout(timeout);
-        resolve();
-        return;
-      }
-      if (worker.state === "redundant") {
-        window.clearTimeout(timeout);
-        reject(new Error("sw-redundant"));
-      }
-    });
-  });
-}
-
-async function ensurePushRegistration() {
-  const registration = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
-  const pending = registration.installing ?? registration.waiting;
-  if (pending) {
-    await waitForWorker(pending);
+async function getActivePushRegistration() {
+  const existing = await navigator.serviceWorker.getRegistration("/");
+  if (existing?.active) {
+    return existing;
   }
+
+  if (navigator.serviceWorker.controller) {
+    return navigator.serviceWorker.ready;
+  }
+
+  await navigator.serviceWorker.register("/sw.js", { scope: "/" });
   return navigator.serviceWorker.ready;
 }
 
@@ -103,7 +103,10 @@ async function subscribeWithKey(registration: ServiceWorkerRegistration, publicK
   }
 }
 
-export async function enableWebPush(vapidPublicKey?: string): Promise<EnablePushResult> {
+export async function enableWebPush(
+  vapidPublicKey?: string,
+  permissionPromise?: Promise<NotificationPermission>,
+): Promise<EnablePushResult> {
   try {
     if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) {
       if (isIosDevice() && !isStandaloneDisplay()) {
@@ -112,7 +115,7 @@ export async function enableWebPush(vapidPublicKey?: string): Promise<EnablePush
       return { ok: false, code: "unsupported" };
     }
 
-    const permission = await Notification.requestPermission();
+    const permission = await (permissionPromise ?? requestNotificationPermissionFromGesture());
     if (permission !== "granted") {
       return { ok: false, code: "denied" };
     }
@@ -124,7 +127,7 @@ export async function enableWebPush(vapidPublicKey?: string): Promise<EnablePush
 
     let registration: ServiceWorkerRegistration;
     try {
-      registration = await ensurePushRegistration();
+      registration = await getActivePushRegistration();
     } catch {
       return { ok: false, code: "sw_fail" };
     }
@@ -137,7 +140,7 @@ export async function enableWebPush(vapidPublicKey?: string): Promise<EnablePush
     const response = await fetch("/api/push/subscribe", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      credentials: "same-origin",
+      credentials: "include",
       body: JSON.stringify(subscription.toJSON()),
     });
 

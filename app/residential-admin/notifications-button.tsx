@@ -1,7 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { enableWebPush, type EnablePushFailureCode } from "@/lib/web-push-client";
+import { useState, type MouseEvent } from "react";
+import {
+  enableWebPush,
+  requestNotificationPermissionFromGesture,
+  type EnablePushFailureCode,
+} from "@/lib/web-push-client";
 
 const PUSH_ERROR_MESSAGES: Record<EnablePushFailureCode, string> = {
   unsupported: "Este navegador no soporta notificaciones push.",
@@ -17,24 +21,28 @@ export function ResidentialAdminNotificationsButton({ vapidPublicKey }: { vapidP
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
-  async function enablePush() {
+  function onEnableClick(event: MouseEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    const permissionPromise = requestNotificationPermissionFromGesture();
     setPending(true);
     setMessage(null);
-    try {
-      const result = await enableWebPush(vapidPublicKey);
-      setMessage(result.ok ? "Notificaciones activadas correctamente." : PUSH_ERROR_MESSAGES[result.code]);
-    } finally {
-      setPending(false);
-    }
+    void enableWebPush(vapidPublicKey, permissionPromise)
+      .then((result) => {
+        setMessage(result.ok ? "Notificaciones activadas correctamente." : PUSH_ERROR_MESSAGES[result.code]);
+      })
+      .finally(() => {
+        setPending(false);
+      });
   }
 
   return (
     <div>
       <button
         type="button"
-        onClick={() => void enablePush()}
+        onClick={onEnableClick}
         disabled={pending}
-        className="btn-primary disabled:opacity-60"
+        className="btn-primary w-full touch-manipulation disabled:opacity-60 sm:w-auto"
       >
         {pending ? "Activando..." : "Activar notificaciones"}
       </button>
