@@ -412,7 +412,7 @@ const MESSAGES: Record<ResidentLocale, Record<string, string>> = {
     "push.accountHeading": "Account settings",
     "push.enable": "Enable notifications",
     "push.enabling": "Enabling...",
-    "push.help": "Turn on alerts on this phone for visits, deliveries, and announcements.",
+    "push.help": "Turn on alerts on this phone for visits, deliveries, and announcements. On iPhone: open from the Home Screen icon; if permission is denied, reset it (remove icon + clear Safari site data, then add again).",
     "push.contactToggle": "Contact details",
     "push.browserUnsupported": "This browser does not support push notifications.",
     "push.permissionDenied": "You must allow notifications to receive alerts. If you blocked them, enable them in phone Settings for MiVisita.",
