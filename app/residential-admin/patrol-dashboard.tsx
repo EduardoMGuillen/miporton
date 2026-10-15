@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import { Card } from "@/app/components/shell";
 import { formatTimeTegucigalpa } from "@/lib/datetime";
 import {
@@ -87,7 +88,6 @@ export function PatrolDashboard(props: PatrolDashboardProps) {
 
   const dayCount = stats.dayKeys.length;
   const showAllDayLabels = dayCount <= 14;
-  const labelStep = showAllDayLabels ? 1 : Math.ceil(dayCount / 10);
 
   const guardsSorted = [...stats.byGuard.entries()].sort((a, b) => b[1].count - a[1].count);
   const maxGuard = guardsSorted[0]?.[1].count ?? 0;
@@ -259,10 +259,11 @@ export function PatrolDashboard(props: PatrolDashboardProps) {
             </span>
           </div>
         </div>
-        <div className="overflow-x-auto">
+        <div className="min-w-0">
           <div
-            className="flex h-48 items-stretch gap-1 border-b border-slate-200 pb-0"
-            style={{ minWidth: `${Math.max(dayCount * (showAllDayLabels ? 40 : 14), 280)}px` }}
+            className={`flex h-48 w-full min-w-0 items-stretch border-b border-slate-200 ${
+              dayCount > 45 ? "gap-px" : dayCount > 14 ? "gap-[2px]" : "gap-1"
+            }`}
           >
             {stats.dayKeys.map((key) => {
               const count = stats.byDay.get(key) ?? 0;
@@ -274,16 +275,18 @@ export function PatrolDashboard(props: PatrolDashboardProps) {
                   key={key}
                   href={buildHref({ from: key, to: key, ...filterKeep })}
                   title={`${formatDayLong(key)}: ${pluralChecks(count)}`}
-                  className={`group relative flex min-w-0 flex-1 flex-col items-center justify-end rounded-t-md ${
-                    isWeekendKey(key) ? "bg-slate-50" : ""
-                  } ${isSelected ? "ring-2 ring-blue-300" : ""}`}
+                  className={`group relative flex min-w-0 flex-1 basis-0 flex-col items-center justify-end ${
+                    dayCount > 45 ? "rounded-t-sm" : "rounded-t-md"
+                  } ${isWeekendKey(key) ? "bg-slate-50" : ""} ${isSelected ? "ring-2 ring-blue-300" : ""}`}
                 >
                   {showAllDayLabels && count > 0 ? (
                     <span className="mb-1 text-[11px] font-semibold text-slate-700">{count}</span>
                   ) : null}
                   {count > 0 ? (
                     <span
-                      className="w-full max-w-[2.5rem] rounded-t-md bg-gradient-to-t from-blue-700 to-blue-500 transition group-hover:from-blue-800 group-hover:to-blue-600"
+                      className={`w-full max-w-[2.5rem] bg-gradient-to-t from-blue-700 to-blue-500 transition group-hover:from-blue-800 group-hover:to-blue-600 ${
+                        dayCount > 45 ? "rounded-t-[1px]" : "rounded-t-md"
+                      }`}
                       style={{ height: `${Math.max(heightPct, 3)}%` }}
                     />
                   ) : (
@@ -295,25 +298,7 @@ export function PatrolDashboard(props: PatrolDashboardProps) {
               );
             })}
           </div>
-          <div
-            className="mt-1 flex gap-1"
-            style={{ minWidth: `${Math.max(dayCount * (showAllDayLabels ? 40 : 14), 280)}px` }}
-          >
-            {stats.dayKeys.map((key, index) => (
-              <span
-                key={key}
-                className={`min-w-0 flex-1 text-center text-[10px] leading-tight ${
-                  key === today ? "font-bold text-blue-700" : "text-slate-500"
-                }`}
-              >
-                {index % labelStep === 0 || index === dayCount - 1
-                  ? showAllDayLabels
-                    ? formatDayShort(key)
-                    : formatDayMonth(key)
-                  : ""}
-              </span>
-            ))}
-          </div>
+          <DayAxis dayKeys={stats.dayKeys} today={today} className="mt-1" />
         </div>
       </Card>
 
@@ -334,65 +319,61 @@ export function PatrolDashboard(props: PatrolDashboardProps) {
         {props.heatmapZones.length === 0 ? (
           <p className="text-sm text-slate-600">No hay zonas para mostrar.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-separate border-spacing-1 text-xs">
-              <thead>
-                <tr>
-                  <th className="sticky left-0 z-10 bg-white pr-2 text-left font-semibold text-slate-500">Zona</th>
-                  {stats.dayKeys.map((key, index) => (
-                    <th
-                      key={key}
-                      className={`min-w-[1.75rem] text-center text-[10px] font-medium ${
-                        key === today ? "text-blue-700" : "text-slate-400"
-                      }`}
-                    >
-                      {showAllDayLabels || index % labelStep === 0 ? formatDayShort(key) : ""}
-                    </th>
-                  ))}
-                  <th className="pl-2 text-right font-semibold text-slate-500">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {props.heatmapZones.map((zone) => {
-                  const zoneDays = stats.matrix.get(zone.id);
-                  const total = stats.byZone.get(zone.id)?.count ?? 0;
-                  return (
-                    <tr key={zone.id}>
-                      <th
-                        scope="row"
-                        className="sticky left-0 z-10 max-w-[10rem] truncate bg-white pr-2 text-left font-medium text-slate-800"
-                        title={zone.name}
+          <div
+            className={`grid w-full min-w-0 items-center text-xs ${
+              dayCount > 45 ? "gap-px" : dayCount > 14 ? "gap-[2px]" : "gap-1"
+            }`}
+            style={{
+              gridTemplateColumns: `minmax(0, ${dayCount > 14 ? "5.5rem" : "7rem"}) repeat(${dayCount}, minmax(0, 1fr)) 2rem`,
+            }}
+          >
+            <span className="truncate pr-1 text-[11px] font-semibold text-slate-500">Zona</span>
+            <DayAxis
+              dayKeys={stats.dayKeys}
+              today={today}
+              style={{ gridColumn: `2 / span ${dayCount}` }}
+            />
+            <span className="text-right text-[11px] font-semibold text-slate-500">Total</span>
+
+            {props.heatmapZones.map((zone) => {
+              const zoneDays = stats.matrix.get(zone.id);
+              const total = stats.byZone.get(zone.id)?.count ?? 0;
+              return (
+                <div key={zone.id} className="contents">
+                  <span className="truncate pr-1 font-medium text-slate-800" title={zone.name}>
+                    {zone.name}
+                    {zone.note ? <span className="ml-1 text-[10px] text-slate-400">({zone.note})</span> : null}
+                  </span>
+                  {stats.dayKeys.map((key) => {
+                    const count = zoneDays?.get(key) ?? 0;
+                    const future = key > today;
+                    return (
+                      <span
+                        key={key}
+                        title={`${zone.name} · ${formatDayLong(key)}: ${pluralChecks(count)}`}
+                        className={`flex min-w-0 items-center justify-center overflow-hidden font-semibold ${
+                          showAllDayLabels ? "h-7 rounded-md text-[11px]" : "h-6 rounded-[3px]"
+                        } ${future ? "bg-white text-transparent" : HEAT_CLASSES[heatLevel(count, maxCell)]}`}
                       >
-                        {zone.name}
-                        {zone.note ? <span className="ml-1 text-[10px] text-slate-400">({zone.note})</span> : null}
-                      </th>
-                      {stats.dayKeys.map((key) => {
-                        const count = zoneDays?.get(key) ?? 0;
-                        const future = key > today;
-                        return (
-                          <td
-                            key={key}
-                            title={`${zone.name} · ${formatDayLong(key)}: ${pluralChecks(count)}`}
-                            className={`h-7 min-w-[1.75rem] rounded-md text-center align-middle text-[11px] font-semibold ${
-                              future ? "bg-white text-transparent" : HEAT_CLASSES[heatLevel(count, maxCell)]
-                            }`}
-                          >
-                            {count > 0 ? count : ""}
-                          </td>
-                        );
-                      })}
-                      <td
-                        className={`pl-2 text-right font-semibold ${total === 0 ? "text-rose-600" : "text-slate-800"}`}
-                      >
-                        {total}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        {showAllDayLabels && count > 0 ? count : ""}
+                      </span>
+                    );
+                  })}
+                  <span
+                    className={`text-right font-semibold tabular-nums ${total === 0 ? "text-rose-600" : "text-slate-800"}`}
+                  >
+                    {total}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         )}
+        {props.heatmapZones.length > 0 && !showAllDayLabels ? (
+          <p className="mt-2 text-[11px] text-slate-500">
+            Filtra un rango de hasta 14 días para ver el número exacto en cada celda.
+          </p>
+        ) : null}
         {uncoveredZones.length > 0 ? (
           <div className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-800">
             <span className="font-semibold">Zonas sin marcaje en el periodo:</span>{" "}
@@ -576,6 +557,50 @@ export function PatrolDashboard(props: PatrolDashboardProps) {
         </div>
       </Card>
     </>
+  );
+}
+
+function DayAxis({
+  dayKeys,
+  today,
+  className = "",
+  style,
+}: {
+  dayKeys: string[];
+  today: string;
+  className?: string;
+  style?: CSSProperties;
+}) {
+  const total = dayKeys.length;
+  const step = total <= 7 ? 1 : total <= 14 ? 3 : Math.ceil(total / 5);
+  const indexes: number[] = [];
+  for (let index = total - 1; index >= 0; index -= step) indexes.push(index);
+
+  return (
+    <div className={`relative h-4 min-w-0 overflow-visible ${className}`} style={style}>
+      {indexes.map((index) => {
+        const key = dayKeys[index]!;
+        const center = ((index + 0.5) / total) * 100;
+        const edge = total > 7 && index === 0 ? "start" : total > 7 && index === total - 1 ? "end" : "center";
+        return (
+          <span
+            key={key}
+            className={`absolute top-0 whitespace-nowrap text-[10px] leading-4 ${
+              key === today ? "font-bold text-blue-700" : "text-slate-500"
+            }`}
+            style={
+              edge === "start"
+                ? { left: 0 }
+                : edge === "end"
+                  ? { right: 0 }
+                  : { left: `${center}%`, transform: "translateX(-50%)" }
+            }
+          >
+            {total <= 14 ? formatDayShort(key) : formatDayMonth(key)}
+          </span>
+        );
+      })}
+    </div>
   );
 }
 
