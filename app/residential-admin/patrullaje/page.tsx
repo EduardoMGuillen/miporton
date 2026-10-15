@@ -1,45 +1,112 @@
 import QRCode from "qrcode";
 import { Card } from "@/app/components/shell";
 import { CreatePatrolZoneForm } from "@/app/residential-admin/create-patrol-zone-form";
+import { PatrolDashboard } from "@/app/residential-admin/patrol-dashboard";
 import { PatrolQrShareActions } from "@/app/residential-admin/patrol-qr-share-actions";
 import { deactivatePatrolZoneAction } from "@/app/residential-admin/patrullaje-actions";
 import { requireRole } from "@/lib/authorization";
-import { formatDateTimeTegucigalpa } from "@/lib/datetime";
 import { patrolPayloadFromCode } from "@/lib/patrol";
+import {
+  addDaysToKey,
+  buildPatrolStats,
+  daysBetweenKeys,
+  rangeBoundsUtc,
+  resolvePatrolRange,
+} from "@/lib/patrol-stats";
 import { prisma } from "@/lib/prisma";
 
-export default async function ResidentialAdminPatrullajePage() {
+const MAX_CHECK_ROWS = 5000;
+
+function getSingleParam(value: string | string[] | undefined) {
+  if (Array.isArray(value)) return value[0] ?? "";
+  return value ?? "";
+}
+
+export default async function ResidentialAdminPatrullajePage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const session = await requireRole(["RESIDENTIAL_ADMIN"]);
   if (!session.residentialId) {
     return <p className="p-8 text-red-600">Sesion invalida: no hay residencial asociada.</p>;
   }
+  const residentialId = session.residentialId;
 
-  const [residential, activeZones, inactiveZones, recentChecks] = await Promise.all([
+  const params = await searchParams;
+  const { from, to, today } = resolvePatrolRange(
+    getSingleParam(params.desde).trim(),
+    getSingleParam(params.hasta).trim(),
+  );
+  const zoneFilter = getSingleParam(params.zona).trim();
+  const guardFilter = getSingleParam(params.guardia).trim();
+  const { start, end } = rangeBoundsUtc(from, to);
+  const spanDays = daysBetweenKeys(from, to) + 1;
+  const previousBounds = rangeBoundsUtc(addDaysToKey(from, -spanDays), addDaysToKey(from, -1));
+  const checkFilters = {
+    residentialId,
+    ...(zoneFilter ? { zoneId: zoneFilter } : {}),
+    ...(guardFilter ? { guardId: guardFilter } : {}),
+  };
+
+  const [residential, activeZones, inactiveZones, allZones, guards, rangeChecks, previousTotal] = await Promise.all([
     prisma.residential.findUnique({
-      where: { id: session.residentialId },
+      where: { id: residentialId },
       select: { name: true },
     }),
     prisma.patrolZone.findMany({
-      where: { residentialId: session.residentialId, isActive: true },
+      where: { residentialId, isActive: true },
       orderBy: { name: "asc" },
     }),
     prisma.patrolZone.findMany({
-      where: { residentialId: session.residentialId, isActive: false },
+      where: { residentialId, isActive: false },
       orderBy: { name: "asc" },
       take: 40,
     }),
+    prisma.patrolZone.findMany({
+      where: { residentialId },
+      orderBy: [{ isActive: "desc" }, { name: "asc" }],
+      select: { id: true, name: true, isActive: true },
+    }),
+    prisma.user.findMany({
+      where: { residentialId, role: "GUARD" },
+      orderBy: { fullName: "asc" },
+      select: { id: true, fullName: true, isSuspended: true },
+    }),
     prisma.patrolCheck.findMany({
-      where: { residentialId: session.residentialId },
+      where: { ...checkFilters, checkedAt: { gte: start, lt: end } },
       orderBy: { checkedAt: "desc" },
-      take: 80,
+      take: MAX_CHECK_ROWS,
       select: {
         id: true,
         checkedAt: true,
+        zoneId: true,
+        guardId: true,
         zone: { select: { name: true } },
         guard: { select: { fullName: true } },
       },
     }),
+    prisma.patrolCheck.count({
+      where: { ...checkFilters, checkedAt: { gte: previousBounds.start, lt: previousBounds.end } },
+    }),
   ]);
+
+  const stats = buildPatrolStats(
+    rangeChecks.map((check) => ({
+      id: check.id,
+      checkedAt: check.checkedAt,
+      zoneId: check.zoneId,
+      guardId: check.guardId,
+      zoneName: check.zone.name,
+      guardName: check.guard.fullName,
+    })),
+    from,
+    to,
+  );
+
+  const heatmapZones = allZones
+    .filter((zone) => (zoneFilter ? zone.id === zoneFilter : zone.isActive || stats.byZone.has(zone.id)))
+    .map((zone) => ({ id: zone.id, name: zone.name, note: zone.isActive ? undefined : "inactiva" }));
 
   const zonesWithQr = await Promise.all(
     activeZones.map(async (zone) => ({
@@ -50,8 +117,31 @@ export default async function ResidentialAdminPatrullajePage() {
 
   return (
     <>
+      <PatrolDashboard
+        stats={stats}
+        from={from}
+        to={to}
+        today={today}
+        zoneId={zoneFilter}
+        guardId={guardFilter}
+        zoneOptions={allZones.map((zone) => ({
+          id: zone.id,
+          name: zone.name,
+          note: zone.isActive ? undefined : "inactiva",
+        }))}
+        guardOptions={guards.map((guard) => ({
+          id: guard.id,
+          name: guard.fullName,
+          note: guard.isSuspended ? "suspendido" : undefined,
+        }))}
+        heatmapZones={heatmapZones}
+        activeZoneIds={activeZones.map((zone) => zone.id)}
+        previousTotal={previousTotal}
+        truncated={rangeChecks.length >= MAX_CHECK_ROWS}
+      />
+
       <Card>
-        <h2 className="mb-2 text-lg font-semibold text-slate-900">Patrullaje</h2>
+        <h2 className="mb-2 text-lg font-semibold text-slate-900">Zonas de patrullaje</h2>
         <p className="mb-4 text-sm text-slate-600">
           Crea zonas con QR permanente para stickers. El guardia las escanea en &quot;Guardar
           Patrullaje&quot;; no afectan los QRs de visitas.
@@ -113,41 +203,6 @@ export default async function ResidentialAdminPatrullajePage() {
             ) : null}
           </div>
         </details>
-      </Card>
-
-      <Card>
-        <h2 className="mb-4 text-lg font-semibold text-slate-900">
-          Historial reciente ({recentChecks.length})
-        </h2>
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="px-2 py-2 font-semibold">Zona</th>
-                <th className="px-2 py-2 font-semibold">Guardia</th>
-                <th className="px-2 py-2 font-semibold">Hora</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentChecks.map((check) => (
-                <tr key={check.id} className="border-b border-slate-100">
-                  <td className="px-2 py-2 text-slate-900">{check.zone.name}</td>
-                  <td className="px-2 py-2 text-slate-700">{check.guard.fullName}</td>
-                  <td className="px-2 py-2 text-slate-600">
-                    {formatDateTimeTegucigalpa(check.checkedAt)}
-                  </td>
-                </tr>
-              ))}
-              {recentChecks.length === 0 ? (
-                <tr>
-                  <td colSpan={3} className="px-2 py-3 text-slate-600">
-                    Todavia no hay marcajes de patrullaje.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
       </Card>
 
       {inactiveZones.length > 0 ? (
